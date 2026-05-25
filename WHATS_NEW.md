@@ -1,3 +1,52 @@
+# Rig Builder 1.0.0 — first stable release (2026-05-25)
+
+The first stable release of **Rig Builder** (formerly `nam_rig_builder`). It
+maps Rocksmith 2014 tones (amp + cab + pedals + racks) to NAM captures + IRs
+from tone3000.com — and now also to your own **VST3 / AU plugins** — so playing
+a CDLC in Slopsmith uses the full, realistic chain instead of generic sounds.
+
+## Headline features
+
+- **🎛 VST3 / Audio Unit support.** Assign any installed VST3/AU as a chain
+  stage on any pedal / amp / rack — alongside NAM captures and IRs. Inline
+  parameter editor (crisp HTML sliders driving the plugin in real time), plus
+  the plugin's own native editor window. Plugin settings are captured as the
+  engine's opaque state blob so they apply in **real song playback**, not just
+  the preview (e.g. a compressor's makeup gain). N:1 bulk-assign from the Gear
+  tab applies a plugin to every song that uses that gear.
+- **🔗 Master Chain.** Global pre/post FX wrapped around *every* song: a
+  `master_pre` chain sees the raw DI, a `master_post` chain sees the wet output
+  (e.g. a global compressor / EQ on the master bus). Per-stage bypass + its own
+  inline VST editor.
+- **🖥 New DAW-style UI.** Reworked chain editor with a Library picker
+  (Files | Plugins tabs), per-slot library browser, a searchable
+  category-grouped plugin picker, a song list with real title/artist metadata,
+  and a fully English interface.
+- **🔊 Full-chain real playback.** The whole chain (pedal → amp → … → cab,
+  multiple NAM stages + VSTs + IR) plays in actual songs via a scoped
+  `fetch` redirect — no edits to the signed Slopsmith bundle, survives updates.
+- **⬇ Auto-download + batch.** With a tone3000 API key, opening a song
+  auto-downloads every missing piece; Dashboard batch processes the whole
+  library. Curated `default_captures.json` picks good captures by default.
+  Deep-link mode works with no key.
+
+## Stability fixes in this release
+
+- VST editor no longer crashes the app when navigating to another tab,
+  loading a song, or leaving the plugin to play a song (the open native editor
+  window is now closed before any chain reload).
+- Master / chain VST settings now actually apply during real song playback
+  (opaque-state capture) — previously the plugin came up at its defaults.
+- Per-song bypass + gear edits auto-save and survive re-download; saved gear
+  presets are no longer lost on song re-download.
+
+> **Upgrading from a VST preview build:** VST pieces saved before this release
+> stored only a `{params}` dict and play at plugin defaults in real songs.
+> Re-open each VST editor once and save (Capture state or any slider drag) to
+> grab the new opaque state blob. DB migrations run automatically on first boot.
+
+---
+
 # What's new — rig_builder VST preview (2026-05-25)
 
 This is a working preview of the **VST3 / Audio Unit support** branch
