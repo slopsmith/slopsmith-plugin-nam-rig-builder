@@ -3102,7 +3102,7 @@ async function rbPersistTone(toneIdx, filename) {
     });
     const payload = {
         filename,
-        tone_key: tone.key,
+        tone_key: tone.key || tone.name,
         name: `${filename}::${tone.key || tone.name}`,
         pieces,
     };

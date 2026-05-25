@@ -1737,9 +1737,17 @@ def _auto_download_for_song(filename: str, path: Path) -> dict:
             # GearList and call _persist_preset_chain, which does
             # DELETE+INSERT and wipes any added/reordered/removed
             # pieces the user had saved.
+            # Match BOTH the canonical key (`key or name`) and the raw `key`
+            # form — which is "" for tones with an empty Key. Older saves were
+            # stored under the raw form (the frontend sent tone.key verbatim),
+            # so a tone with an empty Key had its chain saved under tone_key=""
+            # while this watcher looked it up under the name → guard missed →
+            # the chain got rebuilt + wiped on every re-materialization (e.g.
+            # each cloud_loader re-download). Checking both forms keeps those
+            # presets protected.
             already_saved = conn.execute(
-                "SELECT 1 FROM tone_mappings WHERE filename = ? AND tone_key = ? LIMIT 1",
-                (filename, tone_key),
+                "SELECT 1 FROM tone_mappings WHERE filename = ? AND tone_key IN (?, ?) LIMIT 1",
+                (filename, tone_key, parsed["key"]),
             ).fetchone()
             if already_saved:
                 _batch_log(f"  skip {preset_name} — user-saved chain (preserved)")
