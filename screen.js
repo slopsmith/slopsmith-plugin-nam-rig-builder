@@ -50,8 +50,16 @@
                 const data = JSON.parse(txt);
                 const chain = data && data.native_preset && data.native_preset.chain;
                 if (!Array.isArray(chain) || chain.length === 0) return origFetch(input, init);
+                // Including how many master_pre / master_post stages were
+                // injected — handy for the "master chain not heard in song
+                // playback" diagnostic. If both counts are zero here but
+                // the master tab shows pieces, those pieces are missing
+                // files on disk (silently skipped by _build_master_stages).
+                const mPre  = data.master_pre_count  || 0;
+                const mPost = data.master_post_count || 0;
                 console.log(`[rig_builder] full-chain playback: preset ${m[1]} → ${chain.length} stages`
-                    + ` (${data.nam_stage_count} NAM + ${chain.length - data.nam_stage_count} IR)`
+                    + ` (${data.nam_stage_count} NAM + ${chain.length - data.nam_stage_count - mPre - mPost} song IR/VST`
+                    + ` + ${mPre} master_pre + ${mPost} master_post)`
                     + (data.missing && data.missing.length ? ` · missing files: ${data.missing.join(', ')}` : ''));
             } catch (_) {
                 return origFetch(input, init);
@@ -3226,13 +3234,44 @@ function rbToggleBypass(toneIdx, pIdx, btn) {
 }
 
 // Stamp each chain stage's `bypassed` from its matching UI piece.
+//
+// Master pre/post stages (slot starts with 'master_') keep whatever
+// bypass they came in with from the backend — they aren't in
+// tone.chain, so a `.find` lookup would always miss, force the stage
+// to bypassed=false, and silently clobber the master tab's bypass
+// state for global FX every time a song was loaded.
 function rbApplyBypassToChain(payload, toneIdx) {
     const tone = rbState.songTones && rbState.songTones.tones[toneIdx];
     const chain = (payload && payload.native_preset && payload.native_preset.chain) || [];
     if (!tone) return;
     for (const stage of chain) {
+        if (stage.slot && typeof stage.slot === 'string' && stage.slot.startsWith('master_')) {
+            continue;   // belongs to the master chain; backend already set bypass
+        }
         const piece = tone.chain.find(p => p.type === stage.rs_gear);
         stage.bypassed = !!(piece && piece._bypassed);
+    }
+}
+
+// Walk the chain just loaded into the engine and force each slot's
+// bypass to match what the chain spec said. The engine's loadPreset
+// has been unreliable at re-applying bypass on every reload — once a
+// slot has been bypassed, subsequent loadPreset calls sometimes leave
+// it bypassed even when the new spec says bypassed:false. This
+// explicit setBypass walk makes the reload deterministic (was the
+// "bypass stuck once activated" Discord report).
+async function rbReapplyBypassToChain(api, chainSpec) {
+    if (typeof api.getChainState !== 'function' || typeof api.setBypass !== 'function') return;
+    let loaded;
+    try { loaded = await api.getChainState(); } catch (_) { return; }
+    if (!Array.isArray(loaded)) return;
+    for (let i = 0; i < chainSpec.length && i < loaded.length; i++) {
+        const spec = chainSpec[i];
+        const slot = loaded[i];
+        if (!spec || !slot) continue;
+        const slotId = slot.id ?? slot.slotId ?? i;
+        const wantBypass = !!spec.bypassed;
+        try { await api.setBypass(slotId, wantBypass); } catch (_) {}
     }
 }
 
@@ -3254,6 +3293,9 @@ async function rbReloadPreview(refetchPresetId) {
     try {
         if (api.clearChain) await api.clearChain().catch(() => {});
         await api.loadPreset(JSON.stringify(payload.native_preset));
+        // Engine sometimes leaves a slot bypassed across reloads — force each
+        // slot's bypass to match the spec so toggling un-bypass actually un-bypasses.
+        await rbReapplyBypassToChain(api, payload.native_preset.chain || []);
         if (api.setMonitorMute) await api.setMonitorMute(false).catch(() => {});
     } catch (e) { console.warn('[rig_builder] reload preview failed', e); }
 }
@@ -3896,6 +3938,9 @@ async function rbListenTone(toneIdx, filename) {
             const got = res && res.slotsLoaded;
             console.log(`[rig_builder] chain sent=${chain.length} (NAM=${payload.nam_stage_count}) · slotsLoaded=${got}`, res);
             if (!res || res.success === false) throw new Error((res && res.error) || 'loadPreset failed');
+            // Force bypass to match the spec: engine sometimes keeps a slot
+            // bypassed across reloads (the "bypass stuck" Discord report).
+            await rbReapplyBypassToChain(api, chain);
             // Re-apply persisted VST params: the chain JSON's `state` field
             // for type 0 stages doesn't reliably restore plugin params in
             // every engine build, so we walk the loaded chain and call

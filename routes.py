@@ -3097,12 +3097,28 @@ def setup(app, context):
         img_idx = _tone_image_index()
 
         # Best preset_piece per gear: prefer a row with an effective
-        # assignment (NAM/IR file OR a VST path), else latest.
-        rows = conn.execute(
-            "SELECT rs_gear_type, kind, file, tone3000_id, id, "
-            "       vst_path, vst_format, vst_state "
-            "FROM preset_pieces ORDER BY id DESC"
-        ).fetchall()
+        # assignment (NAM/IR file OR a VST path), else latest. Excludes
+        # the master-chain sentinel presets so adding a piece to the
+        # global master chain doesn't pollute the Gear catalog with
+        # synthetic rs_gear_types like "VST_…".
+        master_ids = [pid for pid in (_get_master_preset_id("pre"),
+                                      _get_master_preset_id("post"))
+                      if pid is not None]
+        if master_ids:
+            placeholders = ",".join("?" for _ in master_ids)
+            rows = conn.execute(
+                "SELECT rs_gear_type, kind, file, tone3000_id, id, "
+                "       vst_path, vst_format, vst_state "
+                f"FROM preset_pieces WHERE preset_id NOT IN ({placeholders}) "
+                "ORDER BY id DESC",
+                tuple(master_ids),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT rs_gear_type, kind, file, tone3000_id, id, "
+                "       vst_path, vst_format, vst_state "
+                "FROM preset_pieces ORDER BY id DESC"
+            ).fetchall()
         best: dict[str, dict] = {}
         for gear, kind, file, t3kid, _id, vst_path, vst_format, vst_state in rows:
             has_assignment = bool(file) or (kind == "vst" and bool(vst_path))
@@ -3211,15 +3227,36 @@ def setup(app, context):
 
     @app.get("/api/plugins/rig_builder/coverage")
     def coverage():
-        """Pending = preset_pieces with kind='none' or missing file."""
+        """Pending = preset_pieces with kind='none' or missing file.
+
+        Excludes the master-chain sentinel presets so pieces added to the
+        global pre/post chain don't surface as "pending gears" — those
+        rows live outside any song. The Pending tab is the per-song to-do
+        list; master pieces are global and shouldn't pollute it.
+        """
         conn = _get_conn()
-        rows = conn.execute(
-            "SELECT rs_gear_type, COUNT(*) AS n, "
-            "  SUM(CASE WHEN kind='none' OR file IS NULL OR file='' THEN 1 ELSE 0 END) AS pending "
-            "FROM preset_pieces "
-            "GROUP BY rs_gear_type "
-            "ORDER BY pending DESC, n DESC"
-        ).fetchall()
+        master_ids = [pid for pid in (_get_master_preset_id("pre"),
+                                      _get_master_preset_id("post"))
+                      if pid is not None]
+        if master_ids:
+            placeholders = ",".join("?" for _ in master_ids)
+            rows = conn.execute(
+                "SELECT rs_gear_type, COUNT(*) AS n, "
+                "  SUM(CASE WHEN kind='none' OR file IS NULL OR file='' THEN 1 ELSE 0 END) AS pending "
+                "FROM preset_pieces "
+                f"WHERE preset_id NOT IN ({placeholders}) "
+                "GROUP BY rs_gear_type "
+                "ORDER BY pending DESC, n DESC",
+                tuple(master_ids),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT rs_gear_type, COUNT(*) AS n, "
+                "  SUM(CASE WHEN kind='none' OR file IS NULL OR file='' THEN 1 ELSE 0 END) AS pending "
+                "FROM preset_pieces "
+                "GROUP BY rs_gear_type "
+                "ORDER BY pending DESC, n DESC"
+            ).fetchall()
         rs_map = _load_rs_to_real()
         out = []
         for r in rows:
