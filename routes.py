@@ -1728,6 +1728,28 @@ def _auto_download_for_song(filename: str, path: Path) -> dict:
             pieces: list[dict] = []
             conn = _get_conn()
 
+            # CRITICAL: never touch a tone the user has already edited.
+            # /save_preset writes a (filename, tone_key) row into
+            # tone_mappings the first time a chain is saved, so the
+            # presence of that row signals "user has customised this
+            # tone — leave it alone". Without this guard the auto-
+            # download flow would rebuild pieces[] from the PSARC's
+            # GearList and call _persist_preset_chain, which does
+            # DELETE+INSERT and wipes any added/reordered/removed
+            # pieces the user had saved.
+            already_saved = conn.execute(
+                "SELECT 1 FROM tone_mappings WHERE filename = ? AND tone_key = ? LIMIT 1",
+                (filename, tone_key),
+            ).fetchone()
+            if already_saved:
+                _batch_log(f"  skip {preset_name} — user-saved chain (preserved)")
+                # Count every piece as 'processed + skipped_assigned' so
+                # the UI's progress meter still moves the right number.
+                for _ in parsed["chain"]:
+                    counts["processed"] += 1
+                    counts["skipped_assigned"] += 1
+                continue
+
             for piece in parsed["chain"]:
                 rs_type = piece["type"]
                 info = rs_map.get(rs_type) or {}
