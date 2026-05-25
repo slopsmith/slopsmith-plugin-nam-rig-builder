@@ -869,6 +869,16 @@ async function rbToneEditVst(toneIdx, pIdx) {
             } catch (_) {}
         }
         piece._vst_param_meta = params;
+        // Seed _vst_params with the FULL current snapshot so subsequent
+        // slider drags modify a complete dict (not just the touched ids).
+        // Persisting partial dicts was a data-loss bug: untouched params
+        // would silently revert to plugin defaults on chain rebuild.
+        piece._vst_params = {};
+        for (const param of params) {
+            const id = param.id ?? param.paramId ?? param.index;
+            const v  = param.value ?? param.current;
+            if (id != null && typeof v === 'number') piece._vst_params[id] = v;
+        }
         if (api.openPluginEditor) {
             api.openPluginEditor(slotId).catch(() => {});
         }
@@ -950,8 +960,32 @@ async function rbToneSetVstParam(toneIdx, pIdx, paramId, value, valueDisplayEl) 
             valueDisplayEl.textContent = v.toFixed(3);
         }
     }
+    // Stage the drag in _vst_params + keep _vst_state in sync so ANY
+    // subsequent persist (reorder, add piece, master edit, etc.) carries
+    // the latest values — not just an explicit Capture state click.
     piece._vst_params = piece._vst_params || {};
     piece._vst_params[paramId] = v;
+    piece._vst_state = JSON.stringify({ params: piece._vst_params });
+    // Debounced auto-save so the user doesn't lose drags after navigating
+    // away from the song. 500 ms after the last drag we hit /save_preset.
+    rbDebouncedToneSave(toneIdx, pIdx);
+}
+
+// Per-piece debounce timer. Each new drag resets the timer; the actual
+// save fires only when there's been a pause. The 500 ms window keeps the
+// save count sane during rapid drags while still feeling instantaneous.
+const _rbToneSaveTimers = new Map();
+function rbDebouncedToneSave(toneIdx, pIdx) {
+    const key = `${toneIdx}:${pIdx}`;
+    const existing = _rbToneSaveTimers.get(key);
+    if (existing) clearTimeout(existing);
+    const timer = setTimeout(() => {
+        _rbToneSaveTimers.delete(key);
+        if (rbState.currentSongFile) {
+            rbPersistTone(toneIdx, rbState.currentSongFile).catch(() => null);
+        }
+    }, 500);
+    _rbToneSaveTimers.set(key, timer);
 }
 
 async function rbToneCaptureVstState(toneIdx, pIdx) {
@@ -1429,6 +1463,16 @@ async function rbMasterEditVst(role, idx) {
             } catch (_) {}
         }
         piece._vst_param_meta = params;
+        // Seed _vst_params with the FULL current snapshot. Without this,
+        // subsequent slider drags would write a PARTIAL dict — untouched
+        // params would silently revert to plugin defaults on the next
+        // chain rebuild. Now any drag modifies a complete state.
+        piece._vst_params = {};
+        for (const param of params) {
+            const id = param.id ?? param.paramId ?? param.index;
+            const v  = param.value ?? param.current;
+            if (id != null && typeof v === 'number') piece._vst_params[id] = v;
+        }
         // Open the plugin's own editor window too as an optional visual
         // — the inline sliders still drive everything.
         if (api.openPluginEditor) {
@@ -1513,9 +1557,25 @@ async function rbMasterSetVstParam(role, idx, paramId, value, valueDisplayEl) {
             valueDisplayEl.textContent = v.toFixed(3);
         }
     }
-    // Stage the new value on the piece so Capture state / auto-save persists it.
+    // Stage the drag + keep _vst_state in sync so any subsequent persist
+    // carries the latest values without needing an explicit Capture.
     piece._vst_params = piece._vst_params || {};
     piece._vst_params[paramId] = v;
+    piece._vst_state = JSON.stringify({ params: piece._vst_params });
+    // Debounced auto-save (500 ms after last drag) so the user doesn't
+    // lose drags after navigating away from the Master tab.
+    rbDebouncedMasterSave(role);
+}
+
+const _rbMasterSaveTimers = new Map();
+function rbDebouncedMasterSave(role) {
+    const existing = _rbMasterSaveTimers.get(role);
+    if (existing) clearTimeout(existing);
+    const timer = setTimeout(() => {
+        _rbMasterSaveTimers.delete(role);
+        rbPersistMasterChain(role).catch(() => null);
+    }, 500);
+    _rbMasterSaveTimers.set(role, timer);
 }
 
 async function rbMasterCaptureVstState(role, idx) {
