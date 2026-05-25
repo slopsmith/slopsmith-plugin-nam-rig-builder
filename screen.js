@@ -802,13 +802,192 @@ function rbRenderPiece(p, toneIdx, pIdx) {
                         class="bg-indigo-900/30 hover:bg-indigo-900/50 text-indigo-300 border border-indigo-800/40 px-2 py-1 rounded text-xs">
                     📚 Library
                 </button>
+                ${hasVst ? `
+                <button onclick="rbToneEditVst(${toneIdx}, ${pIdx})"
+                        title="Load this VST in the engine and edit its parameters with inline sliders"
+                        class="bg-purple-900/30 hover:bg-purple-900/50 text-purple-300 border border-purple-800/40 px-2 py-1 rounded text-xs">
+                    🎛 Edit VST
+                </button>` : ''}
                 <span class="rb-piece-file text-xs ${stageClass} truncate" title="${rbEsc(hasVst ? effVstPath : (hasFile ? effFile : ''))}">${rbEsc(stageLabel)}</span>
                 ${(hasFile || hasVst) && mode ? `<span class="text-[10px] text-gray-600 whitespace-nowrap">(${rbEsc(mode)})</span>` : ''}
             </div>
             <div id="rb-lib-${toneIdx}-${pIdx}" class="hidden mt-2 bg-indigo-900/10 border border-indigo-800/30 rounded p-2"></div>
+            <div id="rb-tone-vst-editor-${toneIdx}-${pIdx}" class="hidden mt-2 bg-purple-900/10 border border-purple-800/30 rounded p-2 space-y-2"></div>
             ${rsKnobsBlock}
             ${rsIrControl}
         </div>`;
+}
+
+// Quick "🎛 Edit VST" shortcut for per-tone pieces that already have a VST
+// assigned. Same UX as rbMasterEditVst — opens an inline panel with HTML
+// sliders for every parameter, drives setParameter live, lets you capture
+// state back into the piece. Sidesteps the 2-click path through 📚 Library
+// → Plugins tab → Load & Edit so the editor is a single click away.
+async function rbToneEditVst(toneIdx, pIdx) {
+    const piece = rbState.songTones && rbState.songTones.tones[toneIdx] && rbState.songTones.tones[toneIdx].chain[pIdx];
+    if (!piece) return;
+    const editor = document.getElementById(`rb-tone-vst-editor-${toneIdx}-${pIdx}`);
+    if (!editor) return;
+    // Toggle close if already open.
+    if (!editor.classList.contains('hidden') && piece._vst_slot_id != null) {
+        editor.classList.add('hidden');
+        editor.innerHTML = '';
+        return;
+    }
+    const api = window.slopsmithDesktop && window.slopsmithDesktop.audio;
+    if (!api) return alert('Native VST hosting not available');
+    const vstPath = piece._vst_path || (piece.assigned && piece.assigned.vst_path) || '';
+    if (!vstPath) return alert('This piece has no VST assigned yet.');
+    editor.classList.remove('hidden');
+    editor.innerHTML = `<div class="text-xs text-gray-500">loading ${rbEsc(vstPath.split('/').pop())}…</div>`;
+    try {
+        if (rbState._vstEditorSlot != null && api.clearChain) {
+            await api.clearChain().catch(() => {});
+        }
+        await api.startAudio().catch(() => {});
+        const slotId = await api.loadVST(vstPath);
+        if (slotId == null || slotId < 0) {
+            editor.innerHTML = `<div class="text-xs text-red-400">engine refused to load this plugin</div>`;
+            return;
+        }
+        rbState._vstEditorSlot = slotId;
+        piece._vst_slot_id = slotId;
+        // Re-apply previously captured params if any.
+        const saved = piece._vst_params
+            || (piece.assigned && piece.assigned.vst_state
+                ? rbParseVstStateParams(piece.assigned.vst_state) : null);
+        if (saved && typeof api.setParameter === 'function') {
+            for (const [pid, v] of Object.entries(saved)) {
+                try { await api.setParameter(slotId, parseInt(pid, 10), parseFloat(v)); } catch (_) {}
+            }
+        }
+        let params = [];
+        if (typeof api.getParameters === 'function') {
+            try {
+                const raw = await api.getParameters(slotId);
+                if (Array.isArray(raw)) params = raw;
+            } catch (_) {}
+        }
+        piece._vst_param_meta = params;
+        if (api.openPluginEditor) {
+            api.openPluginEditor(slotId).catch(() => {});
+        }
+        rbToneRenderInlineVstParams(toneIdx, pIdx);
+    } catch (e) {
+        editor.innerHTML = `<div class="text-xs text-red-400">load failed: ${rbEsc(e.message || e)}</div>`;
+    }
+}
+
+function rbToneRenderInlineVstParams(toneIdx, pIdx) {
+    const editor = document.getElementById(`rb-tone-vst-editor-${toneIdx}-${pIdx}`);
+    if (!editor) return;
+    const piece = rbState.songTones.tones[toneIdx].chain[pIdx];
+    const params = (piece && piece._vst_param_meta) || [];
+    const effVstPath = piece._vst_path || (piece.assigned && piece.assigned.vst_path) || '';
+    const vstName = effVstPath.split('/').pop().replace(/\.(vst3|component)$/i, '');
+    const header = `
+        <div class="flex items-center justify-between">
+            <div class="text-[11px] text-purple-300 font-semibold">In-Slopsmith editor · ${rbEsc(vstName)} · ${params.length} params</div>
+            <div class="flex items-center gap-1">
+                <button onclick="rbToneCaptureVstState(${toneIdx}, ${pIdx})"
+                        title="Snapshot the current parameter values into this tone's saved state"
+                        class="bg-amber-700/60 hover:bg-amber-600/60 text-amber-100 text-[10px] px-2 py-0.5 rounded">📸 Capture state</button>
+                <button onclick="rbToneEditVst(${toneIdx}, ${pIdx})"
+                        title="Close inline editor"
+                        class="text-[10px] text-gray-400 hover:text-gray-200 px-1">✕</button>
+            </div>
+        </div>`;
+    if (params.length === 0) {
+        editor.innerHTML = `
+            ${header}
+            <div class="text-xs text-gray-500 italic mt-1">
+                This plugin doesn't expose any parameters to the host. Use the native window for tweaks.
+            </div>`;
+        return;
+    }
+    const rows = params.map((p, i) => {
+        const id     = p.id    ?? p.paramId ?? p.index ?? i;
+        const name   = p.name  ?? p.label   ?? `Param ${i}`;
+        const value  = p.value ?? p.current ?? 0;
+        const text   = p.text  ?? p.display ?? '';
+        const labelU = p.label_units ?? p.unit ?? '';
+        const step   = p.numSteps && p.numSteps > 1 ? (1 / (p.numSteps - 1)) : 0.001;
+        const display = text || (typeof value === 'number' ? value.toFixed(3) : value) + (labelU ? ` ${labelU}` : '');
+        return `
+            <div class="flex items-center gap-2 py-0.5">
+                <span class="text-[11px] text-gray-300 w-32 truncate" title="${rbEsc(name)}">${rbEsc(name)}</span>
+                <input type="range" min="0" max="1" step="${step}" value="${value}"
+                       oninput="rbToneSetVstParam(${toneIdx}, ${pIdx}, ${id}, this.value, this.nextElementSibling)"
+                       class="flex-1 h-1 accent-purple-500">
+                <span class="text-[10px] text-purple-200/70 w-20 text-right truncate" title="${rbEsc(String(display))}">${rbEsc(String(display))}</span>
+            </div>`;
+    }).join('');
+    editor.innerHTML = `${header}
+        <div class="max-h-96 overflow-y-auto mt-1">${rows}</div>`;
+}
+
+async function rbToneSetVstParam(toneIdx, pIdx, paramId, value, valueDisplayEl) {
+    const api = window.slopsmithDesktop && window.slopsmithDesktop.audio;
+    const piece = rbState.songTones.tones[toneIdx].chain[pIdx];
+    if (!piece || piece._vst_slot_id == null) return;
+    const v = parseFloat(value);
+    try { await api.setParameter(piece._vst_slot_id, paramId, v); } catch (_) {}
+    if (valueDisplayEl) {
+        if (typeof api?.getParameters === 'function') {
+            try {
+                const refreshed = await api.getParameters(piece._vst_slot_id);
+                if (Array.isArray(refreshed)) {
+                    const entry = refreshed.find(p => (p.id ?? p.paramId ?? p.index) === paramId);
+                    valueDisplayEl.textContent = (entry && (entry.text || entry.display)) || v.toFixed(3);
+                    piece._vst_param_meta = refreshed;
+                } else {
+                    valueDisplayEl.textContent = v.toFixed(3);
+                }
+            } catch (_) {
+                valueDisplayEl.textContent = v.toFixed(3);
+            }
+        } else {
+            valueDisplayEl.textContent = v.toFixed(3);
+        }
+    }
+    piece._vst_params = piece._vst_params || {};
+    piece._vst_params[paramId] = v;
+}
+
+async function rbToneCaptureVstState(toneIdx, pIdx) {
+    const api = window.slopsmithDesktop && window.slopsmithDesktop.audio;
+    const piece = rbState.songTones.tones[toneIdx].chain[pIdx];
+    if (!piece) return;
+    const editor = document.getElementById(`rb-tone-vst-editor-${toneIdx}-${pIdx}`);
+    try {
+        let params = piece._vst_params || {};
+        if (piece._vst_slot_id != null && typeof api?.getParameters === 'function') {
+            const live = await api.getParameters(piece._vst_slot_id).catch(() => null);
+            if (Array.isArray(live)) {
+                params = {};
+                for (let i = 0; i < live.length; i++) {
+                    const id = live[i].id ?? live[i].paramId ?? live[i].index ?? i;
+                    const v  = live[i].value ?? live[i].current;
+                    if (typeof v === 'number') params[id] = v;
+                }
+            }
+        }
+        piece._vst_state = JSON.stringify({ params });
+        piece._vst_params = params;
+        // Persist through the existing tone-save path.
+        if (rbState.currentSongFile) {
+            await rbPersistTone(toneIdx, rbState.currentSongFile).catch(() => null);
+        }
+        if (editor) {
+            const status = document.createElement('div');
+            status.className = 'text-[10px] text-emerald-300';
+            status.textContent = `✓ Captured ${Object.keys(params).length} param values`;
+            editor.appendChild(status);
+            setTimeout(() => status.remove(), 2500);
+        }
+    } catch (e) {
+        alert(`Capture failed: ${e.message || e}`);
+    }
 }
 
 // ── Local library picker (pick from already-downloaded NAMs / IRs) ────
