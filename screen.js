@@ -1083,12 +1083,19 @@ function rbRenderMasterPiece(role, idx, p, total) {
             </div>
             <div class="flex items-center gap-2">
                 <span class="flex-1 text-xs ${labelClass} truncate" title="${rbEsc(effVstPath || effFile || '')}">${rbEsc(label)}</span>
+                ${effVstPath ? `
+                <button onclick="rbMasterEditVst('${role}', ${idx})"
+                        title="Load this VST in the engine and edit its parameters with inline sliders"
+                        class="bg-purple-900/30 hover:bg-purple-900/50 text-purple-300 border border-purple-800/40 px-2 py-1 rounded text-xs transition">
+                    🎛 Edit VST
+                </button>` : ''}
                 <button onclick="rbMasterOpenAssignPicker('${role}', ${idx})"
                         class="bg-${accent}-900/30 hover:bg-${accent}-900/50 text-${accent}-300 border border-${accent}-800/40 px-2 py-1 rounded text-xs transition">
                     Assign…
                 </button>
             </div>
             <div id="${pickerId}" class="hidden mt-2 bg-dark-900/40 border border-gray-800/40 rounded p-2 space-y-2"></div>
+            <div id="rb-master-${role}-editor-${idx}" class="hidden mt-2 bg-purple-900/10 border border-purple-800/30 rounded p-2 space-y-2"></div>
         </div>`;
 }
 
@@ -1176,6 +1183,196 @@ async function rbPersistMasterChain(role) {
     } catch (e) {
         alert(`Save master ${role} failed: ${e.message || e}`);
         return null;
+    }
+}
+
+// ── Master VST inline editor ──
+//
+// Lets the user load a master VST in the engine, see its parameters as
+// HTML sliders (no blurry native window), tweak them in real time via
+// setParameter, and capture the resulting state back into the master
+// piece. Mirrors the per-tone rbLoadAndEditVst / rbRenderInlineVstParams
+// flow but reads/writes against rbState.master[role][idx] instead of
+// rbState.songTones.tones[toneIdx].chain[pIdx].
+
+async function rbMasterEditVst(role, idx) {
+    const piece = rbState.master[role][idx];
+    if (!piece) return;
+    const editor = document.getElementById(`rb-master-${role}-editor-${idx}`);
+    if (!editor) return;
+    // Toggle close if already open.
+    if (!editor.classList.contains('hidden') && piece._vst_slot_id != null) {
+        editor.classList.add('hidden');
+        editor.innerHTML = '';
+        return;
+    }
+    const api = window.slopsmithDesktop && window.slopsmithDesktop.audio;
+    if (!api) {
+        alert('Native VST hosting not available');
+        return;
+    }
+    const vstPath = piece._vst_path || (piece.assigned && piece.assigned.vst_path) || '';
+    if (!vstPath) {
+        alert('This piece has no VST assigned yet — use Assign… first.');
+        return;
+    }
+    editor.classList.remove('hidden');
+    editor.innerHTML = `<div class="text-xs text-gray-500">loading ${rbEsc(vstPath.split('/').pop())}…</div>`;
+    try {
+        // Clear any previous editor slot so they don't accumulate in the
+        // chain (same hygiene as rbLoadAndEditVst).
+        if (rbState._vstEditorSlot != null && api.clearChain) {
+            await api.clearChain().catch(() => {});
+        }
+        await api.startAudio().catch(() => {});
+        const slotId = await api.loadVST(vstPath);
+        if (slotId == null || slotId < 0) {
+            editor.innerHTML = `<div class="text-xs text-red-400">engine refused to load this plugin</div>`;
+            return;
+        }
+        rbState._vstEditorSlot = slotId;
+        piece._vst_slot_id = slotId;
+        // Re-apply any previously-captured param state.
+        const saved = piece._vst_params
+            || (piece.assigned && piece.assigned.vst_state
+                ? rbParseVstStateParams(piece.assigned.vst_state) : null);
+        if (saved && typeof api.setParameter === 'function') {
+            for (const [pid, v] of Object.entries(saved)) {
+                try { await api.setParameter(slotId, parseInt(pid, 10), parseFloat(v)); } catch (_) {}
+            }
+        }
+        // Grab the live param list (after the restore so values reflect it).
+        let params = [];
+        if (typeof api.getParameters === 'function') {
+            try {
+                const raw = await api.getParameters(slotId);
+                if (Array.isArray(raw)) params = raw;
+            } catch (_) {}
+        }
+        piece._vst_param_meta = params;
+        // Open the plugin's own editor window too as an optional visual
+        // — the inline sliders still drive everything.
+        if (api.openPluginEditor) {
+            api.openPluginEditor(slotId).catch(() => {});
+        }
+        rbMasterRenderInlineVstParams(role, idx);
+    } catch (e) {
+        editor.innerHTML = `<div class="text-xs text-red-400">load failed: ${rbEsc(e.message || e)}</div>`;
+    }
+}
+
+function rbMasterRenderInlineVstParams(role, idx) {
+    const editor = document.getElementById(`rb-master-${role}-editor-${idx}`);
+    if (!editor) return;
+    const piece = rbState.master[role][idx];
+    const params = (piece && piece._vst_param_meta) || [];
+    const vstName = (piece._vst_path || '').split('/').pop().replace(/\.(vst3|component)$/i, '');
+    const header = `
+        <div class="flex items-center justify-between">
+            <div class="text-[11px] text-purple-300 font-semibold">In-Slopsmith editor · ${vstName} · ${params.length} params</div>
+            <div class="flex items-center gap-1">
+                <button onclick="rbMasterCaptureVstState('${role}', ${idx})"
+                        title="Snapshot the current parameter values into the master chain's saved state"
+                        class="bg-amber-700/60 hover:bg-amber-600/60 text-amber-100 text-[10px] px-2 py-0.5 rounded">📸 Capture state</button>
+                <button onclick="rbMasterEditVst('${role}', ${idx})"
+                        title="Close inline editor (the VST stays loaded in the master chain)"
+                        class="text-[10px] text-gray-400 hover:text-gray-200 px-1">✕</button>
+            </div>
+        </div>`;
+    if (params.length === 0) {
+        editor.innerHTML = `
+            ${header}
+            <div class="text-xs text-gray-500 italic mt-1">
+                This plugin doesn't expose any parameters to the host (or getParameters() failed).
+                Use the plugin's native editor window for tweaks.
+            </div>`;
+        return;
+    }
+    const rows = params.map((p, i) => {
+        const id     = p.id    ?? p.paramId ?? p.index ?? i;
+        const name   = p.name  ?? p.label   ?? `Param ${i}`;
+        const value  = p.value ?? p.current ?? 0;
+        const text   = p.text  ?? p.display ?? '';
+        const labelU = p.label_units ?? p.unit ?? '';
+        const step   = p.numSteps && p.numSteps > 1 ? (1 / (p.numSteps - 1)) : 0.001;
+        const display = text || (typeof value === 'number' ? value.toFixed(3) : value) + (labelU ? ` ${labelU}` : '');
+        return `
+            <div class="flex items-center gap-2 py-0.5">
+                <span class="text-[11px] text-gray-300 w-32 truncate" title="${rbEsc(name)}">${rbEsc(name)}</span>
+                <input type="range" min="0" max="1" step="${step}" value="${value}"
+                       oninput="rbMasterSetVstParam('${role}', ${idx}, ${id}, this.value, this.nextElementSibling)"
+                       class="flex-1 h-1 accent-purple-500">
+                <span class="text-[10px] text-purple-200/70 w-20 text-right truncate" title="${rbEsc(String(display))}">${rbEsc(String(display))}</span>
+            </div>`;
+    }).join('');
+    editor.innerHTML = `${header}
+        <div class="max-h-96 overflow-y-auto mt-1">${rows}</div>`;
+}
+
+async function rbMasterSetVstParam(role, idx, paramId, value, valueDisplayEl) {
+    const api = window.slopsmithDesktop && window.slopsmithDesktop.audio;
+    const piece = rbState.master[role][idx];
+    if (!piece || piece._vst_slot_id == null) return;
+    const v = parseFloat(value);
+    try { await api.setParameter(piece._vst_slot_id, paramId, v); } catch (_) {}
+    // Update the display next to the slider with the plugin's formatted text.
+    if (valueDisplayEl) {
+        if (typeof api?.getParameters === 'function') {
+            try {
+                const refreshed = await api.getParameters(piece._vst_slot_id);
+                if (Array.isArray(refreshed)) {
+                    const entry = refreshed.find(p => (p.id ?? p.paramId ?? p.index) === paramId);
+                    valueDisplayEl.textContent = (entry && (entry.text || entry.display)) || v.toFixed(3);
+                    piece._vst_param_meta = refreshed;
+                } else {
+                    valueDisplayEl.textContent = v.toFixed(3);
+                }
+            } catch (_) {
+                valueDisplayEl.textContent = v.toFixed(3);
+            }
+        } else {
+            valueDisplayEl.textContent = v.toFixed(3);
+        }
+    }
+    // Stage the new value on the piece so Capture state / auto-save persists it.
+    piece._vst_params = piece._vst_params || {};
+    piece._vst_params[paramId] = v;
+}
+
+async function rbMasterCaptureVstState(role, idx) {
+    const api = window.slopsmithDesktop && window.slopsmithDesktop.audio;
+    const piece = rbState.master[role][idx];
+    if (!piece) return;
+    const editor = document.getElementById(`rb-master-${role}-editor-${idx}`);
+    try {
+        // Snapshot the live values (preferred over the staged dict because
+        // it survives even when the user changed something via the plugin's
+        // own native editor instead of our sliders).
+        let params = piece._vst_params || {};
+        if (piece._vst_slot_id != null && typeof api?.getParameters === 'function') {
+            const live = await api.getParameters(piece._vst_slot_id).catch(() => null);
+            if (Array.isArray(live)) {
+                params = {};
+                for (let i = 0; i < live.length; i++) {
+                    const id = live[i].id ?? live[i].paramId ?? live[i].index ?? i;
+                    const v  = live[i].value ?? live[i].current;
+                    if (typeof v === 'number') params[id] = v;
+                }
+            }
+        }
+        piece._vst_state = JSON.stringify({ params });
+        piece._vst_params = params;
+        // Persist via the existing save flow so the state survives reload.
+        await rbPersistMasterChain(role).catch(() => null);
+        if (editor) {
+            const status = document.createElement('div');
+            status.className = 'text-[10px] text-emerald-300';
+            status.textContent = `✓ Captured ${Object.keys(params).length} param values`;
+            editor.appendChild(status);
+            setTimeout(() => status.remove(), 2500);
+        }
+    } catch (e) {
+        alert(`Capture failed: ${e.message || e}`);
     }
 }
 
