@@ -238,7 +238,7 @@ async function rbPollBatch() {
 
     const assignedEl = document.getElementById('rb-batch-assigned');
     if (st.assigned) {
-        assignedEl.textContent = `${st.assigned} tonos persistidos`;
+        assignedEl.textContent = `${st.assigned} tones persisted`;
         assignedEl.classList.remove('hidden');
     }
 
@@ -498,7 +498,7 @@ async function rbLoadSongTones(filename) {
     } catch (e) {
         // Never leave the panel stuck on "Loading…" if a render throws.
         console.error('[rig_builder] render of tones failed', e);
-        el.innerHTML = `<p class="text-red-400">Error al renderizar los tonos: ${rbEsc(e.message)}</p>`;
+        el.innerHTML = `<p class="text-red-400">Error rendering tones: ${rbEsc(e.message)}</p>`;
         return;
     }
 
@@ -1720,7 +1720,7 @@ async function rbAuditionFile(file, kind, btnId) {
         const url = `${RB_API}/native_preset_one?file=${encodeURIComponent(file)}&kind=${encodeURIComponent(kind || 'nam')}`;
         const payload = await (await fetch(url)).json();
         const chain = payload.native_preset && payload.native_preset.chain;
-        if (!Array.isArray(chain) || !chain.length) throw new Error('archivo no encontrado');
+        if (!Array.isArray(chain) || !chain.length) throw new Error('file not found');
         if (api.clearChain) await api.clearChain().catch(() => {});
         const res = await api.loadPreset(JSON.stringify(payload.native_preset));
         if (!res || res.success === false) throw new Error((res && res.error) || 'loadPreset failed');
@@ -1790,7 +1790,7 @@ async function rbLoadCatalog() {
         }).join('');
     } catch (e) {
         console.error('[rig_builder] catalog render failed', e);
-        el.innerHTML = `<p class="text-red-400">Error al renderizar: ${rbEsc(e.message)}</p>`;
+        el.innerHTML = `<p class="text-red-400">Error rendering: ${rbEsc(e.message)}</p>`;
     }
 }
 
@@ -1808,7 +1808,7 @@ function rbRenderCatalogCard(g) {
         const vstName = g.vst_path.split('/').pop();
         parent = `<span class="text-purple-300" title="${rbEsc(g.vst_path)}">✓ VST: ${rbEsc(vstName)}</span>`;
     } else if (g.assigned) {
-        parent = `<span class="text-green-400" title="${rbEsc(g.file || '')}">✓ ${rbEsc(g.tone3000_title || g.file || 'asignado')}</span>`;
+        parent = `<span class="text-green-400" title="${rbEsc(g.file || '')}">✓ ${rbEsc(g.tone3000_title || g.file || 'assigned')}</span>`;
     } else {
         parent = `<span class="text-gray-500">(unassigned)</span>`;
     }
