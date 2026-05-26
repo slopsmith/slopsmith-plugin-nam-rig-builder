@@ -527,9 +527,15 @@ const RbMegaChain = (function () {
         }
 
         // 4. Set initial bypass: only the song's first / current tone runs.
+        // The highway may not have populated its tone changes / base yet
+        // at this point (we ran 600 ms after song:loaded, but the WS feed
+        // arrives in pieces). If _resolveActiveToneKey returns null we
+        // fall back to mega.active_tone_key (= tones[0] in the DB),
+        // which can be the WRONG initial tone for the song.
         const initialKey = _resolveActiveToneKey() || mega.active_tone_key;
         const initialTone = _findToneByKey(initialKey) || mega.tones[0];
         await _applyActiveTone(initialTone ? initialTone.tone_key : null);
+        console.log(`[rig_builder mega-chain] initial tone → "${initialTone && initialTone.tone_key}"`);
 
         // 5. Start audio if it isn't running yet (bundle would have done this).
         try {
@@ -544,6 +550,25 @@ const RbMegaChain = (function () {
 
         // 6. Start watching highway for tone changes.
         _startPolling();
+
+        // 7. Re-check the active tone a few times over the next 3 seconds
+        // to catch the case where the highway populates its tone base
+        // AFTER our 600 ms initial trigger. The polling already does this
+        // every 200 ms via lastKey-diff, but we kick it explicitly here
+        // with a forced re-apply so the user doesn't hear ~600 ms of the
+        // wrong tone before the polling notices.
+        for (let i = 1; i <= 6; i++) {
+            setTimeout(() => {
+                if (!_active || !_mega) return;
+                const key = _resolveActiveToneKey();
+                if (!key || key === _activeToneKey) return;
+                const tone = _findToneByKey(key);
+                if (!tone) return;
+                _applyActiveTone(tone.tone_key).then(() => {
+                    console.log(`[rig_builder mega-chain] initial-recheck #${i} → switched to "${tone.tone_key}"`);
+                }).catch(() => {});
+            }, i * 500);    // 500, 1000, 1500, 2000, 2500, 3000 ms
+        }
 
         _active = true;
         return true;
@@ -560,7 +585,8 @@ const RbMegaChain = (function () {
             if (!tone) return;
             lastKey = key;
             await _applyActiveTone(tone.tone_key);
-            console.log(`[rig_builder mega-chain] switch → "${tone.tone_key}" (slots ${tone.slot_range[0]}-${tone.slot_range[1]-1})`);
+            const slots = Array.isArray(tone.active_slots) ? tone.active_slots : [];
+            console.log(`[rig_builder mega-chain] switch → "${tone.tone_key}" (${slots.length} slots)`);
         }, 200);
     }
 
