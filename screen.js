@@ -75,6 +75,18 @@
                     + ` (${data.nam_stage_count} NAM + ${chain.length - data.nam_stage_count - mPre - mPost} song IR/VST`
                     + ` + ${mPre} master_pre + ${mPost} master_post)`
                     + (data.missing && data.missing.length ? ` · missing files: ${data.missing.join(', ')}` : ''));
+                // PROACTIVE TRANSIENT KILL: the bundle calls loadPreset ~1ms
+                // after we return this response. We can't monkey-patch
+                // `slopsmithDesktop.audio.loadPreset` directly because the
+                // object is frozen by Electron's contextBridge (we verified
+                // this: assignments silently no-op). But the exposed methods
+                // *are* callable from here, so we mute right now — before
+                // returning — so by the time loadPreset starts processing
+                // its first audio buffer the chain output is already at 0.
+                // Restore happens on a timer (~300ms covers a 4-NAM standard
+                // chain at buffer 256). Kill-switch:
+                // `window.__rbMutePreLoad = false`.
+                rbPreLoadMute(chain.length).catch(() => {});
             } catch (_) {
                 return origFetch(input, init);
             }
@@ -83,82 +95,49 @@
     };
 })();
 
-// ── Click-suppression on chain reloads ─────────────────────────────────
-// During real song playback `nam_tone` re-loads the chain on every tone
-// change (clearChain → loadPreset) WITHOUT muting anything between
-// them. With the full chain (multi-NAM + master pre/post) two
-// transients compound: (a) the silence gap of clearChain, and (b) the
-// first-attack spike from each NAM the moment it starts processing
-// audio after load. setMonitorMute only kills (a) — the input monitor —
-// not (b), which travels through the chain output ('chain' gain).
-// We attack both: mute monitor + zero the 'chain' gain for the
-// duration of the load, then restore.
-//
-// The bundle is signed (we can't edit it), so we monkey-patch
-// `slopsmithDesktop.audio.loadPreset`. Safe for every caller (Listen
-// mode, audio_engine, etc.): when the monitor was muted on entry, we
-// leave it muted on exit. The chain gain we restore to 1.0 because
-// every known caller (nam_tone bundle line 613, rig_builder Listen,
-// audio_engine applyPresetGainLevels) sets its own chain gain right
-// after loadPreset returns — our 1.0 is just a sane intermediate.
-// Kill-switch: `window.__rbLoadPresetWrap = false`.
-(function () {
-    if (window.__rbLoadPresetPatched) return;
-    function tryPatch() {
-        const api = window.slopsmithDesktop && window.slopsmithDesktop.audio;
-        if (!api || typeof api.loadPreset !== 'function') return false;
-        if (api.__rbWrapped) return true;
-        api.__rbWrapped = true;
-        const orig = api.loadPreset.bind(api);
-        api.loadPreset = async function (presetJson) {
-            if (window.__rbLoadPresetWrap === false) return orig(presetJson);
-            let wasMuted = false;
-            try {
-                if (typeof api.isMonitorMuted === 'function') {
-                    wasMuted = !!(await api.isMonitorMuted());
-                }
-            } catch (_) {}
-            try {
-                if (typeof api.setMonitorMute === 'function') await api.setMonitorMute(true);
-                // Kill the chain output too — `setMonitorMute` only mutes
-                // the input monitor, it doesn't catch the first-attack
-                // transient that the NAM stages produce as soon as the
-                // engine starts running them post-load. Zeroing 'chain'
-                // gain swallows that spike entirely.
-                if (typeof api.setGain === 'function') await api.setGain('chain', 0);
-            } catch (_) {}
-            let res;
-            try {
-                res = await orig(presetJson);
-            } finally {
-                // Tiny settle delay so the first audio buffer after load
-                // (which carries the attack transient) runs while chain
-                // gain is still at 0. Without this, on fast machines the
-                // restore can win the race and the spike leaks.
-                await new Promise(r => setTimeout(r, 30));
-                try {
-                    if (typeof api.setGain === 'function') await api.setGain('chain', 1.0);
-                } catch (_) {}
-                // Only un-mute if the caller didn't have it muted on entry —
-                // respect explicit mute state from other plugins.
-                if (!wasMuted) {
-                    try {
-                        if (typeof api.setMonitorMute === 'function') await api.setMonitorMute(false);
-                    } catch (_) {}
-                }
-            }
-            return res;
-        };
-        window.__rbLoadPresetPatched = true;
-        return true;
-    }
-    if (!tryPatch()) {
-        // slopsmithDesktop.audio may not be defined yet — poll briefly.
-        const t = setInterval(() => { if (tryPatch()) clearInterval(t); }, 250);
-        // Stop polling after 30 s either way (no audio engine on this build).
-        setTimeout(() => clearInterval(t), 30000);
-    }
-})();
+// Mute everything the engine can mute, hold for long enough that the
+// bundle's clearChain + loadPreset (multi-NAM standard ≈ 100-250 ms) runs
+// at silence, then restore. Called from the fetch interceptor right
+// before the bundle pulls the preset JSON.
+let _rbMuteInFlight = false;
+async function rbPreLoadMute(chainLen) {
+    if (window.__rbMutePreLoad === false) return;
+    if (_rbMuteInFlight) return;            // coalesce rapid tone changes
+    _rbMuteInFlight = true;
+    const audio = window.slopsmithDesktop && window.slopsmithDesktop.audio;
+    if (!audio) { _rbMuteInFlight = false; return; }
+    // Hold-time scales with chain length: every NAM that needs to load
+    // contributes a fixed slice of CPU stall. Conservative bound:
+    // 80 ms baseline + 50 ms per NAM stage. With chainLen=6 → ~380 ms.
+    const hold = 80 + 50 * Math.max(1, chainLen | 0);
+    // Snapshot the input-monitor state so we don't un-mute something
+    // the user explicitly muted in a different plugin.
+    let wasMuted = false;
+    try { if (typeof audio.isMonitorMuted === 'function') wasMuted = !!(await audio.isMonitorMuted()); } catch (_) {}
+    try {
+        // `chain` = post-NAM, pre-output. Setting to 0 silences the guitar
+        // signal path without touching the song's backing track.
+        if (typeof audio.setGain === 'function') await audio.setGain('chain', 0);
+        if (typeof audio.setMonitorMute === 'function') await audio.setMonitorMute(true);
+    } catch (_) {}
+    setTimeout(async () => {
+        try {
+            if (typeof audio.setGain === 'function') await audio.setGain('chain', 1.0);
+            if (!wasMuted && typeof audio.setMonitorMute === 'function') await audio.setMonitorMute(false);
+        } catch (_) {}
+        _rbMuteInFlight = false;
+    }, hold);
+}
+
+// NOTE: an earlier version of this file tried to monkey-patch
+// `window.slopsmithDesktop.audio.loadPreset` to mute monitor + zero the
+// chain gain during load. That approach is dead: Electron's
+// contextBridge exposes `slopsmithDesktop.audio` as a frozen object —
+// you can call its methods, but `api.loadPreset = function` silently
+// no-ops, so the wrap was never actually installed. We confirmed this
+// in DevTools (api.__rbWrapped stayed undefined). The transient-kill
+// logic now lives in the fetch interceptor above (`rbPreLoadMute`),
+// which calls setGain/setMonitorMute from outside the frozen object.
 
 // ── AMP-toggle auto-apply ──────────────────────────────────────────────
 // `nam_tone` only applies the chain (with our master pre/post) when AMP
