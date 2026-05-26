@@ -45,6 +45,15 @@ a CDLC in Slopsmith uses the full, realistic chain instead of generic sounds.
 > Re-open each VST editor once and save (Capture state or any slider drag) to
 > grab the new opaque state blob. DB migrations run automatically on first boot.
 
+## Known limitation: AMP must be on before loading the song
+
+The host's NAM **AMP** button needs to be **on before the song loads** for
+your chain (per-song and master) to actually apply during playback. If you
+load a song with AMP off, then toggle it on, the master chain won't engage
+on the running song. Workaround: turn AMP on → leave the song → re-enter
+the song (the `playSong` re-entry triggers the chain apply with master).
+Auto-applying on AMP toggle is on the short list for the next patch.
+
 ---
 
 # What's new — rig_builder VST preview (2026-05-25)
