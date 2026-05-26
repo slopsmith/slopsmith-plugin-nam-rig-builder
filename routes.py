@@ -27,6 +27,7 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.parse
 import urllib.request
 from datetime import datetime
 from pathlib import Path
@@ -2817,6 +2818,183 @@ def setup(app, context):
             "master_pre_count":  len(master_pre_stages),
             "master_post_count": len(master_post_stages),
             "missing": missing,
+        }
+
+    # ── Experimental: mega-chain for a whole song ────────────────────
+    @app.get("/api/plugins/rig_builder/mega_chain/{filename}")
+    def mega_chain_for_song(filename: str):
+        """Build a single chain that contains EVERY tone of this song,
+        plus the master pre/post chain wrapping it. Returns slot ranges
+        so the front-end knows which slots belong to which tone (to
+        toggle bypass during tone changes). Used by RbMegaChain when
+        `mega_chain_mode` is enabled.
+
+        Order of stages in the returned chain:
+            master_pre stages
+            tone[0] stages (initially bypassed except for the first tone)
+            tone[1] stages
+            ...
+            master_post stages
+
+        Switching between tones in the front-end becomes setBypass on
+        the previous tone's slot range + clearing bypass on the new
+        tone's slot range — no clearChain, no loadPreset, no transient.
+        """
+        try:
+            decoded = urllib.parse.unquote(filename)
+        except Exception:
+            decoded = filename
+
+        conn = _get_conn()
+        mappings = conn.execute(
+            "SELECT tm.tone_key, tm.preset_id, p.name, p.input_gain, p.output_gain, "
+            "       p.gate_threshold "
+            "FROM tone_mappings tm JOIN presets p ON tm.preset_id = p.id "
+            "WHERE tm.filename = ? ORDER BY tm.id ASC",
+            (decoded,),
+        ).fetchall()
+        if not mappings:
+            return JSONResponse(
+                {"error": f"no tone mappings for {decoded}",
+                 "filename": decoded}, 404)
+
+        models_dir = (_config_dir / "nam_models") if _config_dir else None
+        irs_dir = (_config_dir / "nam_irs") if _config_dir else None
+
+        missing: list[str] = []
+
+        # Build stages for ONE tone's preset_id — mirrors native_preset_full
+        # but tagged with `tone_key` and `_initial_bypass` so the front-end
+        # can group slots by tone and bypass everything except the active one.
+        def _build_tone_stages(preset_id: int, tone_key: str, out_gain: float):
+            rows = conn.execute(
+                "SELECT slot, kind, file, rs_gear_type, bypassed, slot_order, "
+                "vst_path, vst_format, vst_state "
+                "FROM preset_pieces WHERE preset_id = ? "
+                "ORDER BY slot_order",
+                (preset_id,),
+            ).fetchall()
+
+            def _rank(slot: str) -> int:
+                return _CHAIN_NAM_ORDER.index(slot) if slot in _CHAIN_NAM_ORDER else len(_CHAIN_NAM_ORDER)
+
+            audio_pieces = []
+            for slot, kind, file, gear, bypassed, slot_order, vst_path, vst_format, vst_state in rows:
+                if kind == "nam" and file:
+                    audio_pieces.append((_rank(slot), slot_order, "nam", slot,
+                                         file, gear, bool(bypassed), None, None))
+                elif kind == "vst" and vst_path:
+                    audio_pieces.append((_rank(slot), slot_order, "vst", slot,
+                                         vst_path, gear, bool(bypassed),
+                                         vst_format or "VST3", vst_state))
+            audio_pieces.sort(key=lambda t: (t[0], t[1]))
+
+            tone_stages: list[dict] = []
+            for _r, _o, kind, slot, payload, gear, persisted_bypassed, vst_format, vst_state in audio_pieces:
+                if kind == "nam":
+                    path = _safe_child(models_dir, payload)
+                    if not path or not path.exists():
+                        missing.append(payload)
+                        continue
+                    tone_stages.append({
+                        "type": 1,
+                        "name": Path(payload).stem,
+                        "path": str(path),
+                        "bypassed": persisted_bypassed,
+                        "slot": slot,
+                        "rs_gear": gear,
+                        "tone_key": tone_key,
+                        "state": _state_b64({
+                            "modelPath": str(path),
+                            "inputLevel": 1.0,
+                            "outputLevel": 1.0,
+                        }),
+                    })
+                else:  # vst
+                    vp = Path(payload)
+                    state_obj = {"pluginPath": str(vp), "format": vst_format}
+                    if vst_state:
+                        state_obj["pluginState"] = vst_state
+                    tone_stages.append({
+                        "type": 0,
+                        "name": vp.stem,
+                        "path": str(vp),
+                        "format": vst_format,
+                        "bypassed": persisted_bypassed,
+                        "slot": slot,
+                        "rs_gear": gear,
+                        "tone_key": tone_key,
+                        "state": _state_b64(state_obj),
+                    })
+
+            # Cab IR at the tail of the tone (prefer cabinet slot).
+            ir_rows = [(r[0], r[2], r[3], bool(r[4])) for r in rows
+                       if r[1] in ("ir", "rs_ir") and r[2]]
+            ir_pick = next((row for row in ir_rows if row[0] == "cabinet"), None)
+            if ir_pick is None and ir_rows:
+                ir_pick = ir_rows[0]
+            if ir_pick:
+                ir_slot, ir_file, ir_gear, ir_bypassed = ir_pick
+                ir_path = _safe_child(irs_dir, ir_file)
+                if ir_path and ir_path.exists():
+                    tone_stages.append({
+                        "type": 2,
+                        "name": Path(ir_file).stem,
+                        "path": str(ir_path),
+                        "bypassed": ir_bypassed,
+                        "slot": ir_slot,
+                        "rs_gear": ir_gear,
+                        "tone_key": tone_key,
+                        "state": _state_b64({"irPath": str(ir_path), "gain": float(out_gain)}),
+                    })
+                else:
+                    missing.append(ir_file)
+            return tone_stages
+
+        # ── Build the mega-chain ──
+        # 1. Master pre first (always active)
+        # 2. Each tone's stages, tagged with tone_key. The first tone's
+        #    persistent bypass flags are respected; every subsequent tone
+        #    is force-bypassed so only the first tone is "active" on load.
+        #    The front-end flips this with setBypass per tone-change.
+        # 3. Master post last (always active)
+        master_pre_stages  = _build_master_stages("pre",  models_dir, irs_dir, 1.0, missing)
+        master_post_stages = _build_master_stages("post", models_dir, irs_dir, 1.0, missing)
+
+        chain: list[dict] = list(master_pre_stages)
+        tone_index: list[dict] = []   # ordered list: {tone_key, preset_id, slot_range: [start, end]}
+
+        for tone_key, preset_id, _name, _in_gain, out_gain, _gate in mappings:
+            start = len(chain)
+            tone_stages = _build_tone_stages(int(preset_id), tone_key, float(out_gain or 1.0))
+            # First tone keeps its persisted bypasses (so a user-disabled
+            # pedal stays disabled). Other tones get force-bypassed so
+            # they pass signal through.
+            if tone_index:    # not the first tone
+                for st in tone_stages:
+                    st["bypassed"] = True
+            chain.extend(tone_stages)
+            end = len(chain)
+            tone_index.append({
+                "tone_key": tone_key,
+                "preset_id": int(preset_id),
+                "slot_range": [start, end],
+                "stage_count": end - start,
+            })
+
+        chain.extend(master_post_stages)
+
+        return {
+            "filename": decoded,
+            "native_preset": {"version": 1, "chain": chain},
+            "tones": tone_index,
+            "master_pre_count":  len(master_pre_stages),
+            "master_post_count": len(master_post_stages),
+            "master_pre_range":  [0, len(master_pre_stages)],
+            "master_post_range": [len(chain) - len(master_post_stages), len(chain)],
+            "active_tone_key":   tone_index[0]["tone_key"] if tone_index else None,
+            "missing": missing,
+            "total_stages": len(chain),
         }
 
     # ── Single-stage audition (catalog "Escuchar") ────────────────────
