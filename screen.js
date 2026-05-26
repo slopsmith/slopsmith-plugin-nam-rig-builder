@@ -4594,13 +4594,16 @@ function rbRenderCatalogVstPanelBody(panelId, rsGear, currentVstPath, currentFor
             </button>
         </div>
         <div class="flex items-center gap-2">
-            <input type="text"
-                   placeholder="Or paste path: /Library/Audio/Plug-Ins/VST3/TAL-Chorus-LX.vst3"
+            <input id="${panelId}-pathinput" type="text"
+                   placeholder="Or paste path: /Library/Audio/Plug-Ins/VST3/TAL-Chorus-LX.vst3 (or .component for AU)"
                    value="${rbEsc(stagedPath)}"
-                   onchange="rbCatalogStagePath('${rbEsc(panelId)}', this.value); var s = document.getElementById('${rbEsc(panelId)}-selected'); if (s) s.textContent = 'Selected: ' + (this.value.split('/').pop() || '(none selected)');"
+                   onchange="rbCatalogUpdatePathFromInput('${rbEsc(panelId)}','${rbEsc(rsGear)}', this.value)"
                    class="flex-1 bg-dark-800 border border-gray-800 rounded text-[11px] text-gray-300 px-2 py-1 font-mono">
         </div>
         <div id="${panelId}-selected" class="text-[10px] text-purple-200/80 break-all">Selected: ${rbEsc(stagedName)}</div>
+        <div class="text-[10px] text-gray-500 leading-snug">
+            The text input above wins over the dropdown — pasting a full path overrides any scanned plugin selection. <code>.component</code> (Audio Units) and <code>.vst3</code> both work.
+        </div>
         <div class="flex items-center gap-2 flex-wrap">
             <button onclick="rbCatalogLoadAndEdit('${rbEsc(panelId)}')"
                     class="bg-blue-700 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded">
@@ -4625,11 +4628,43 @@ function rbCatalogStagePath(panelId, path) {
 }
 
 function rbCatalogResolveStagedPath(panelId) {
+    // Resolution order, highest priority first:
+    //   1. The manual path input — what the user explicitly pasted/typed
+    //      ALWAYS wins over the dropdown. This is the fix for the bug
+    //      where pasting a .component path got silently replaced by
+    //      whatever VST happened to be selected in the scanned-plugin
+    //      dropdown when the user clicked "Assign to ALL".
+    //   2. dataset.stagedPath — what previous interactions parked on the
+    //      panel (file-picker output, deliberate stage from another
+    //      source). Used as a stable fallback when the input is empty.
+    //   3. The scanned-plugin dropdown — only kicks in when neither the
+    //      input nor the dataset have anything, i.e. the user hasn't
+    //      touched anything manually and the dropdown is the only source.
+    const input = document.getElementById(`${panelId}-pathinput`);
+    if (input && input.value && input.value.trim()) return input.value.trim();
     const el = document.getElementById(panelId);
     if (el && el.dataset.stagedPath) return el.dataset.stagedPath;
     const select = document.getElementById(`${panelId}-select`);
     if (select && select.value) return select.value;
     return '';
+}
+
+// Manual path input → stage AND optionally auto-assign across all
+// presets when the path looks like a real plugin (absolute path ending
+// in .vst3 or .component). Mirrors rbUpdatePathFromInput in the
+// per-song flow.
+async function rbCatalogUpdatePathFromInput(panelId, rsGear, path) {
+    rbCatalogStagePath(panelId, path);
+    const sel = document.getElementById(`${panelId}-selected`);
+    if (sel) {
+        const name = (path || '').split('/').pop() || '(none selected)';
+        sel.textContent = `Selected: ${name}`;
+    }
+    const looksReady = /^\/.+\.(vst3|component)$/i.test((path || '').trim());
+    if (looksReady) {
+        await rbCatalogAssignVst(panelId, rsGear).catch((e) =>
+            console.warn('[rig_builder] catalog auto-assign from path input failed:', e));
+    }
 }
 
 async function rbCatalogPickFile(panelId, rsGear, currentFormat) {
