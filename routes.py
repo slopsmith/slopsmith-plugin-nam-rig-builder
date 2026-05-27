@@ -3788,6 +3788,151 @@ def setup(app, context):
             return JSONResponse({"error": f"write failed: {e}"}, 500)
         return {"ok": True, "count": len(plugins)}
 
+    # ── Amp gain variants — CRUD endpoints used by the Gear-catalog UI ──
+    #
+    # Variants are persisted into rs_to_real.json (the same file the
+    # auto-download / batch worker reads). Writing is atomic-ish:
+    # rs_to_real.json.bak is updated before the new file is renamed in.
+
+    _rs_map_lock = threading.Lock()
+
+    def _rs_map_write_atomic(rs_map: dict) -> None:
+        """Save rs_to_real.json with a one-deep backup. Caller holds the
+        module-level _rs_map_lock so a concurrent write can't corrupt
+        the file."""
+        path = _plugin_dir / "rs_to_real.json"
+        backup = path.with_suffix(".json.bak")
+        if path.exists():
+            backup.write_bytes(path.read_bytes())
+        path.write_text(json.dumps(rs_map, indent=2, ensure_ascii=False) + "\n")
+
+    @app.get("/api/plugins/rig_builder/amp_variants/{rs_gear}")
+    def amp_variants_list(rs_gear: str):
+        """Return the gain_variants block currently on this amp + a
+        recommended default range table for empty slots. The UI uses
+        this to populate the panel."""
+        rs_map = _load_rs_to_real()
+        info = rs_map.get(rs_gear)
+        if not info:
+            return JSONResponse({"error": f"rs_gear {rs_gear} not in rs_to_real.json"}, 404)
+        variants = info.get("gain_variants") or {}
+        # Defaults shown in empty slots — the picker uses these ranges
+        # if the user doesn't override.
+        defaults = {
+            "clean":  {"rs_gain_range": [0, 35]},
+            "crunch": {"rs_gain_range": [35, 70]},
+            "dist":   {"rs_gain_range": [70, 100]},
+        }
+        return {
+            "rs_gear": rs_gear,
+            "name": info.get("name") or rs_gear,
+            "category": info.get("category") or "amp",
+            "variants": variants,
+            "default_levels": defaults,
+        }
+
+    @app.post("/api/plugins/rig_builder/amp_variants/{rs_gear}/{level}")
+    def amp_variants_upsert(rs_gear: str, level: str, data: dict = Body(...)):
+        """Set/replace one variant on the amp. Body:
+            {tone3000_id, model_id?, rs_gain_lo, rs_gain_hi, notes?, curator?}
+        Numeric fields are coerced; missing range bounds default to the
+        clean/crunch/dist defaults if `level` matches one of those.
+        """
+        try:
+            tone3000_id = int(data.get("tone3000_id"))
+        except (TypeError, ValueError):
+            return JSONResponse({"error": "tone3000_id required (integer)"}, 400)
+        try:
+            model_id = int(data["model_id"]) if data.get("model_id") not in (None, "") else None
+        except (TypeError, ValueError):
+            return JSONResponse({"error": "model_id must be an integer or null"}, 400)
+        defaults = {"clean": (0, 35), "crunch": (35, 70), "dist": (70, 100)}
+        d_lo, d_hi = defaults.get(level, (0, 100))
+        try:
+            rs_lo = float(data["rs_gain_lo"]) if data.get("rs_gain_lo") not in (None, "") else d_lo
+            rs_hi = float(data["rs_gain_hi"]) if data.get("rs_gain_hi") not in (None, "") else d_hi
+        except (TypeError, ValueError):
+            return JSONResponse({"error": "rs_gain_lo / rs_gain_hi must be numeric"}, 400)
+        if rs_lo > rs_hi:
+            return JSONResponse({"error": "rs_gain_lo must be ≤ rs_gain_hi"}, 400)
+
+        with _rs_map_lock:
+            path = _plugin_dir / "rs_to_real.json"
+            rs_map = json.loads(path.read_text())
+            info = rs_map.get(rs_gear)
+            if not info:
+                return JSONResponse({"error": f"rs_gear {rs_gear} not in rs_to_real.json"}, 404)
+            variants = info.setdefault("gain_variants", {})
+            entry: dict = {
+                "tone3000_id": tone3000_id,
+                "rs_gain_range": [rs_lo, rs_hi],
+            }
+            if model_id is not None:
+                entry["model_id"] = model_id
+            notes = (data.get("notes") or "").strip()
+            curator = (data.get("curator") or "").strip()
+            if notes:   entry["notes"] = notes
+            if curator: entry["curator"] = curator
+            variants[level] = entry
+            _rs_map_write_atomic(rs_map)
+            _invalidate_rs_to_real()
+        return {"ok": True, "rs_gear": rs_gear, "level": level, "entry": entry}
+
+    @app.delete("/api/plugins/rig_builder/amp_variants/{rs_gear}/{level}")
+    def amp_variants_delete(rs_gear: str, level: str):
+        with _rs_map_lock:
+            path = _plugin_dir / "rs_to_real.json"
+            rs_map = json.loads(path.read_text())
+            info = rs_map.get(rs_gear)
+            if not info:
+                return JSONResponse({"error": f"rs_gear {rs_gear} not in rs_to_real.json"}, 404)
+            variants = info.get("gain_variants") or {}
+            if level not in variants:
+                return {"ok": True, "noop": True}
+            del variants[level]
+            if not variants:
+                info.pop("gain_variants", None)   # don't leave an empty dict
+            _rs_map_write_atomic(rs_map)
+            _invalidate_rs_to_real()
+        return {"ok": True, "rs_gear": rs_gear, "level": level, "deleted": True}
+
+    @app.get("/api/plugins/rig_builder/tone3000/captures/{tone_id}")
+    def tone3000_captures(tone_id: int):
+        """List the captures inside one tone3000 tone page — fuels the
+        per-variant capture dropdown. Returns each model's id, size,
+        license and a short display name derived from the model URL."""
+        client = _get_t3k_client()
+        if not client.has_api_access:
+            return JSONResponse({"error": "tone3000 not connected (Settings → Connect with tone3000)"}, 400)
+        try:
+            payload = client.list_models(int(tone_id))
+        except Exception as e:
+            return JSONResponse({"error": f"list_models failed: {e}"}, 502)
+        models = (payload or {}).get("data") or []
+        out = []
+        for m in models:
+            url = m.get("model_url") or m.get("url") or ""
+            name = url.split("/")[-1].split("?")[0] if url else (m.get("name") or f"model_{m.get('id')}")
+            if len(name) > 60:
+                name = name[:57] + "..."
+            out.append({
+                "model_id": m.get("id"),
+                "size": (m.get("size") or "").lower(),
+                "license": m.get("license") or "",
+                "name": name,
+            })
+        return {
+            "tone_id": int(tone_id),
+            "title": (payload or {}).get("title") or "",
+            "captures": out,
+        }
+
+    def _invalidate_rs_to_real():
+        """Clear the in-process rs_to_real cache so the next read picks
+        up the file we just wrote. Mirrors _invalidate_default_captures."""
+        global _rs_to_real
+        _rs_to_real = None
+
     @app.post("/api/plugins/rig_builder/vst/assign")
     def vst_assign(data: dict = Body(...)):
         """Assign a VST to every preset_pieces row for a given rs_gear_type
