@@ -5330,29 +5330,72 @@ def setup(app, context):
                 "orphan": not rs_gears,    # nothing in the DB references it
             }
 
-        # Walk both roots. For each subdir, collect files into a bucket.
+        # Per-file bucket classifier. The subdir a file lives in is a
+        # weak hint — `extract_irs.py` puts every Rocksmith cab IR into
+        # `nam_irs/rocksmith/`, but those are conceptually cabs and
+        # should show up under "Cabs" in the UI, not a separate
+        # "rocksmith" bucket. So we do the classification per-file
+        # using whatever signal we can get:
+        #
+        #   1. DB join: the file's rs_gear_type → rs_to_real category
+        #      (most reliable when the file is in use by a preset).
+        #   2. Filename hint: our auto-downloader names files with the
+        #      rs_gear embedded (`tone3000_<tid>_m<mid>_<rs_gear>.nam`),
+        #      so we can recover the category even when the file is
+        #      currently orphan.
+        #   3. Last resort: the subdir name itself (works for the
+        #      curated layout amps/pedals/racks/cabs/other and for
+        #      anything the user manually filed).
+        import re as _re_inv
+        _name_to_gear = _re_inv.compile(
+            r"^tone3000_\d+_m\d+_([^.]+)\.(nam|wav)$")
+
+        def _bucket_for(filename: str, abs_path: Path, kind: str,
+                        subdir_hint: str) -> str:
+            # Tier 1: DB lookup
+            usage = usage_by_file.get(filename, {})
+            for g in usage.get("rs_gears", set()):
+                info = rs_map.get(g) or {}
+                cat = info.get("category")
+                if cat:
+                    return _CATEGORY_SUBDIR.get(cat, "other")
+            # Tier 2: filename pattern (auto-downloader convention)
+            m = _name_to_gear.match(Path(filename).name)
+            if m:
+                info = rs_map.get(m.group(1)) or {}
+                cat = info.get("category")
+                if cat:
+                    return _CATEGORY_SUBDIR.get(cat, "other")
+            # Tier 3: subdir name (handles legacy `rocksmith/` extracts
+            # via this special case — they're always cab IRs by
+            # construction).
+            if subdir_hint == "rocksmith":
+                return "cabs"
+            if subdir_hint in _CATEGORY_SUBDIR.values():
+                return subdir_hint
+            return "other"
+
         result: dict[str, dict] = {}
         for root_name, kind in [("nam_models", "nam"), ("nam_irs", "ir")]:
             root = _config_dir / root_name
             if not root.exists():
                 continue
-            # Subdirs (amps/, pedals/, racks/, cabs/, other/, plus any
-            # the user has manually created).
             for entry in sorted(root.iterdir()):
                 if entry.is_dir():
-                    bucket_name = entry.name        # "amps", "pedals", …
                     files = sorted(p for p in entry.iterdir() if p.is_file())
-                    rows = [_enrich(f"{bucket_name}/{p.name}", p, kind)
-                            for p in files
-                            if not p.name.startswith(".")]
-                    if rows:
-                        b = result.setdefault(bucket_name, {"files": []})
-                        b["files"].extend(rows)
+                    for p in files:
+                        if p.name.startswith("."):
+                            continue
+                        rel = f"{entry.name}/{p.name}"
+                        bucket = _bucket_for(rel, p, kind, entry.name)
+                        b = result.setdefault(bucket, {"files": []})
+                        b["files"].append(_enrich(rel, p, kind))
                 elif entry.is_file() and not entry.name.startswith("."):
                     # Flat file at the root — pre-migration leftover OR
                     # a user upload that bypassed our download path.
-                    rows = result.setdefault("other", {"files": []})
-                    rows["files"].append(_enrich(entry.name, entry, kind))
+                    bucket = _bucket_for(entry.name, entry, kind, "")
+                    b = result.setdefault(bucket, {"files": []})
+                    b["files"].append(_enrich(entry.name, entry, kind))
 
         # Final shape: counts + total bytes per bucket.
         for bucket, b in result.items():
