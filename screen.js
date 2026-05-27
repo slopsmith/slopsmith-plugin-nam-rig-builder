@@ -5215,35 +5215,19 @@ async function rbExtractIRs() {
     }
 }
 
-// Renormalize already-extracted Rocksmith IRs in place. Targets the
-// "RS-IRs sound 10-20 dB quieter than tone3000 IRs" bug — Wwise WEMs
-// come out of the PSARC with peaks of 10-18 (not 1.0), so the convolver
-// saturates and the engine's limiter drops the chain output. This
-// rescales every file to peak ≈ 0.95.
-async function rbNormalizeRsIrs() {
-    const status = document.getElementById('rb-normalize-irs-status');
-    if (!status) return;
-    status.textContent = 'Normalizing… (a few seconds per IR)';
-    try {
-        const r = await fetch(`${RB_API}/normalize_rocksmith_irs`, { method: 'POST' });
-        const data = await r.json();
-        if (!r.ok) {
-            status.innerHTML = `<span class="text-red-400">Error: ${rbEsc(data.error || r.status)}</span>`;
-            return;
-        }
-        const m = data.modified_count || 0;
-        const sk = data.skipped_count || 0;
-        const errs = data.error_count || 0;
-        let html = `<span class="text-green-400">Done.</span> Modified <strong>${m}</strong> file${m === 1 ? '' : 's'}`;
-        html += `, skipped ${sk} (already normalised or unsupported format)`;
-        if (errs) html += `, <span class="text-red-400">${errs} error${errs === 1 ? '' : 's'}</span>`;
-        html += `. Originals saved as <code class="bg-dark-800 px-1 rounded">.unnormalized.bak</code>.`;
-        if (m > 0) html += ` <strong>Restart Slopsmith</strong> to pick up the new levels in the audio engine.`;
-        status.innerHTML = html;
-    } catch (e) {
-        status.innerHTML = `<span class="text-red-400">${rbEsc(e.message)}</span>`;
-    }
-}
+// NOTE: rbNormalizeRsIrs (the "Normalize existing Rocksmith IRs"
+// button) was removed from the Settings UI because peak-normalising
+// the WAV samples didn't change the audible level — the engine
+// ignores the per-stage IR `gain` we tried to write, AND it doesn't
+// have a peak-triggered limiter that the over-unity WEM samples were
+// activating either. The real fix lives in the Cab makeup gain
+// slider, which goes through `setGain('chain', X)` (the only knob
+// the engine actually respects).
+//
+// The backend `/normalize_rocksmith_irs` endpoint and the
+// `_peak_normalize_float32` step inside extract_irs.py are kept —
+// they put the IRs into a standard ±1.0 float32 range, which is
+// good hygiene even if it doesn't move audible level.
 
 async function rbExportDefaults() {
     const status = document.getElementById('rb-export-defaults-status');
