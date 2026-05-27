@@ -126,11 +126,13 @@ _DEFAULT_SETTINGS = {
     # Cab makeup gain — multiplier applied to the cab IR stage's gain so
     # the user doesn't have to manually compensate for the natural
     # attenuation of a cab simulation (typically -10 to -15 dB vs the
-    # raw amp output). 2.0 ≈ +6 dB. Range clamped to [1.0, 4.0] when
-    # persisted. Applies to every IR/RS-IR stage emitted by the backend
-    # (per-tone chain + mega-chain). The user controls it from Settings
-    # with a dB-labelled slider.
-    "cab_makeup_gain": 2.0,
+    # raw amp output). Range clamped to [1.0, 2.83] when persisted = 0
+    # to +9 dB. Capped low because the makeup ALSO boosts the output
+    # when the user bypasses the cab (the gain lives on the stage, so
+    # passthrough sees the same boost) — too much makeup makes that
+    # bypass case painfully loud. Default 1.41 ≈ +3 dB is enough to
+    # take the edge off without making bypass dangerous.
+    "cab_makeup_gain": 1.41,
 }
 
 # Tone3000 platform value to request per Rocksmith category. Amps and
@@ -700,15 +702,18 @@ def _get_master_preset_id(role: str) -> int | None:
 
 
 def _cab_makeup_gain() -> float:
-    """Read the user's cab-makeup-gain setting, clamped to [1.0, 4.0].
-    Multiplier applied to every IR/RS-IR stage's gain so the user
-    doesn't have to compensate per-preset for the natural cab-sim
-    attenuation. Default 2.0 ≈ +6 dB."""
+    """Read the user's cab-makeup-gain setting, clamped to [1.0, 2.83]
+    (0 to +9 dB). Multiplier applied to every IR/RS-IR stage's gain
+    so the user doesn't have to compensate per-preset for the natural
+    cab-sim attenuation. Default 1.41 ≈ +3 dB — conservative because
+    the same gain applies when the user bypasses the cab (passthrough
+    inherits the stage gain), so a high setting makes bypass painfully
+    loud."""
     try:
-        g = float(_load_settings().get("cab_makeup_gain", 2.0))
+        g = float(_load_settings().get("cab_makeup_gain", 1.41))
     except (TypeError, ValueError):
-        g = 2.0
-    return max(1.0, min(4.0, g))
+        g = 1.41
+    return max(1.0, min(2.83, g))
 
 
 def _load_master_chain(role: str) -> list[dict]:
@@ -2535,7 +2540,7 @@ def setup(app, context):
             "aggressive": s.get("aggressive", False),
             "preferred_size": s.get("preferred_size", "standard"),
             "mega_chain_mode": s.get("mega_chain_mode", False),
-            "cab_makeup_gain": s.get("cab_makeup_gain", 2.0),
+            "cab_makeup_gain": s.get("cab_makeup_gain", 1.41),
             "has_tone3000_key": bool(key),
             "tone3000_api_key_preview": (key[:6] + "…") if key else "",
             "tone3000_connected": bool(s.get("tone3000_access_token")),
@@ -2555,12 +2560,14 @@ def setup(app, context):
         if "mega_chain_mode" in data:
             allowed["mega_chain_mode"] = bool(data["mega_chain_mode"])
         if "cab_makeup_gain" in data:
-            # Clamp to [1.0, 4.0] = 0 to +12 dB so a typo can't push the
-            # chain into hard clipping. 1.0 = no compensation (raw IR
-            # response, the historical default before this knob existed).
+            # Clamp to [1.0, 2.83] = 0 to +9 dB. Capped low because the
+            # makeup also amplifies when the cab is bypassed (gain lives
+            # on the stage state, so passthrough applies the same boost);
+            # +9 dB is the highest we want a bypass-spike to go without
+            # risking clipping or hearing damage on a sudden toggle.
             try:
                 g = float(data["cab_makeup_gain"])
-                allowed["cab_makeup_gain"] = max(1.0, min(4.0, g))
+                allowed["cab_makeup_gain"] = max(1.0, min(2.83, g))
             except (TypeError, ValueError):
                 pass
         _save_settings(allowed)

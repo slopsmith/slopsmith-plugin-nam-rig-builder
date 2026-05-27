@@ -4958,7 +4958,7 @@ async function rbLoadSettings() {
     const cabSlider = document.getElementById('rb-cab-makeup-gain');
     const cabLabel  = document.getElementById('rb-cab-makeup-gain-label');
     if (cabSlider) {
-        const g = (typeof s.cab_makeup_gain === 'number') ? s.cab_makeup_gain : 2.0;
+        const g = (typeof s.cab_makeup_gain === 'number') ? s.cab_makeup_gain : 1.41;
         cabSlider.value = g;
         if (cabLabel) {
             const db = 20 * Math.log10(g);
@@ -5038,7 +5038,7 @@ async function rbSaveSettings() {
     const megaCb = document.getElementById('rb-mega-chain-mode');
     const mega_chain_mode = megaCb ? !!megaCb.checked : false;
     const cabSlider = document.getElementById('rb-cab-makeup-gain');
-    const cab_makeup_gain = cabSlider ? parseFloat(cabSlider.value) : 2.0;
+    const cab_makeup_gain = cabSlider ? parseFloat(cabSlider.value) : 1.41;
     await fetch(`${RB_API}/settings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
