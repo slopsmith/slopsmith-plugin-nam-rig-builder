@@ -160,6 +160,14 @@ _DEFAULT_SETTINGS = {
     # out at ×4.
     "normalize_nam_loudness": True,
     "nam_loudness_target_lufs": -6.0,
+    # Asymmetric makeup cap. The library spans ~17 dB of LUFS variance
+    # (clean amps near -10, high-gain amps near -27); a tight symmetric
+    # ±12 cap squashed all the high-gain amps at +12 while leaving the
+    # cleans largely untouched, flattening the chain. Allow up to +20 dB
+    # boost so a -27 LUFS NAM can reach the -6 target; keep cut tighter
+    # at -9 dB so the loudest captures don't drop below audibility.
+    "nam_normalize_max_boost_db": 20.0,
+    "nam_normalize_max_cut_db": 9.0,
     # When toggled, bypasses (or un-bypasses) the cabinet slot on EVERY song's
     # tones in one shot — for users who'd rather run no cab (raw amp) or their
     # own external cab sim. Stored just for the checkbox state; the actual
@@ -558,10 +566,18 @@ def _nam_normalized_output_level(path: Path) -> float:
     so the captured loudness lands at the configured target.
 
     Falls back to 1.0 when the file lacks metadata (pre-v0.5 captures
-    or hand-authored files). Clamped to ±12 dB so a noisy header value
-    can't translate to ×16 gain. When the user disables normalization
-    via settings, we also return 1.0 — that path matches the legacy
-    behaviour exactly.
+    or hand-authored files). When normalization is disabled via
+    settings, returns 1.0 (matches the legacy behaviour exactly).
+
+    Cap is asymmetric: we tolerate a large *boost* (+20 dB) because
+    high-gain amp captures sit naturally at -25 to -30 LUFS and need
+    the full lift to land at the -6 LUFS target, but we cap the
+    *attenuation* tighter (-9 dB) so the calmest clean captures stay
+    audible. Symmetric ±12 caused all high-gain amps to clip at +12
+    while clean amps got the full attenuation, flattening the chain
+    to a uniformly clean-sounding wash. The boost cap is configurable
+    via `nam_normalize_max_boost_db` / `nam_normalize_max_cut_db` for
+    fine-tuning per machine.
     """
     settings = _load_settings()
     if not settings.get("normalize_nam_loudness", True):
@@ -570,8 +586,10 @@ def _nam_normalized_output_level(path: Path) -> float:
     if loudness is None:
         return 1.0
     target = float(settings.get("nam_loudness_target_lufs", -6.0))
+    max_boost = float(settings.get("nam_normalize_max_boost_db", 20.0))
+    max_cut = float(settings.get("nam_normalize_max_cut_db", 9.0))
     makeup_db = target - loudness
-    makeup_db = max(-12.0, min(12.0, makeup_db))
+    makeup_db = max(-max_cut, min(max_boost, makeup_db))
     return 10.0 ** (makeup_db / 20.0)
 
 
