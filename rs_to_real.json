@@ -393,7 +393,18 @@
     "dsp_load": "▢▢▢",
     "zoom_rating": "**",
     "zoom_notes": "MS DRIVE ★ The high gain sound of a JCM2000 Marshall stack amp",
-    "name_from_sheet": "Marshall JCM 800"
+    "name_from_sheet": "Marshall JCM 800",
+    "gain_variants": {
+      "crunch": {
+        "tone3000_id": 37987,
+        "rs_gain_range": [
+          35.0,
+          70.0
+        ],
+        "notes": "Confirmed great",
+        "curator": "Nacho"
+      }
+    }
   },
   "Amp_MarshallJTM45": {
     "art_asset": "marshall-jtm45",

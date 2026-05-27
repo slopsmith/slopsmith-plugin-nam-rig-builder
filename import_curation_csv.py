@@ -88,6 +88,14 @@ def merge_csv_into_rs_map(csv_path: Path, rs_map_path: Path, defaults_path: Path
         for row in reader:
             summary["rows_read"] += 1
             rs_gear = (row.get("rs_gear_type") or "").strip()
+            # Skip comment lines: a row whose first cell starts with `#`
+            # is treated as a sheet annotation, not data. CSV doesn't
+            # have native comments but `#` at start is a common
+            # convention and Google Sheets users like writing notes
+            # this way.
+            if rs_gear.startswith("#"):
+                summary["rows_skipped_empty"] += 1
+                continue
             tid = parse_int(row.get("tone3000_id"))
             if not rs_gear or tid is None:
                 summary["rows_skipped_empty"] += 1

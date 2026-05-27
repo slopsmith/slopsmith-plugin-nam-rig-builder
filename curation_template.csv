@@ -1,7 +1,14 @@
 rs_gear_type,name,category,level,tone3000_id,tone3000_url,rs_gain_lo,rs_gain_hi,notes,curator
-Amp_AT120,Marshall JCM 800 2203,amp,clean,,,0,35,TODO,
-Amp_AT120,Marshall JCM 800 2203,amp,crunch,37987,https://www.tone3000.com/tones/jcm800-2203-amp-37987,35,70,Confirmed great,Nacho
-Amp_AT120,Marshall JCM 800 2203,amp,dist,,,70,100,TODO,
+# JCM 800 appears in the library under TWO rs_gear_types (base game uses
+# the codename `Amp_AT120`, DLCs use the explicit `Amp_MarshallJCM800`).
+# Curate BOTH rows in parallel with the same tone3000_id so songs from
+# either source pick up the variant.
+Amp_AT120,Marshall JCM 800 2203 (base-game codename),amp,clean,,,0,35,TODO,
+Amp_AT120,Marshall JCM 800 2203 (base-game codename),amp,crunch,37987,https://www.tone3000.com/tones/jcm800-2203-amp-37987,35,70,Confirmed great,Nacho
+Amp_AT120,Marshall JCM 800 2203 (base-game codename),amp,dist,,,70,100,TODO,
+Amp_MarshallJCM800,Marshall JCM 800 2203 (DLC explicit name),amp,clean,,,0,35,TODO,
+Amp_MarshallJCM800,Marshall JCM 800 2203 (DLC explicit name),amp,crunch,37987,https://www.tone3000.com/tones/jcm800-2203-amp-37987,35,70,Confirmed great,Nacho
+Amp_MarshallJCM800,Marshall JCM 800 2203 (DLC explicit name),amp,dist,,,70,100,TODO,
 Amp_AT20,Marshall JCM 1,amp,clean,,,0,35,TODO,
 Amp_AT20,Marshall JCM 1,amp,crunch,,,35,70,TODO,
 Amp_AT20,Marshall JCM 1,amp,dist,,,70,100,TODO,
