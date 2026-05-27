@@ -4472,6 +4472,16 @@ function rbRenderCatalogCard(g) {
     const vstPanelId = `rb-cat-vst-${g.rs_gear.replace(/[^a-zA-Z0-9_-]/g,'_')}`;
     const knownCount = rbState.knownVsts ? rbState.knownVsts.length : 0;
 
+    // Amp gain variants button — only on amps. Opens the multi-NAM
+    // picker where the curator can map distinct captures to gain
+    // ranges (clean/crunch/dist), with a per-row capture dropdown for
+    // tone3000 pages that host multiple captures.
+    const safeId = g.rs_gear.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const variantsBtn = g.category === 'amp' ? `
+        <button onclick="rbToggleAmpVariants('${rbEsc(g.rs_gear)}')"
+                title="Set clean / crunch / dist captures so the song's Gain knob picks the right one"
+                class="bg-emerald-900/30 hover:bg-emerald-900/50 text-emerald-300 border border-emerald-800/40 px-2.5 py-1 rounded text-xs">🎚 Variants</button>` : '';
+
     return `
         <div class="bg-dark-700/50 border border-gray-800/50 rounded-lg p-3 flex flex-col gap-2">
             <div class="flex items-center gap-3">
@@ -4488,10 +4498,199 @@ function rbRenderCatalogCard(g) {
                     <button onclick="rbToggleCatalogLibrary('${rbEsc(g.rs_gear)}','${rbEsc(g.category || '')}','${rbEsc(g.vst_path || '')}','${rbEsc(g.vst_format || 'VST3')}')"
                             title="Pick a downloaded NAM/IR or an installed VST/AU and bulk-assign to every preset using this gear"
                             class="bg-indigo-900/30 hover:bg-indigo-900/50 text-indigo-300 border border-indigo-800/40 px-2.5 py-1 rounded text-xs">📚 Library</button>
+                    ${variantsBtn}
                 </div>
             </div>
-            <div id="rb-cat-lib-${rbEsc(g.rs_gear).replace(/[^a-zA-Z0-9_-]/g,'_')}" class="hidden bg-indigo-900/10 border border-indigo-800/30 rounded p-2"></div>
+            <div id="rb-cat-lib-${safeId}" class="hidden bg-indigo-900/10 border border-indigo-800/30 rounded p-2"></div>
+            <div id="rb-cat-variants-${safeId}" class="hidden bg-emerald-900/10 border border-emerald-800/30 rounded p-2"></div>
         </div>`;
+}
+
+// Toggle + render the Gain-variants panel for an amp in the Gear catalog.
+// Fetches GET /amp_variants/{rs_gear}, then builds three slots
+// (clean / crunch / dist) showing the current pick + edit controls.
+async function rbToggleAmpVariants(rsGear) {
+    const safeId = rsGear.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const el = document.getElementById(`rb-cat-variants-${safeId}`);
+    if (!el) return;
+    if (!el.classList.contains('hidden')) {
+        el.classList.add('hidden');
+        return;
+    }
+    el.classList.remove('hidden');
+    el.innerHTML = `<div class="text-xs text-gray-500">Loading…</div>`;
+    try {
+        const r = await fetch(`${RB_API}/amp_variants/${encodeURIComponent(rsGear)}`);
+        if (!r.ok) throw new Error((await r.json().catch(()=>({}))).error || r.status);
+        const data = await r.json();
+        el.innerHTML = rbRenderAmpVariantsPanel(rsGear, data);
+    } catch (e) {
+        el.innerHTML = `<div class="text-xs text-red-400">load failed: ${rbEsc(e.message || e)}</div>`;
+    }
+}
+
+// Build HTML for the three-slot variants panel. Pre-fills each slot
+// with the current variant (if any) and shows the default range
+// labels next to each level name.
+function rbRenderAmpVariantsPanel(rsGear, data) {
+    const safeId = rsGear.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const variants = data.variants || {};
+    const defaults = data.default_levels || {};
+    const levels = ['clean', 'crunch', 'dist'];
+    const rows = levels.map(level => {
+        const v = variants[level] || {};
+        const def = defaults[level] || { rs_gain_range: [0, 100] };
+        const range = v.rs_gain_range || def.rs_gain_range;
+        const tone3000Id = v.tone3000_id || '';
+        const modelId = v.model_id || '';
+        const isSaved = !!v.tone3000_id;
+        const slotPrefix = `rb-amp-variants-${safeId}-${level}`;
+        return `
+            <div class="bg-dark-800/60 border border-gray-800/40 rounded p-2 mb-2" id="${slotPrefix}">
+                <div class="flex items-center justify-between mb-1.5">
+                    <div class="flex items-center gap-2">
+                        <span class="font-semibold text-emerald-300 capitalize">${level}</span>
+                        <span class="text-[10px] text-gray-500">Gain ${range[0]}-${range[1]}</span>
+                        ${isSaved ? '<span class="text-[10px] text-emerald-400">✓ saved</span>' : '<span class="text-[10px] text-gray-600">empty</span>'}
+                    </div>
+                    ${isSaved ? `<button onclick="rbDeleteAmpVariant('${rbEsc(rsGear)}', '${level}')"
+                                        class="text-[10px] text-red-400 hover:text-red-300 px-1.5 py-0.5">Remove</button>` : ''}
+                </div>
+                <div class="flex items-center gap-2 mb-1.5">
+                    <input id="${slotPrefix}-tone" type="text" placeholder="tone3000 URL or ID (e.g. 37987)"
+                           value="${rbEsc(tone3000Id)}"
+                           class="flex-1 bg-dark-900 border border-gray-800 rounded text-[11px] text-gray-200 px-2 py-1 font-mono">
+                    <button onclick="rbInspectAmpVariant('${rbEsc(rsGear)}', '${level}')"
+                            class="bg-dark-600 hover:bg-dark-500 text-gray-200 text-[10px] px-2 py-1 rounded whitespace-nowrap">↓ Captures</button>
+                </div>
+                <div id="${slotPrefix}-captures" class="hidden flex items-center gap-2 mb-1.5">
+                    <span class="text-[10px] text-gray-500">capture:</span>
+                    <select id="${slotPrefix}-model" class="flex-1 bg-dark-900 border border-gray-800 rounded text-[10px] text-gray-200 px-1 py-1"></select>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="rbSaveAmpVariant('${rbEsc(rsGear)}', '${level}')"
+                            class="bg-emerald-700 hover:bg-emerald-600 text-white text-[11px] px-2.5 py-1 rounded">💾 Save ${level}</button>
+                    <span id="${slotPrefix}-status" class="text-[10px] text-gray-500"></span>
+                </div>
+            </div>`;
+    }).join('');
+    return `
+        <div class="text-xs text-gray-400 mb-2">
+            Each level downloads a separate capture; the song's Gain knob
+            picks which one plays. Leave a level empty to skip it (the
+            closest other variant covers that range).
+        </div>
+        ${rows}`;
+}
+
+// Inspect the captures inside a tone3000 page (GET /tone3000/captures/{id})
+// and populate the per-row dropdown. The "tone3000 URL or ID" input
+// accepts either format — we extract the trailing number from URLs.
+async function rbInspectAmpVariant(rsGear, level) {
+    const safeId = rsGear.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const slotPrefix = `rb-amp-variants-${safeId}-${level}`;
+    const input = document.getElementById(`${slotPrefix}-tone`);
+    const statusEl = document.getElementById(`${slotPrefix}-status`);
+    const capsRow = document.getElementById(`${slotPrefix}-captures`);
+    const select  = document.getElementById(`${slotPrefix}-model`);
+    if (!input || !statusEl || !capsRow || !select) return;
+    const raw = (input.value || '').trim();
+    const m = raw.match(/(\d+)\s*$/);
+    if (!m) {
+        statusEl.textContent = 'enter a tone3000 URL or numeric ID';
+        statusEl.className = 'text-[10px] text-amber-300';
+        return;
+    }
+    const toneId = parseInt(m[1], 10);
+    statusEl.textContent = 'fetching captures…';
+    statusEl.className = 'text-[10px] text-gray-500';
+    try {
+        const r = await fetch(`${RB_API}/tone3000/captures/${toneId}`);
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || r.status);
+        const caps = data.captures || [];
+        if (!caps.length) {
+            statusEl.textContent = 'no captures in this tone';
+            statusEl.className = 'text-[10px] text-amber-300';
+            capsRow.classList.add('hidden');
+            return;
+        }
+        // Build options. Add a sentinel "(auto: best by size)" at top
+        // so the user can explicitly let pick_best_model decide.
+        select.innerHTML = `<option value="">(auto: best by size)</option>` +
+            caps.map(c => `<option value="${c.model_id}">${c.size || '?'} · ${rbEsc(c.name)} · ${rbEsc(c.license || '')}</option>`).join('');
+        capsRow.classList.remove('hidden');
+        statusEl.textContent = `${caps.length} capture${caps.length === 1 ? '' : 's'} loaded — pick one and Save`;
+        statusEl.className = 'text-[10px] text-emerald-400';
+    } catch (e) {
+        statusEl.textContent = `failed: ${e.message || e}`;
+        statusEl.className = 'text-[10px] text-red-400';
+    }
+}
+
+// Persist a single variant. POSTs to /amp_variants/{rs_gear}/{level}.
+async function rbSaveAmpVariant(rsGear, level) {
+    const safeId = rsGear.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const slotPrefix = `rb-amp-variants-${safeId}-${level}`;
+    const input = document.getElementById(`${slotPrefix}-tone`);
+    const select = document.getElementById(`${slotPrefix}-model`);
+    const statusEl = document.getElementById(`${slotPrefix}-status`);
+    if (!input || !statusEl) return;
+    const raw = (input.value || '').trim();
+    const m = raw.match(/(\d+)\s*$/);
+    if (!m) {
+        statusEl.textContent = 'enter a tone3000 URL or numeric ID first';
+        statusEl.className = 'text-[10px] text-amber-300';
+        return;
+    }
+    const tone3000Id = parseInt(m[1], 10);
+    const modelId = (select && select.value) ? parseInt(select.value, 10) : null;
+    statusEl.textContent = 'saving…';
+    statusEl.className = 'text-[10px] text-gray-500';
+    try {
+        const r = await fetch(`${RB_API}/amp_variants/${encodeURIComponent(rsGear)}/${encodeURIComponent(level)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tone3000_id: tone3000Id, model_id: modelId }),
+        });
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || r.status);
+        statusEl.textContent = '✓ saved — re-run Batch all to download';
+        statusEl.className = 'text-[10px] text-emerald-400';
+        // Re-render the panel so the saved badge appears.
+        setTimeout(() => rbReopenAmpVariants(rsGear), 600);
+    } catch (e) {
+        statusEl.textContent = `save failed: ${e.message || e}`;
+        statusEl.className = 'text-[10px] text-red-400';
+    }
+}
+
+// Remove a single variant.
+async function rbDeleteAmpVariant(rsGear, level) {
+    if (!confirm(`Remove the "${level}" variant for ${rsGear}?`)) return;
+    try {
+        const r = await fetch(`${RB_API}/amp_variants/${encodeURIComponent(rsGear)}/${encodeURIComponent(level)}`, {
+            method: 'DELETE',
+        });
+        if (!r.ok) {
+            const data = await r.json().catch(()=>({}));
+            alert(`delete failed: ${data.error || r.status}`);
+            return;
+        }
+        rbReopenAmpVariants(rsGear);
+    } catch (e) {
+        alert(`delete failed: ${e.message || e}`);
+    }
+}
+
+// Helper: close + re-open the panel so it reloads from the backend after
+// a Save / Delete. Cheaper than rendering diffs in place.
+function rbReopenAmpVariants(rsGear) {
+    const safeId = rsGear.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const el = document.getElementById(`rb-cat-variants-${safeId}`);
+    if (!el) return;
+    el.classList.add('hidden');
+    rbToggleAmpVariants(rsGear);
 }
 
 // Open the catalog-card library picker (bulk-assigns to every preset using
