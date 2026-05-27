@@ -617,16 +617,23 @@ const RbMegaChain = (function () {
             return false;
         }
 
-        // 4. Set initial bypass: only the song's first / current tone runs.
+        // 4. Set initial bypass: only the song's CURRENT tone runs.
         // The highway may not have populated its tone changes / base yet
         // at this point (we ran 600 ms after song:loaded, but the WS feed
         // arrives in pieces). If _resolveActiveToneKey returns null we
-        // fall back to mega.active_tone_key (= tones[0] in the DB),
-        // which can be the WRONG initial tone for the song.
-        const initialKey = _resolveActiveToneKey() || mega.active_tone_key;
-        const initialTone = _findToneByKey(initialKey) || mega.tones[0];
+        // DELIBERATELY leave every tone bypassed — silence — instead of
+        // falling back to tones[0]. The previous fallback gave us the
+        // wrong tone audible for ~1 s on most songs (DB-order != song-
+        // intro-order). The initial-recheck schedule below catches the
+        // real tone within 100-700 ms once the highway publishes it,
+        // and applies it then. Brief silence is a better failure mode
+        // than playing the wrong tone confidently.
+        const initialKey = _resolveActiveToneKey();
+        const initialTone = initialKey ? _findToneByKey(initialKey) : null;
         await _applyActiveTone(initialTone ? initialTone.tone_key : null);
-        console.log(`[rig_builder mega-chain] initial tone → "${initialTone && initialTone.tone_key}"`);
+        console.log(`[rig_builder mega-chain] initial tone → ${initialTone
+            ? `"${initialTone.tone_key}" (from highway)`
+            : 'NONE (highway not ready yet — waiting for first recheck)'}`);
 
         // 5. Start audio if it isn't running yet (bundle would have done this).
         // DO NOT manually un-mute chain/monitor here — rbPreLoadMute's
@@ -658,9 +665,6 @@ const RbMegaChain = (function () {
         // Recheck schedule: front-loaded so we catch the highway tone-base
         // publication as soon as it lands (most of the time inside the
         // first second), without giving up too early if the WS feed lags.
-        // Was [500, 1000, 1500, 2000, 2500, 3000] ms — moved start
-        // earlier (100 ms) + extended (5 s total) so a slow song-load
-        // still gets corrected before the user picks up the guitar.
         const recheckSchedule = [100, 200, 400, 700, 1000, 1500, 2000, 2700, 3500, 4500, 5500];
         recheckSchedule.forEach((delay, i) => {
             setTimeout(() => {
@@ -674,6 +678,21 @@ const RbMegaChain = (function () {
                 }).catch(() => {});
             }, delay);
         });
+        // Last-chance fallback: if after 6 s the highway still hasn't
+        // given us a tone (broken WS, unmapped song, exotic arrangement),
+        // pick tones[0] so the user isn't stuck in dead silence forever.
+        // This is the path that used to fire INSTANTLY and audibly play
+        // the wrong tone for the first second of every song — now it's
+        // only the safety net for the rare WS-never-publishes case.
+        setTimeout(() => {
+            if (!_active || !_mega) return;
+            if (_activeToneKey) return;     // any recheck already landed
+            const fallback = mega.tones && mega.tones[0];
+            if (!fallback) return;
+            _applyActiveTone(fallback.tone_key).then(() => {
+                console.warn(`[rig_builder mega-chain] FALLBACK after 6s: applying tones[0] = "${fallback.tone_key}" — highway never published a tone base for this song`);
+            }).catch(() => {});
+        }, 6000);
 
         _active = true;
         return true;
