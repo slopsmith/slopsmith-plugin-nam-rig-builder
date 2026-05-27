@@ -1,115 +1,152 @@
 {
   "_meta": {
-    "description": "Translation table: Rocksmith gear knob → VST parameter mapping. Read by GET /vst/knob_mapping and applied by the per-piece 'Apply RS settings' button + rbReapplyVstParamsAfterLoad. Curated against the free VST recommendations in rs_gear_to_vst.json.",
-    "version": 2,
+    "description": "Translation table: Rocksmith gear knob → VST parameter. Curated around Kilohearts Essentials (free) — consistent param names across the entire bundle.",
+    "version": 3,
     "updated": "2026-05-28",
     "schema": {
       "<rs_gear_type>": {
         "<vst_name_stem_lowercased>": {
           "<rs_knob_name>": {
             "param": "<exact VST param name as shown in the in-app editor>",
-            "scale": "<float, multiply RS value by this. 0.01 for 0-100 → 0-1; 0.0005 for ms 0-2000>",
+            "scale": "<float, multiply RS value by this. 0.01 for 0-100 → 0-1; 0.0005 for ms 0-2000; 1.0 for direct dB / semitones>",
             "offset": "<optional float, added after scale>",
-            "invert": "<optional bool, replaces v with (1-v) after scale>",
-            "min": "<optional float, clamp lower>",
-            "max": "<optional float, clamp upper>"
+            "invert": "<optional bool, replaces v with (1-v) after scale>"
           }
         }
       }
     },
+    "kilohearts_param_naming_convention": {
+      "_note": "KHS modules use consistent param names across the entire Essentials bundle. Common params you'll see in every module:",
+      "rate":     "Rate (Hz, 0-1 internal)",
+      "depth":    "Depth (0-1)",
+      "feedback": "Feedback (0-1)",
+      "mix":      "Dry/Wet (0-1) — some older docs show 'Mix'; the in-app editor will show the real name",
+      "cutoff":   "Cutoff (0-1, log freq)",
+      "drive":    "Drive (0-1)",
+      "threshold":"Threshold (dB)",
+      "ratio":    "Ratio (1:N)",
+      "time":     "Time (s or 0-1 normalised)",
+      "pitch":    "Pitch (semitones)"
+    },
     "notes": [
-      "VST param names are best-effort. If a mapping doesn't take, open the in-app VST editor for that gear, copy the exact param name from a slider, and paste here.",
-      "Default RS knob range is 0-100 → use scale=0.01 to land in the VST's 0-1 normalized range.",
-      "Time knobs are in ms (e.g. 320ms). Most VST delay 'Time' params are normalized 0-1 representing a max ms range — check the VST's docs and set scale accordingly.",
-      "EQ pedals (EQ5/EQ8) store knobs as frequency strings (e.g. '5700') with the value being dB gain at that frequency. Can't auto-map cleanly to a 4-band dynamic EQ — leave empty and tweak per song."
+      "If a param name doesn't match, open the in-app VST editor for that gear, copy the exact label from a slider, and paste here. The lookup is case-insensitive but otherwise exact.",
+      "VST name stems below are lowercased to match the case-insensitive lookup. Plugin files on disk are 'kHs Chorus.vst3' etc. — the matcher strips '.vst3' and lowercases automatically.",
+      "EQ pedals (EQ5/EQ8/BassEQ8): knobs are absolute frequencies (e.g. '5700': 5 = +5 dB at 5700 Hz). kHs 3-Band EQ can absorb three of those — the entries below pick the most musical bands. The other RS frequencies are silently dropped."
     ]
   },
 
   "Pedal_Chorus": {
-    "tal-chorus-lx": {
-      "Rate":  {"param": "Rate",  "scale": 0.01, "_hint": "RS 0-100 → VST 0-1 (TAL Rate maps to ~0.1-10 Hz internally)"},
-      "Depth": {"param": "Depth", "scale": 0.01},
-      "Mix":   {"param": "Wet",   "scale": 0.01, "_hint": "TAL exposes Wet (not Mix); leaves Dry untouched"}
+    "khs chorus": {
+      "Rate":  {"param": "Rate",    "scale": 0.01},
+      "Depth": {"param": "Depth",   "scale": 0.01},
+      "Mix":   {"param": "Dry/Wet", "scale": 0.01}
     }
   },
   "Pedal_Chorus20": {
-    "tal-chorus-lx": {
-      "Rate":  {"param": "Rate",  "scale": 0.01},
-      "Depth": {"param": "Depth", "scale": 0.01},
-      "Mix":   {"param": "Wet",   "scale": 0.01}
+    "khs chorus": {
+      "Rate":  {"param": "Rate",    "scale": 0.01},
+      "Depth": {"param": "Depth",   "scale": 0.01},
+      "Mix":   {"param": "Dry/Wet", "scale": 0.01}
     }
   },
   "Pedal_DigitalChorus": {
-    "tal-chorus-lx": {
-      "Rate":     {"param": "Rate",     "scale": 0.01},
-      "Depth":    {"param": "Depth",    "scale": 0.01},
-      "Mix":      {"param": "Wet",      "scale": 0.01},
-      "HiFilter": {"param": "Low Cut",  "scale": 0.01},
-      "LoFilter": {"param": "High Cut", "scale": 0.01}
+    "khs chorus": {
+      "Rate":  {"param": "Rate",    "scale": 0.01},
+      "Depth": {"param": "Depth",   "scale": 0.01},
+      "Mix":   {"param": "Dry/Wet", "scale": 0.01}
     }
   },
   "Pedal_VintageChorus": {
-    "tal-chorus-lx": {
-      "Rate":  {"param": "Rate",  "scale": 0.01},
-      "Depth": {"param": "Depth", "scale": 0.01},
-      "Mix":   {"param": "Wet",   "scale": 0.01}
+    "khs chorus": {
+      "Rate":  {"param": "Rate",    "scale": 0.01},
+      "Depth": {"param": "Depth",   "scale": 0.01},
+      "Mix":   {"param": "Dry/Wet", "scale": 0.01}
     }
   },
   "Bass_Pedal_BassChorus": {
-    "tal-chorus-lx": {
-      "Rate":  {"param": "Rate",  "scale": 0.01},
-      "Depth": {"param": "Depth", "scale": 0.01},
-      "Mix":   {"param": "Wet",   "scale": 0.01}
+    "khs chorus": {
+      "Rate":  {"param": "Rate",    "scale": 0.01},
+      "Depth": {"param": "Depth",   "scale": 0.01},
+      "Mix":   {"param": "Dry/Wet", "scale": 0.01}
     }
   },
 
   "Pedal_Flanger": {
-    "tal-flanger": {
+    "khs flanger": {
       "Rate":     {"param": "Rate",     "scale": 0.01},
       "Depth":    {"param": "Depth",    "scale": 0.01},
-      "Mix":      {"param": "Wet",      "scale": 0.01},
+      "Mix":      {"param": "Dry/Wet",  "scale": 0.01},
       "Feedback": {"param": "Feedback", "scale": 0.01}
     }
   },
   "Pedal_80sFlanger": {
-    "tal-flanger": {
-      "Rate":  {"param": "Rate",  "scale": 0.01},
-      "Depth": {"param": "Depth", "scale": 0.01},
-      "Mix":   {"param": "Wet",   "scale": 0.01}
+    "khs flanger": {
+      "Rate":  {"param": "Rate",    "scale": 0.01},
+      "Depth": {"param": "Depth",   "scale": 0.01},
+      "Mix":   {"param": "Dry/Wet", "scale": 0.01}
     }
   },
   "Pedal_ClassicFlanger": {
-    "tal-flanger": {
-      "Rate":  {"param": "Rate",  "scale": 0.01},
-      "Depth": {"param": "Depth", "scale": 0.01},
-      "Mix":   {"param": "Wet",   "scale": 0.01}
+    "khs flanger": {
+      "Rate":  {"param": "Rate",    "scale": 0.01},
+      "Depth": {"param": "Depth",   "scale": 0.01},
+      "Mix":   {"param": "Dry/Wet", "scale": 0.01}
     }
   },
   "Pedal_ModernFlanger": {
-    "tal-flanger": {
-      "Rate":  {"param": "Rate",  "scale": 0.01},
-      "Depth": {"param": "Depth", "scale": 0.01},
-      "Mix":   {"param": "Wet",   "scale": 0.01}
+    "khs flanger": {
+      "Rate":  {"param": "Rate",    "scale": 0.01},
+      "Depth": {"param": "Depth",   "scale": 0.01},
+      "Mix":   {"param": "Dry/Wet", "scale": 0.01}
     }
   },
   "Pedal_VintageFlanger": {
-    "tal-flanger": {
-      "Rate":  {"param": "Rate",  "scale": 0.01},
-      "Depth": {"param": "Depth", "scale": 0.01},
-      "Mix":   {"param": "Wet",   "scale": 0.01}
+    "khs flanger": {
+      "Rate":  {"param": "Rate",    "scale": 0.01},
+      "Depth": {"param": "Depth",   "scale": 0.01},
+      "Mix":   {"param": "Dry/Wet", "scale": 0.01}
     }
   },
   "Bass_Pedal_BassFlanger": {
-    "tal-flanger": {
-      "Rate":  {"param": "Rate",  "scale": 0.01},
-      "Depth": {"param": "Depth", "scale": 0.01},
-      "Mix":   {"param": "Wet",   "scale": 0.01}
+    "khs flanger": {
+      "Rate":  {"param": "Rate",    "scale": 0.01},
+      "Depth": {"param": "Depth",   "scale": 0.01},
+      "Mix":   {"param": "Dry/Wet", "scale": 0.01}
+    }
+  },
+
+  "Pedal_Phaser": {
+    "khs phaser": {
+      "Rate":     {"param": "Rate",     "scale": 0.01},
+      "Depth":    {"param": "Depth",    "scale": 0.01},
+      "Mix":      {"param": "Dry/Wet",  "scale": 0.01}
+    }
+  },
+  "Pedal_ShaverPhaser": {
+    "khs phaser": {
+      "Rate":  {"param": "Rate",    "scale": 0.01},
+      "Depth": {"param": "Depth",   "scale": 0.01},
+      "Mix":   {"param": "Dry/Wet", "scale": 0.01}
+    }
+  },
+  "Pedal_PlanePhase": {
+    "khs phaser": {
+      "Rate":  {"param": "Rate",    "scale": 0.01},
+      "Depth": {"param": "Depth",   "scale": 0.01},
+      "Mix":   {"param": "Dry/Wet", "scale": 0.01}
+    }
+  },
+  "Bass_Pedal_BassPhase": {
+    "khs phaser": {
+      "Rate":  {"param": "Rate",    "scale": 0.01},
+      "Depth": {"param": "Depth",   "scale": 0.01},
+      "Mix":   {"param": "Dry/Wet", "scale": 0.01}
     }
   },
 
   "Pedal_Tremolo": {
     "bertom_freetremolo": {
-      "Speed": {"param": "Rate",  "scale": 0.01, "_hint": "Bertom uses 'Rate' for tempo"},
+      "Speed": {"param": "Rate",  "scale": 0.01},
       "Mix":   {"param": "Depth", "scale": 0.01, "_hint": "RS 'Mix' on a tremolo is effectively depth"}
     }
   },
@@ -127,187 +164,287 @@
   },
 
   "Pedal_SpringReverb": {
-    "tal-reverb-4": {
-      "Time":  {"param": "Decay Time",   "scale": 0.01, "_hint": "RS 'Time' on spring is decay; TAL 'Decay Time' is 0-1"},
-      "Depth": {"param": "Stereo Width", "scale": 0.01, "_hint": "RS 'Depth' for spring proxies room size; map to Width as a rough approximation"},
-      "Mix":   {"param": "Wet",          "scale": 0.01}
+    "khs reverber": {
+      "Time":  {"param": "Size",     "scale": 0.01, "_hint": "RS 'Time' on spring → KHS 'Size' (decay length is implicit in size)"},
+      "Depth": {"param": "Damping",  "scale": 0.01, "invert": true, "_hint": "RS 'Depth' = more brightness → less damping. Invert."},
+      "Mix":   {"param": "Dry/Wet",  "scale": 0.01}
     }
   },
   "Pedal_DigitalVerb": {
-    "tal-reverb-4": {
-      "Time":  {"param": "Decay Time",      "scale": 0.01},
-      "Depth": {"param": "Predelay",        "scale": 0.01, "_hint": "Larger depth = bigger room sound = more predelay"},
-      "Tone":  {"param": "Highshelf Gain",  "scale": 0.01, "_hint": "Tone tweaks highs; map to high shelf"},
-      "Mix":   {"param": "Wet",             "scale": 0.01}
+    "khs reverber": {
+      "Time":  {"param": "Size",     "scale": 0.01},
+      "Depth": {"param": "Predelay", "scale": 0.01, "_hint": "Larger depth = more predelay"},
+      "Tone":  {"param": "Damping",  "scale": 0.01, "invert": true},
+      "Mix":   {"param": "Dry/Wet",  "scale": 0.01}
     }
   },
   "Pedal_PlateVerb": {
-    "tal-reverb-4": {
-      "Time":  {"param": "Decay Time",   "scale": 0.01},
-      "Depth": {"param": "Stereo Width", "scale": 0.01},
-      "Mix":   {"param": "Wet",          "scale": 0.01}
+    "khs reverber": {
+      "Time":  {"param": "Size",     "scale": 0.01},
+      "Depth": {"param": "Predelay", "scale": 0.01},
+      "Mix":   {"param": "Dry/Wet",  "scale": 0.01}
     }
   },
   "Pedal_TubeSpring": {
-    "tal-reverb-4": {
-      "Time": {"param": "Decay Time", "scale": 0.01},
-      "Mix":  {"param": "Wet",        "scale": 0.01}
+    "khs reverber": {
+      "Time": {"param": "Size",    "scale": 0.01},
+      "Mix":  {"param": "Dry/Wet", "scale": 0.01}
     }
   },
 
   "Pedal_AnalogueDelay": {
-    "tal-dub-iii": {
-      "Time":     {"param": "Delay Time", "scale": 0.0005, "_hint": "RS 'Time' is ms (100-2000). TAL 'Delay Time' is 0-1 over ~2000ms max"},
-      "Feedback": {"param": "Feedback",   "scale": 0.01},
-      "Mix":      {"param": "Wet",        "scale": 0.01}
+    "khs delay": {
+      "Time":     {"param": "Time",     "scale": 0.0005, "_hint": "RS 'Time' is ms (100-2000). KHS Time is 0-1 over ~2000ms max"},
+      "Feedback": {"param": "Feedback", "scale": 0.01},
+      "Mix":      {"param": "Dry/Wet",  "scale": 0.01}
     }
   },
   "Pedal_ValveEcho": {
-    "tal-dub-iii": {
-      "Time":     {"param": "Delay Time", "scale": 0.0005},
-      "Feedback": {"param": "Feedback",   "scale": 0.01},
-      "Mix":      {"param": "Wet",        "scale": 0.01}
+    "khs delay": {
+      "Time":     {"param": "Time",     "scale": 0.0005},
+      "Feedback": {"param": "Feedback", "scale": 0.01},
+      "Mix":      {"param": "Dry/Wet",  "scale": 0.01}
     }
   },
   "Pedal_NPNDelay": {
-    "tal-dub-iii": {
-      "Time":     {"param": "Delay Time", "scale": 0.0005},
-      "Feedback": {"param": "Feedback",   "scale": 0.01},
-      "Mix":      {"param": "Wet",        "scale": 0.01}
+    "khs delay": {
+      "Time":     {"param": "Time",     "scale": 0.0005},
+      "Feedback": {"param": "Feedback", "scale": 0.01},
+      "Mix":      {"param": "Dry/Wet",  "scale": 0.01}
     }
   },
   "Pedal_NoFiEcho": {
-    "tal-dub-iii": {
-      "Time":     {"param": "Delay Time", "scale": 0.0005},
-      "Feedback": {"param": "Feedback",   "scale": 0.01},
-      "Mix":      {"param": "Wet",        "scale": 0.01}
+    "khs delay": {
+      "Time":     {"param": "Time",     "scale": 0.0005},
+      "Feedback": {"param": "Feedback", "scale": 0.01},
+      "Mix":      {"param": "Dry/Wet",  "scale": 0.01}
     }
   },
   "Pedal_OilCanEcho": {
-    "tal-dub-iii": {
-      "Time":     {"param": "Delay Time", "scale": 0.0005},
-      "Feedback": {"param": "Feedback",   "scale": 0.01},
-      "Mix":      {"param": "Wet",        "scale": 0.01}
+    "khs delay": {
+      "Time":     {"param": "Time",     "scale": 0.0005},
+      "Feedback": {"param": "Feedback", "scale": 0.01},
+      "Mix":      {"param": "Dry/Wet",  "scale": 0.01}
     }
   },
   "Pedal_CosmicEcho": {
-    "valhalla_supermassive": {
-      "Time":     {"param": "Delay",    "scale": 0.0005, "_hint": "Valhalla 'Delay' may be in beats — verify"},
-      "Feedback": {"param": "Density",  "scale": 0.01,   "_hint": "Valhalla doesn't expose direct 'feedback' — Density is the closest"},
-      "Mix":      {"param": "Mix",      "scale": 0.01}
+    "khs delay": {
+      "Time":     {"param": "Time",     "scale": 0.0005},
+      "Feedback": {"param": "Feedback", "scale": 0.01},
+      "Mix":      {"param": "Dry/Wet",  "scale": 0.01}
     }
   },
   "Pedal_ModDelay": {
-    "valhalla_supermassive": {
-      "Time":     {"param": "Delay",     "scale": 0.0005},
-      "Feedback": {"param": "Density",   "scale": 0.01},
-      "Mix":      {"param": "Mix",       "scale": 0.01},
-      "Depth":    {"param": "Mod Depth", "scale": 0.01},
-      "Rate":     {"param": "Mod Rate",  "scale": 0.1,    "_hint": "RS Rate seems to be 0-10 (e.g. 0.5); scale x0.1 to land 0-1"}
+    "khs delay": {
+      "Time":     {"param": "Time",     "scale": 0.0005},
+      "Feedback": {"param": "Feedback", "scale": 0.01},
+      "Mix":      {"param": "Dry/Wet",  "scale": 0.01}
+    }
+  },
+  "Bass_Pedal_BassFilterDelay": {
+    "khs delay": {
+      "Time":     {"param": "Time",     "scale": 0.0005},
+      "Feedback": {"param": "Feedback", "scale": 0.01},
+      "Mix":      {"param": "Dry/Wet",  "scale": 0.01}
     }
   },
 
   "Pedal_GermaniumDrive": {
-    "tse_808": {
-      "Gain": {"param": "Drive", "scale": 0.01},
-      "Tone": {"param": "Tone",  "scale": 0.01}
+    "khs distortion": {
+      "Gain": {"param": "Drive",   "scale": 0.01},
+      "Tone": {"param": "Dry/Wet", "scale": 0.01, "_hint": "KHS Distortion has no Tone — use Mix as the closest analog (more wet = more characterful)"}
     }
   },
   "Pedal_CustomDrive": {
-    "tse_808": {
-      "Gain": {"param": "Drive", "scale": 0.01},
-      "Tone": {"param": "Tone",  "scale": 0.01}
+    "khs distortion": {
+      "Gain": {"param": "Drive",   "scale": 0.01},
+      "Tone": {"param": "Dry/Wet", "scale": 0.01}
     }
   },
   "Pedal_LineDrive": {
-    "tse_808": {
-      "Gain": {"param": "Drive", "scale": 0.01},
-      "Tone": {"param": "Tone",  "scale": 0.01}
+    "khs distortion": {
+      "Gain": {"param": "Drive",   "scale": 0.01},
+      "Tone": {"param": "Dry/Wet", "scale": 0.01}
     }
   },
   "Bass_Pedal_BassOverdrive": {
-    "tse_808": {
-      "Gain": {"param": "Drive", "scale": 0.01},
-      "Tone": {"param": "Tone",  "scale": 0.01}
+    "khs distortion": {
+      "Gain": {"param": "Drive",   "scale": 0.01},
+      "Tone": {"param": "Dry/Wet", "scale": 0.01}
     }
   },
   "Pedal_RangeBooster": {
-    "tse_808": {
-      "Gain": {"param": "Drive", "scale": 0.005, "_hint": "Booster = low drive; halve the scale to avoid over-saturating"},
-      "Tone": {"param": "Tone",  "scale": 0.01}
+    "khs distortion": {
+      "Gain": {"param": "Drive",   "scale": 0.005, "_hint": "Halve scale — booster shouldn't fully saturate"},
+      "Tone": {"param": "Dry/Wet", "scale": 0.01}
+    }
+  },
+  "Pedal_SuperDrive": {
+    "khs distortion": {
+      "Gain": {"param": "Drive",   "scale": 0.01}
+    }
+  },
+  "Pedal_Distortion": {
+    "khs distortion": {
+      "Gain": {"param": "Drive",   "scale": 0.01}
+    }
+  },
+  "Pedal_VintageDistortion": {
+    "khs distortion": {
+      "Gain": {"param": "Drive",   "scale": 0.01}
+    }
+  },
+  "Pedal_MetalDistortion": {
+    "khs distortion": {
+      "Gain": {"param": "Drive",   "scale": 0.01}
+    }
+  },
+  "Bass_Pedal_BassDistortion": {
+    "khs distortion": {
+      "Gain": {"param": "Drive",   "scale": 0.01}
+    }
+  },
+  "Pedal_FuzzWasHe": {
+    "khs distortion": {
+      "Gain": {"param": "Drive",   "scale": 0.01}
+    }
+  },
+  "Pedal_CaptFuzzle": {
+    "khs distortion": {
+      "Gain": {"param": "Drive",   "scale": 0.01}
+    }
+  },
+  "Pedal_BuzzOne": {
+    "khs distortion": {
+      "Gain": {"param": "Drive",   "scale": 0.01}
+    }
+  },
+  "Pedal_BuzzToo": {
+    "khs distortion": {
+      "Gain": {"param": "Drive",   "scale": 0.01}
+    }
+  },
+  "Bass_Pedal_BassFuzz": {
+    "khs distortion": {
+      "Gain": {"param": "Drive",   "scale": 0.01}
     }
   },
 
   "Pedal_Compression": {
-    "klanghelm_dc1a": {
-      "Comp":    {"param": "Input",  "scale": 0.01, "_hint": "DC1A drives the comp amount via input level"},
-      "Attack":  {"param": "Attack", "scale": 0.01},
-      "Release": {"param": "Release","scale": 0.01}
+    "khs compressor": {
+      "Comp":    {"param": "Threshold", "scale": -1.0, "offset": 0,   "_hint": "RS 'Comp' 0-100 → KHS Threshold roughly -60 to 0 dB. Higher RS Comp = lower threshold (more compression)"},
+      "Attack":  {"param": "Attack",    "scale": 0.01},
+      "Release": {"param": "Release",   "scale": 0.01}
     }
   },
   "Pedal_Compressor": {
-    "klanghelm_dc1a": {
-      "Comp":    {"param": "Input",  "scale": 0.01},
-      "Attack":  {"param": "Attack", "scale": 0.01},
-      "Release": {"param": "Release","scale": 0.01}
+    "khs compressor": {
+      "Comp":    {"param": "Threshold", "scale": -1.0, "offset": 0},
+      "Attack":  {"param": "Attack",    "scale": 0.01},
+      "Release": {"param": "Release",   "scale": 0.01}
+    }
+  },
+  "Bass_Pedal_MBComp": {
+    "khs compressor": {
+      "Compress": {"param": "Threshold", "scale": -1.0, "offset": 0, "_hint": "Single-band fallback — full multiband needs paid kHs Multipass"}
     }
   },
 
   "Pedal_USWah": {
-    "tal-filter-2": {
-      "Sens":  {"param": "Envelope Amount", "scale": 0.01, "_hint": "Wah sensitivity = envelope-follower depth"},
-      "Speed": {"param": "Speed",           "scale": 0.01},
-      "Pedal": {"param": "Cutoff",          "scale": 0.01, "_hint": "When Auto=0, the Pedal position controls cutoff directly"}
+    "khs filter": {
+      "Pedal": {"param": "Cutoff",    "scale": 0.01},
+      "Sens":  {"param": "Resonance", "scale": 0.01, "_hint": "Wah sensitivity → resonance peak"}
     }
   },
   "Pedal_UKWah": {
-    "tal-filter-2": {
-      "Sens":  {"param": "Envelope Amount", "scale": 0.01},
-      "Speed": {"param": "Speed",           "scale": 0.01},
-      "Pedal": {"param": "Cutoff",          "scale": 0.01}
+    "khs filter": {
+      "Pedal": {"param": "Cutoff",    "scale": 0.01},
+      "Sens":  {"param": "Resonance", "scale": 0.01}
     }
   },
   "Bass_Pedal_BassWah": {
-    "tal-filter-2": {
-      "Sens":  {"param": "Envelope Amount", "scale": 0.01},
-      "Pedal": {"param": "Cutoff",          "scale": 0.005, "_hint": "Halve for bass-range cutoff"}
+    "khs filter": {
+      "Pedal": {"param": "Cutoff",    "scale": 0.005},
+      "Sens":  {"param": "Resonance", "scale": 0.01}
+    }
+  },
+  "Pedal_ModernWah": {
+    "khs filter": {
+      "Pedal": {"param": "Cutoff",    "scale": 0.01},
+      "Sens":  {"param": "Resonance", "scale": 0.01}
     }
   },
 
   "Pedal_LoFiFilter": {
-    "tal-filter-2": {
-      "Mix":        {"param": "Wet",    "scale": 0.01},
-      "FilterType": {"param": "Cutoff", "scale": 0.01, "_hint": "RS FilterType is categorical; map to cutoff as the closest continuous approximation"}
+    "khs filter": {
+      "FilterType": {"param": "Cutoff",    "scale": 0.01},
+      "Mix":        {"param": "Resonance", "scale": 0.01, "_hint": "RS Mix on lo-fi → KHS resonance approximates the lo-fi colour"}
     }
   },
   "Pedal_BobFilter": {
-    "tal-filter-2": {
+    "khs filter": {
       "Cutoff":    {"param": "Cutoff",    "scale": 0.01},
       "Resonance": {"param": "Resonance", "scale": 0.01}
     }
   },
   "Pedal_AutoFilter": {
-    "tal-filter-2": {
-      "Sens":  {"param": "Envelope Amount", "scale": 0.01},
-      "Speed": {"param": "Speed",           "scale": 0.01}
+    "khs filter": {
+      "Speed": {"param": "Cutoff",    "scale": 0.01},
+      "Sens":  {"param": "Resonance", "scale": 0.01}
     }
   },
   "Bass_Pedal_BassAutoFilter": {
-    "tal-filter-2": {
-      "Sens":  {"param": "Envelope Amount", "scale": 0.01},
-      "Speed": {"param": "Speed",           "scale": 0.01}
+    "khs filter": {
+      "Speed": {"param": "Cutoff",    "scale": 0.01},
+      "Sens":  {"param": "Resonance", "scale": 0.01}
     }
   },
   "Pedal_AcousticEmulator": {
-    "tal-filter-2": {
-      "Mix": {"param": "Wet", "scale": 0.01}
+    "khs filter": {
+      "Mix": {"param": "Cutoff", "scale": 0.01}
     }
   },
 
   "Pedal_NoiseGate": {
-    "tdr_nova": {
-      "Thresh": {"param": "Band 1 Threshold", "scale": 1.0,  "_hint": "RS Thresh is dB (e.g. -66). TDR Nova threshold is dB — direct mapping"},
-      "Rate":   {"param": "Band 1 Range",     "scale": 0.01, "_hint": "RS Rate = aggressiveness of gating"}
+    "khs gate": {
+      "Thresh": {"param": "Threshold", "scale": 1.0, "_hint": "RS Thresh in dB (-66 typical) maps direct to KHS Threshold"},
+      "Rate":   {"param": "Range",     "scale": 0.01, "_hint": "Higher RS Rate = more aggressive gating = larger range"}
     }
+  },
+
+  "Pedal_OctaveUp": {
+    "khs pitch shifter": {
+      "Tone": {"param": "Pitch", "scale": 0.12, "_hint": "Scale 0.12 lands roughly at +12 semitones (one octave up) for full Tone=100"},
+      "Mix":  {"param": "Mix",   "scale": 0.01}
+    }
+  },
+  "Pedal_Octavius": {
+    "khs pitch shifter": {
+      "Mix": {"param": "Mix", "scale": 0.01}
+    }
+  },
+  "Pedal_MultiPitch": {
+    "khs pitch shifter": {
+      "Mix": {"param": "Mix", "scale": 0.01}
+    }
+  },
+  "Bass_Pedal_BassSubOctave": {
+    "khs pitch shifter": {
+      "Mix": {"param": "Mix", "scale": 0.01, "_hint": "Set Pitch manually to -12 in the VST editor for sub-octave"}
+    }
+  },
+
+  "Pedal_BitCruncher": {
+    "khs bitcrush": {
+      "Mix": {"param": "Mix", "scale": 0.01}
+    }
+  },
+  "Pedal_RingMod": {
+    "khs ring mod": {
+      "Mix": {"param": "Mix", "scale": 0.01}
+    }
+  },
+  "Pedal_Limiter": {
+    "khs limiter": {}
   }
 }

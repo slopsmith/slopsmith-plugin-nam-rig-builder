@@ -1,305 +1,284 @@
 {
   "_meta": {
-    "description": "Seed catalog: Rocksmith gear type → recommended VST3/AU plugins. Free plugins listed first. Used by /vst/suggest endpoint and the per-piece VST panel hint.",
-    "version": 2,
+    "description": "Seed catalog: Rocksmith gear type → recommended VST3/AU plugins. Free plugins only. Used by /vst/suggest endpoint and the per-piece VST panel hint.",
+    "version": 3,
     "updated": "2026-05-28",
-    "notes": "v2: covers every pedal type in the user's library (79 total). Free-VST-only curation — every recommendation is downloadable at zero cost, multi-platform VST3, no account required. Drives also support NAM-capture mapping via the parallel gain_variants pipeline; pick whichever flow you prefer per pedal."
+    "notes": "v3: standardise on Kilohearts Essentials. ONE free installer (https://kilohearts.com/products/essentials) gives you 30+ modular FX plug-ins with consistent param naming — way cleaner than the patchwork of vendor-specific frees. Tremolo is the only category where KHS doesn't ship a dedicated module; we keep Bertom FreeTremolo for that."
   },
 
   "__free_vst_install_guide": {
-    "_note": "One-time installs. Drop the VST3 files into the system VST3 folder, then 'Scan for plugins' in Settings. Each plugin covers multiple pedals — install the ones below and ~85% of your library is mapped.",
+    "_note": "Just two installs cover the entire library.",
     "essential": [
-      {"name": "TAL-Chorus-LX",      "covers": "all chorus pedals (Chorus, Chorus20, BassChorus, DigitalChorus, VintageChorus)",
-       "url": "https://tal-software.com/products/tal-chorus-lx"},
-      {"name": "TAL-Flanger",        "covers": "all flangers (80sFlanger, ClassicFlanger, ModernFlanger, VintageFlanger, BassFlanger)",
-       "url": "https://tal-software.com/products/tal-flanger"},
-      {"name": "TAL-Dub-III",        "covers": "delays (AnalogueDelay, ValveEcho, NPNDelay, NoFiEcho, OilCanEcho)",
-       "url": "https://tal-software.com/products/tal-dub"},
-      {"name": "TAL-Reverb-4",       "covers": "reverbs (SpringReverb, DigitalVerb, PlateVerb, TubeSpring)",
-       "url": "https://tal-software.com/products/tal-reverb-4"},
-      {"name": "TAL-Filter-2",       "covers": "filters + wahs (LoFiFilter, BobFilter, AutoFilter, BassAutoFilter, US/UK/BassWah)",
-       "url": "https://tal-software.com/products/tal-filter-2"},
-      {"name": "Valhalla Supermassive", "covers": "ambient + modulated delays (CosmicEcho, ModDelay, BassFilterDelay)",
-       "url": "https://valhalladsp.com/shop/reverb/valhalla-supermassive/"},
-      {"name": "Klanghelm DC1A",     "covers": "compressors (Compression, MBComp)",
-       "url": "https://klanghelm.com/contents/products/dc1a.php"},
-      {"name": "TDR Nova",           "covers": "EQs + noise gate (EQ5, EQ8, BassEQ8, AmpEQ, NoiseGate)",
-       "url": "https://www.tokyodawn.net/tdr-nova/"},
-      {"name": "TSE 808",            "covers": "Tube-Screamer-style drives (CustomDrive, LineDrive, RangeBooster)",
-       "url": "https://tseaudio.com/software/tse808"},
-      {"name": "ChowDSP BYOD",       "covers": "modular distortion bench — fuzz, dist, OD pedals when NAM not curated",
-       "url": "https://chowdsp.com/products.html"},
-      {"name": "Bertom FreeTremolo", "covers": "all tremolos (Tremolo, AmpTrem, MultiTrem, AmpVibe, MultiVibe)",
-       "url": "https://www.bertomaudio.com/freetremolo.html"},
-      {"name": "Airwindows",         "covers": "small free FX bench: phasers, ring mod, bit crusher, octaver tools",
-       "url": "https://www.airwindows.com/"}
+      {
+        "name": "Kilohearts Essentials",
+        "covers": "Chorus, Flanger, Phaser, Delay, Reverb, Filter/Wah, Compressor, Limiter, Gate, EQ, Distortion/Drive, Bitcrusher, Pitch Shifter (octavers!), Ring Mod — every category except Tremolo",
+        "url": "https://kilohearts.com/products/essentials",
+        "install_notes": "Run the installer once. Each module ships as an individual VST3 (kHs Chorus.vst3, kHs Delay.vst3, etc.) in /Library/Audio/Plug-Ins/VST3 on macOS. After install, run Settings → Scan for plugins."
+      },
+      {
+        "name": "Bertom FreeTremolo",
+        "covers": "Tremolo, AmpTrem, MultiTrem, AmpVibe, MultiVibe (KHS has no dedicated tremolo)",
+        "url": "https://www.bertomaudio.com/freetremolo.html"
+      }
     ]
   },
 
   "Pedal_Chorus": [
-    {"name": "TAL-Chorus-LX",       "manufacturer": "TAL Software",   "format": "VST3", "url": "https://tal-software.com/products/tal-chorus-lx",  "free": true,  "notes": "Juno-60 chorus emulation"}
+    {"name": "kHs Chorus",          "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Rate, Depth, Width, Dry/Wet"}
   ],
   "Pedal_Chorus20": [
-    {"name": "TAL-Chorus-LX",       "manufacturer": "TAL Software",   "format": "VST3", "url": "https://tal-software.com/products/tal-chorus-lx",  "free": true,  "notes": "Best free chorus emulation"}
+    {"name": "kHs Chorus",          "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Same as Pedal_Chorus"}
   ],
   "Pedal_StereoChorus": [
-    {"name": "TAL-Chorus-LX",       "manufacturer": "TAL Software",   "format": "VST3", "url": "https://tal-software.com/products/tal-chorus-lx",  "free": true,  "notes": "Stereo output by default"}
+    {"name": "kHs Chorus",          "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Stereo width param"}
   ],
   "Pedal_DigitalChorus": [
-    {"name": "TAL-Chorus-LX",       "manufacturer": "TAL Software",   "format": "VST3", "url": "https://tal-software.com/products/tal-chorus-lx",  "free": true,  "notes": "Modulation depth control gets you the digital-chorus brightness"}
+    {"name": "kHs Chorus",          "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Pair with kHs Filter for the HiFilter/LoFilter controls"}
   ],
   "Pedal_VintageChorus": [
-    {"name": "TAL-Chorus-LX",       "manufacturer": "TAL Software",   "format": "VST3", "url": "https://tal-software.com/products/tal-chorus-lx",  "free": true,  "notes": "Low-rate setting nails vintage stereo chorus"}
+    {"name": "kHs Chorus",          "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Lower rate + moderate depth"}
   ],
   "Bass_Pedal_BassChorus": [
-    {"name": "TAL-Chorus-LX",       "manufacturer": "TAL Software",   "format": "VST3", "url": "https://tal-software.com/products/tal-chorus-lx",  "free": true,  "notes": "Pull rate down + depth halfway for bass-friendly chorus"}
+    {"name": "kHs Chorus",          "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Lower rate for bass"}
   ],
 
   "Pedal_Flanger": [
-    {"name": "TAL-Flanger",         "manufacturer": "TAL Software",   "format": "VST3", "url": "https://tal-software.com/products/tal-flanger",   "free": true,  "notes": "Through-zero flanger, classic sound"}
+    {"name": "kHs Flanger",         "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Rate, Depth, Feedback, Dry/Wet"}
   ],
   "Pedal_80sFlanger": [
-    {"name": "TAL-Flanger",         "manufacturer": "TAL Software",   "format": "VST3", "url": "https://tal-software.com/products/tal-flanger",   "free": true,  "notes": "Crank feedback for 80s metallic sweep"}
+    {"name": "kHs Flanger",         "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Higher feedback for jet sweep"}
   ],
   "Pedal_ClassicFlanger": [
-    {"name": "TAL-Flanger",         "manufacturer": "TAL Software",   "format": "VST3", "url": "https://tal-software.com/products/tal-flanger",   "free": true,  "notes": "Default settings are already 'classic'"}
+    {"name": "kHs Flanger",         "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Default settings"}
   ],
   "Pedal_ModernFlanger": [
-    {"name": "TAL-Flanger",         "manufacturer": "TAL Software",   "format": "VST3", "url": "https://tal-software.com/products/tal-flanger",   "free": true,  "notes": "High feedback + stereo width = modern wide sweep"}
+    {"name": "kHs Flanger",         "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Stereo width + high feedback"}
   ],
   "Pedal_VintageFlanger": [
-    {"name": "TAL-Flanger",         "manufacturer": "TAL Software",   "format": "VST3", "url": "https://tal-software.com/products/tal-flanger",   "free": true,  "notes": "Lower rate + moderate feedback for vintage MXR-style"}
+    {"name": "kHs Flanger",         "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "MXR-style — lower rate"}
   ],
   "Bass_Pedal_BassFlanger": [
-    {"name": "TAL-Flanger",         "manufacturer": "TAL Software",   "format": "VST3", "url": "https://tal-software.com/products/tal-flanger",   "free": true,  "notes": "Slow rate + low feedback for bass-friendly flange"}
+    {"name": "kHs Flanger",         "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Slow rate, low feedback"}
   ],
 
   "Pedal_Phaser": [
-    {"name": "Airwindows Pafnuty",  "manufacturer": "Airwindows",     "format": "VST3", "url": "https://www.airwindows.com/",                    "free": true,  "notes": "Airwindows suite includes several phasers"}
+    {"name": "kHs Phaser",          "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Rate, Depth, Feedback, Stages, Dry/Wet"}
   ],
   "Pedal_ShaverPhaser": [
-    {"name": "Airwindows Pafnuty",  "manufacturer": "Airwindows",     "format": "VST3", "url": "https://www.airwindows.com/",                    "free": true,  "notes": "Two-stage phaser sound from the Airwindows bench"}
+    {"name": "kHs Phaser",          "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Two-stage phaser sound"}
   ],
   "Pedal_PlanePhase": [
-    {"name": "Airwindows Pafnuty",  "manufacturer": "Airwindows",     "format": "VST3", "url": "https://www.airwindows.com/",                    "free": true,  "notes": "Airwindows phasers cover the jet/plane sweep range"}
+    {"name": "kHs Phaser",          "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Higher Stages + Feedback for jet"}
   ],
   "Bass_Pedal_BassPhase": [
-    {"name": "Airwindows Pafnuty",  "manufacturer": "Airwindows",     "format": "VST3", "url": "https://www.airwindows.com/",                    "free": true,  "notes": "Slow rate for bass-appropriate phase"}
+    {"name": "kHs Phaser",          "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Slow rate"}
   ],
 
   "Pedal_Tremolo": [
-    {"name": "Bertom FreeTremolo",  "manufacturer": "Bertom Audio",   "format": "VST3", "url": "https://www.bertomaudio.com/freetremolo.html",   "free": true,  "notes": "Three tremolo modes (sine/square/random)"}
+    {"name": "Bertom FreeTremolo",  "manufacturer": "Bertom Audio","format": "VST3", "url": "https://www.bertomaudio.com/freetremolo.html", "free": true, "notes": "KHS doesn't ship a tremolo — Bertom fills that gap"}
   ],
   "Pedal_AmpTrem": [
-    {"name": "Bertom FreeTremolo",  "manufacturer": "Bertom Audio",   "format": "VST3", "url": "https://www.bertomaudio.com/freetremolo.html",   "free": true,  "notes": "Sine mode = classic Fender amp tremolo"}
+    {"name": "Bertom FreeTremolo",  "manufacturer": "Bertom Audio","format": "VST3", "url": "https://www.bertomaudio.com/freetremolo.html", "free": true, "notes": "Sine mode = vintage Fender amp tremolo"}
   ],
   "Pedal_MultiTrem": [
-    {"name": "Bertom FreeTremolo",  "manufacturer": "Bertom Audio",   "format": "VST3", "url": "https://www.bertomaudio.com/freetremolo.html",   "free": true,  "notes": "Switch shapes to get different tremolo character"}
+    {"name": "Bertom FreeTremolo",  "manufacturer": "Bertom Audio","format": "VST3", "url": "https://www.bertomaudio.com/freetremolo.html", "free": true, "notes": "Switch shapes for variety"}
   ],
   "Pedal_AmpVibe": [
-    {"name": "Bertom FreeTremolo",  "manufacturer": "Bertom Audio",   "format": "VST3", "url": "https://www.bertomaudio.com/freetremolo.html",   "free": true,  "notes": "Vibrato approximation via fast rate + square mix"}
+    {"name": "Bertom FreeTremolo",  "manufacturer": "Bertom Audio","format": "VST3", "url": "https://www.bertomaudio.com/freetremolo.html", "free": true, "notes": "Fast rate for vibrato approximation"}
   ],
   "Pedal_MultiVibe": [
-    {"name": "Bertom FreeTremolo",  "manufacturer": "Bertom Audio",   "format": "VST3", "url": "https://www.bertomaudio.com/freetremolo.html",   "free": true,  "notes": "Use sine + medium rate for univibe-style"}
-  ],
-  "Pedal_BakedRotatoe": [
-    {"name": "Boscomac IRotary",    "manufacturer": "Boscomac",       "format": "VST3", "url": "http://boscodev.free.fr/wp/",                    "free": true,  "notes": "Free Leslie-style rotary"}
+    {"name": "Bertom FreeTremolo",  "manufacturer": "Bertom Audio","format": "VST3", "url": "https://www.bertomaudio.com/freetremolo.html", "free": true, "notes": "Univibe-ish with sine + medium rate"}
   ],
   "Pedal_MarshallSupervibe": [
-    {"name": "Bertom FreeTremolo",  "manufacturer": "Bertom Audio",   "format": "VST3", "url": "https://www.bertomaudio.com/freetremolo.html",   "free": true,  "notes": "Marshall Supervibe = Leslie-ish vibe → use slow tremolo"}
+    {"name": "Bertom FreeTremolo",  "manufacturer": "Bertom Audio","format": "VST3", "url": "https://www.bertomaudio.com/freetremolo.html", "free": true, "notes": "Slow rate for Leslie-ish vibe"}
+  ],
+  "Pedal_BakedRotatoe": [
+    {"name": "kHs Chorus",          "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Rotary speaker → wide stereo chorus approximation"}
   ],
   "Pedal_OmniMod": [
-    {"name": "TAL-Chorus-LX",       "manufacturer": "TAL Software",   "format": "VST3", "url": "https://tal-software.com/products/tal-chorus-lx", "free": true, "notes": "Omni Mod = generic chorus/flange; TAL chorus covers it"}
+    {"name": "kHs Chorus",          "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Generic modulation; chorus covers most use cases"}
   ],
 
   "Pedal_AnalogueDelay": [
-    {"name": "TAL-Dub-III",         "manufacturer": "TAL Software",   "format": "VST3", "url": "https://tal-software.com/products/tal-dub",      "free": true,  "notes": "Analog-style delay with feedback saturation"},
-    {"name": "Valhalla FreqEcho",   "manufacturer": "Valhalla DSP",   "format": "VST3", "url": "https://valhalladsp.com/shop/delay/valhalla-freq-echo/", "free": true, "notes": "Free musical analog-vibe delay"}
+    {"name": "kHs Delay",           "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Time, Feedback, Lowcut, Highcut, Dry/Wet"}
   ],
   "Pedal_ValveEcho": [
-    {"name": "TAL-Dub-III",         "manufacturer": "TAL Software",   "format": "VST3", "url": "https://tal-software.com/products/tal-dub",      "free": true,  "notes": "Crank feedback + add saturation for tube-style decay"}
+    {"name": "kHs Delay",           "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Pair with kHs Distortion for tube-style decay"}
   ],
   "Pedal_NPNDelay": [
-    {"name": "TAL-Dub-III",         "manufacturer": "TAL Software",   "format": "VST3", "url": "https://tal-software.com/products/tal-dub",      "free": true,  "notes": "Bucket-brigade chip emulation lives in this family"}
+    {"name": "kHs Delay",           "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Lowcut/Highcut emulates BBD chip filtering"}
   ],
   "Pedal_NoFiEcho": [
-    {"name": "TAL-Dub-III",         "manufacturer": "TAL Software",   "format": "VST3", "url": "https://tal-software.com/products/tal-dub",      "free": true,  "notes": "Stereo echo with feedback control"}
+    {"name": "kHs Delay",           "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Stereo delay"}
   ],
   "Pedal_OilCanEcho": [
-    {"name": "TAL-Dub-III",         "manufacturer": "TAL Software",   "format": "VST3", "url": "https://tal-software.com/products/tal-dub",      "free": true,  "notes": "Short delay + heavy feedback for oil-can character"}
+    {"name": "kHs Delay",           "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Short time + high feedback for oil-can wobble"}
   ],
   "Pedal_CosmicEcho": [
-    {"name": "Valhalla Supermassive","manufacturer": "Valhalla DSP",  "format": "VST3", "url": "https://valhalladsp.com/shop/reverb/valhalla-supermassive/", "free": true, "notes": "Reverb+delay hybrid, exactly the use case"}
+    {"name": "kHs Delay",           "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Long times, high feedback for ambient"}
   ],
   "Pedal_ModDelay": [
-    {"name": "Valhalla Supermassive","manufacturer": "Valhalla DSP",  "format": "VST3", "url": "https://valhalladsp.com/shop/reverb/valhalla-supermassive/", "free": true, "notes": "Built-in modulation on the delays"}
+    {"name": "kHs Delay",           "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Use chorus after delay for modulation. KHS Delay alone doesn't modulate"}
   ],
   "Bass_Pedal_BassFilterDelay": [
-    {"name": "Valhalla Supermassive","manufacturer": "Valhalla DSP",  "format": "VST3", "url": "https://valhalladsp.com/shop/reverb/valhalla-supermassive/", "free": true, "notes": "Modulated delay with built-in filter"}
+    {"name": "kHs Delay",           "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Set Lowcut+Highcut narrow for filter-delay"}
   ],
 
   "Pedal_SpringReverb": [
-    {"name": "OrilRiver",            "manufacturer": "denis tihanov", "format": "VST3", "url": "https://www.kvraudio.com/product/orilriver",     "free": true,  "notes": "Has dedicated spring mode"},
-    {"name": "TAL-Reverb-4",        "manufacturer": "TAL Software",   "format": "VST3", "url": "https://tal-software.com/products/tal-reverb-4", "free": true,  "notes": "Clean room/hall — pull decay short for spring vibe"}
+    {"name": "kHs Reverber",        "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Size, Damping, Predelay, Dry/Wet — small size + high damping = spring vibe"}
   ],
   "Pedal_DigitalVerb": [
-    {"name": "OrilRiver",            "manufacturer": "denis tihanov", "format": "VST3", "url": "https://www.kvraudio.com/product/orilriver",     "free": true,  "notes": "Clean digital algo reverb"},
-    {"name": "Valhalla Supermassive","manufacturer": "Valhalla DSP",  "format": "VST3", "url": "https://valhalladsp.com/shop/reverb/valhalla-supermassive/", "free": true, "notes": "Lush halls/plates/clouds"}
+    {"name": "kHs Reverber",        "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Larger room, less damping"}
   ],
   "Pedal_PlateVerb": [
-    {"name": "TAL-Reverb-4",        "manufacturer": "TAL Software",   "format": "VST3", "url": "https://tal-software.com/products/tal-reverb-4", "free": true,  "notes": "Plate mode built in"}
+    {"name": "kHs Reverber",        "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Medium size, low damping = plate"}
   ],
   "Pedal_TubeSpring": [
-    {"name": "OrilRiver",            "manufacturer": "denis tihanov", "format": "VST3", "url": "https://www.kvraudio.com/product/orilriver",     "free": true,  "notes": "Spring mode + saturation on input"}
+    {"name": "kHs Reverber",        "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Small size + add kHs Distortion for the tube saturation"}
   ],
 
   "Pedal_Compression": [
-    {"name": "Klanghelm DC1A",      "manufacturer": "Klanghelm",      "format": "VST3", "url": "https://klanghelm.com/contents/products/dc1a.php", "free": true, "notes": "Easy two-knob compressor — recommended"},
-    {"name": "Klanghelm MJUC jr",   "manufacturer": "Klanghelm",      "format": "VST3", "url": "https://klanghelm.com/contents/products/mjucjr.php", "free": true, "notes": "Vari-mu, smoother"},
-    {"name": "TDR Kotelnikov",      "manufacturer": "Tokyo Dawn",     "format": "VST3", "url": "https://www.tokyodawn.net/tdr-kotelnikov/",      "free": true,  "notes": "Mastering-grade — overkill for a pedal but free"}
+    {"name": "kHs Compressor",      "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Threshold, Ratio, Attack, Release, Knee, Makeup, Mix"}
   ],
   "Pedal_Compressor": [
-    {"name": "Klanghelm DC1A",      "manufacturer": "Klanghelm",      "format": "VST3", "url": "https://klanghelm.com/contents/products/dc1a.php", "free": true, "notes": "Two-knob compressor, perfect drop-in"}
+    {"name": "kHs Compressor",      "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Full-featured single-band comp"}
   ],
   "Bass_Pedal_MBComp": [
-    {"name": "TDR Nova",             "manufacturer": "Tokyo Dawn",    "format": "VST3", "url": "https://www.tokyodawn.net/tdr-nova/",           "free": true,  "notes": "Dynamic EQ = multi-band compression. Set 4 bands"},
-    {"name": "Klanghelm DC1A",      "manufacturer": "Klanghelm",      "format": "VST3", "url": "https://klanghelm.com/contents/products/dc1a.php", "free": true, "notes": "If single-band comp is enough"}
+    {"name": "kHs Compressor",      "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Limit: KHS only ships single-band; full multiband would need paid Multipass"}
   ],
 
   "Pedal_EQ5": [
-    {"name": "TDR Nova",             "manufacturer": "Tokyo Dawn",    "format": "VST3", "url": "https://www.tokyodawn.net/tdr-nova/",           "free": true,  "notes": "Parallel dynamic EQ, 4 bands"},
-    {"name": "Voxengo Marvel GEQ",  "manufacturer": "Voxengo",       "format": "VST3", "url": "https://www.voxengo.com/product/marvelgeq/",    "free": true,  "notes": "16-band graphic EQ if you want sliders"}
+    {"name": "kHs 3-Band EQ",       "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Lossy: KHS Essentials only ships a 3-band EQ. RS EQ5 has 5 bands — 3 are mapped, others ignored"}
   ],
   "Pedal_EQ8": [
-    {"name": "TDR Nova",             "manufacturer": "Tokyo Dawn",    "format": "VST3", "url": "https://www.tokyodawn.net/tdr-nova/",           "free": true,  "notes": "Has 4 bands but each is dynamic — covers 8-band needs"}
+    {"name": "kHs 3-Band EQ",       "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Lossy. For 8-band fidelity install Voxengo Marvel GEQ as a supplement"}
   ],
   "Pedal_AmpEQ": [
-    {"name": "TDR Nova",             "manufacturer": "Tokyo Dawn",    "format": "VST3", "url": "https://www.tokyodawn.net/tdr-nova/",           "free": true,  "notes": "Bass/mid/treble curves match a typical amp EQ"}
+    {"name": "kHs 3-Band EQ",       "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Bass/Mid/Treble matches amp EQ perfectly"}
   ],
   "Bass_Pedal_BassEQ8": [
-    {"name": "TDR Nova",             "manufacturer": "Tokyo Dawn",    "format": "VST3", "url": "https://www.tokyodawn.net/tdr-nova/",           "free": true,  "notes": "Set low-shelf around 80 Hz for bass-EQ sweep"}
+    {"name": "kHs 3-Band EQ",       "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Lossy 8→3 mapping"}
   ],
 
   "Pedal_NoiseGate": [
-    {"name": "TDR Nova",             "manufacturer": "Tokyo Dawn",    "format": "VST3", "url": "https://www.tokyodawn.net/tdr-nova/",           "free": true,  "notes": "Has built-in expander/gate per band"},
-    {"name": "Klanghelm DC1A",      "manufacturer": "Klanghelm",      "format": "VST3", "url": "https://klanghelm.com/contents/products/dc1a.php", "free": true, "notes": "Doesn't gate but has gentle downward expansion in 'tape' mode"}
+    {"name": "kHs Gate",            "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Threshold, Attack, Release, Hold, Range — dedicated gate module"}
   ],
   "Pedal_Limiter": [
-    {"name": "TDR Kotelnikov",      "manufacturer": "Tokyo Dawn",     "format": "VST3", "url": "https://www.tokyodawn.net/tdr-kotelnikov/",     "free": true,  "notes": "Fast-attack mode behaves as a limiter"}
+    {"name": "kHs Limiter",         "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Threshold, Release, Output"}
   ],
 
   "Pedal_USWah": [
-    {"name": "TAL-Filter-2",        "manufacturer": "TAL Software",   "format": "VST3", "url": "https://tal-software.com/products/tal-filter-2", "free": true,  "notes": "Resonant filter + envelope follower = auto-wah"}
+    {"name": "kHs Filter",          "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Cutoff + Resonance; envelope follower in kHs Resonator if needed"}
   ],
   "Pedal_UKWah": [
-    {"name": "TAL-Filter-2",        "manufacturer": "TAL Software",   "format": "VST3", "url": "https://tal-software.com/products/tal-filter-2", "free": true,  "notes": "Tweak cutoff for UK-voiced wah"}
+    {"name": "kHs Filter",          "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Tweak cutoff for UK voicing"}
   ],
   "Bass_Pedal_BassWah": [
-    {"name": "TAL-Filter-2",        "manufacturer": "TAL Software",   "format": "VST3", "url": "https://tal-software.com/products/tal-filter-2", "free": true,  "notes": "Lower cutoff range for bass-friendly wah"}
+    {"name": "kHs Filter",          "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Lower cutoff range"}
   ],
   "Pedal_ModernWah": [
-    {"name": "TAL-Filter-2",        "manufacturer": "TAL Software",   "format": "VST3", "url": "https://tal-software.com/products/tal-filter-2", "free": true,  "notes": "Modern wah is just a resonant LPF on an envelope"}
+    {"name": "kHs Filter",          "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Resonant LPF behaves as a wah"}
   ],
 
   "Pedal_LoFiFilter": [
-    {"name": "TAL-Filter-2",        "manufacturer": "TAL Software",   "format": "VST3", "url": "https://tal-software.com/products/tal-filter-2", "free": true,  "notes": "Lo-fi modes built in"}
+    {"name": "kHs Filter",          "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Pair with kHs Bitcrush for proper lo-fi"}
   ],
   "Pedal_BobFilter": [
-    {"name": "TAL-Filter-2",        "manufacturer": "TAL Software",   "format": "VST3", "url": "https://tal-software.com/products/tal-filter-2", "free": true,  "notes": "Resonant filter sweep ('Bob' = bandpass)"}
+    {"name": "kHs Filter",          "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Cutoff + Resonance sweep"}
   ],
   "Pedal_AutoFilter": [
-    {"name": "TAL-Filter-2",        "manufacturer": "TAL Software",   "format": "VST3", "url": "https://tal-software.com/products/tal-filter-2", "free": true,  "notes": "Envelope-follower mode = auto-filter"}
+    {"name": "kHs Filter",          "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Envelope-driven filter"}
   ],
   "Bass_Pedal_BassAutoFilter": [
-    {"name": "TAL-Filter-2",        "manufacturer": "TAL Software",   "format": "VST3", "url": "https://tal-software.com/products/tal-filter-2", "free": true,  "notes": "Bass-octave envelope filter — set lower cutoff range"}
+    {"name": "kHs Filter",          "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Bass-range cutoff"}
   ],
-
   "Pedal_AcousticEmulator": [
-    {"name": "TAL-Filter-2",        "manufacturer": "TAL Software",   "format": "VST3", "url": "https://tal-software.com/products/tal-filter-2", "free": true,  "notes": "Resonant filter mimics acoustic body resonance"}
-  ],
-  "Pedal_BitCruncher": [
-    {"name": "Airwindows Crunchy",  "manufacturer": "Airwindows",     "format": "VST3", "url": "https://www.airwindows.com/",                   "free": true,  "notes": "Bit reduction + decimation in the Airwindows bench"}
-  ],
-  "Pedal_RingMod": [
-    {"name": "Airwindows RingMod",  "manufacturer": "Airwindows",     "format": "VST3", "url": "https://www.airwindows.com/",                   "free": true,  "notes": "Free ring modulator in the suite"}
-  ],
-
-  "Pedal_OctaveUp": [
-    {"name": "Airwindows Octave",   "manufacturer": "Airwindows",     "format": "VST3", "url": "https://www.airwindows.com/",                   "free": true,  "notes": "Octave-up shaper in the Airwindows suite"}
-  ],
-  "Pedal_Octavius": [
-    {"name": "Airwindows Octave",   "manufacturer": "Airwindows",     "format": "VST3", "url": "https://www.airwindows.com/",                   "free": true,  "notes": "Octave family"}
-  ],
-  "Pedal_MultiPitch": [
-    {"name": "Airwindows Octave",   "manufacturer": "Airwindows",     "format": "VST3", "url": "https://www.airwindows.com/",                   "free": true,  "notes": "Limited but free; consider a paid pitch shifter for full chord harmony"}
-  ],
-  "Bass_Pedal_BassSubOctave": [
-    {"name": "Airwindows Octave",   "manufacturer": "Airwindows",     "format": "VST3", "url": "https://www.airwindows.com/",                   "free": true,  "notes": "Octave-down on bass works well in monophonic playing"}
+    {"name": "kHs Filter",          "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Resonant LPF mimics acoustic body"}
   ],
 
   "Pedal_GermaniumDrive": [
-    {"name": "TSE 808",             "manufacturer": "TSE Audio",      "format": "VST3", "url": "https://tseaudio.com/software/tse808",          "free": true,  "notes": "Tube Screamer = germanium-style overdrive. Free version is VST3"}
+    {"name": "kHs Distortion",      "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Drive + Mix + Type — switch to 'Soft' or 'Diode' for germanium character"}
   ],
   "Pedal_CustomDrive": [
-    {"name": "TSE 808",             "manufacturer": "TSE Audio",      "format": "VST3", "url": "https://tseaudio.com/software/tse808",          "free": true,  "notes": "Tweak drive + tone for custom voice"}
+    {"name": "kHs Distortion",      "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Tweak Drive + Type"}
   ],
   "Pedal_LineDrive": [
-    {"name": "TSE 808",             "manufacturer": "TSE Audio",      "format": "VST3", "url": "https://tseaudio.com/software/tse808",          "free": true,  "notes": "Low drive + max level = clean line boost"}
+    {"name": "kHs Distortion",      "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Low drive + clean type for clean boost"}
   ],
   "Pedal_SuperDrive": [
-    {"name": "ChowDSP BYOD",        "manufacturer": "Chow DSP",       "format": "VST3", "url": "https://chowdsp.com/products.html",             "free": true,  "notes": "Modular distortion — combine OD + tube stages for super drive"}
+    {"name": "kHs Distortion",      "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Harder type, high drive"}
   ],
   "Pedal_RangeBooster": [
-    {"name": "TSE 808",             "manufacturer": "TSE Audio",      "format": "VST3", "url": "https://tseaudio.com/software/tse808",          "free": true,  "notes": "Drive at 0 + level high = treble booster (range-style)"}
+    {"name": "kHs Distortion",      "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Drive at minimum + add HPF in kHs 3-Band EQ for treble boost"}
   ],
 
   "Pedal_Distortion": [
-    {"name": "ChowDSP BYOD",        "manufacturer": "Chow DSP",       "format": "VST3", "url": "https://chowdsp.com/products.html",             "free": true,  "notes": "Modular distortion bench"}
+    {"name": "kHs Distortion",      "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Hard or Tube type"}
   ],
   "Pedal_VintageDistortion": [
-    {"name": "ChowDSP BYOD",        "manufacturer": "Chow DSP",       "format": "VST3", "url": "https://chowdsp.com/products.html",             "free": true,  "notes": "Try Tube + ProCo Rat modules"}
+    {"name": "kHs Distortion",      "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Tube or Diode type for vintage character"}
   ],
   "Pedal_MetalDistortion": [
-    {"name": "ChowDSP BYOD",        "manufacturer": "Chow DSP",       "format": "VST3", "url": "https://chowdsp.com/products.html",             "free": true,  "notes": "Cascade high-gain stages with EQ"}
+    {"name": "kHs Distortion",      "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Hard type + max drive; pair with kHs 3-Band EQ for metal scoop"}
   ],
   "Bass_Pedal_BassDistortion": [
-    {"name": "ChowDSP BYOD",        "manufacturer": "Chow DSP",       "format": "VST3", "url": "https://chowdsp.com/products.html",             "free": true,  "notes": "Add a low-pass after the distortion to keep bass intact"}
+    {"name": "kHs Distortion",      "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Use Mix knob to blend dry bass back in"}
   ],
   "Bass_Pedal_BassOverdrive": [
-    {"name": "TSE 808",             "manufacturer": "TSE Audio",      "format": "VST3", "url": "https://tseaudio.com/software/tse808",          "free": true,  "notes": "TS-style OD works great on bass with tone backed off"}
+    {"name": "kHs Distortion",      "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Soft type, moderate drive"}
   ],
   "Pedal_FuzzWasHe": [
-    {"name": "ChowDSP BYOD",        "manufacturer": "Chow DSP",       "format": "VST3", "url": "https://chowdsp.com/products.html",             "free": true,  "notes": "Use the Fuzz Face module"}
+    {"name": "kHs Distortion",      "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Fuzz Face style — Hard type, high drive"}
   ],
   "Pedal_CaptFuzzle": [
-    {"name": "ChowDSP BYOD",        "manufacturer": "Chow DSP",       "format": "VST3", "url": "https://chowdsp.com/products.html",             "free": true,  "notes": "Modular fuzz options"}
+    {"name": "kHs Distortion",      "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Hard / Fuzz character"}
   ],
   "Pedal_BuzzOne": [
-    {"name": "ChowDSP BYOD",        "manufacturer": "Chow DSP",       "format": "VST3", "url": "https://chowdsp.com/products.html",             "free": true,  "notes": "Buzz-style fuzz"}
+    {"name": "kHs Distortion",      "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Buzz-style fuzz"}
   ],
   "Pedal_BuzzToo": [
-    {"name": "ChowDSP BYOD",        "manufacturer": "Chow DSP",       "format": "VST3", "url": "https://chowdsp.com/products.html",             "free": true,  "notes": "Variant of BuzzOne"}
+    {"name": "kHs Distortion",      "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Variant of BuzzOne"}
   ],
   "Bass_Pedal_BassFuzz": [
-    {"name": "ChowDSP BYOD",        "manufacturer": "Chow DSP",       "format": "VST3", "url": "https://chowdsp.com/products.html",             "free": true,  "notes": "Fuzz Face module with low-cut blend for bass"}
+    {"name": "kHs Distortion",      "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Fuzz Face module with Mix to blend dry"}
+  ],
+
+  "Pedal_OctaveUp": [
+    {"name": "kHs Pitch Shifter",   "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Pitch +12 (one octave up), Mix"}
+  ],
+  "Pedal_Octavius": [
+    {"name": "kHs Pitch Shifter",   "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Generic octaver"}
+  ],
+  "Pedal_MultiPitch": [
+    {"name": "kHs Pitch Shifter",   "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Tweak Pitch ± semitones"}
+  ],
+  "Bass_Pedal_BassSubOctave": [
+    {"name": "kHs Pitch Shifter",   "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Pitch -12 (one octave down)"}
+  ],
+
+  "Pedal_BitCruncher": [
+    {"name": "kHs Bitcrush",        "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Bits + Sample Rate + Mix"}
+  ],
+  "Pedal_RingMod": [
+    {"name": "kHs Ring Mod",        "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Frequency + Mix"}
   ],
 
   "Pedal_Swole": [
-    {"name": "TAL-Filter-2",        "manufacturer": "TAL Software",   "format": "VST3", "url": "https://tal-software.com/products/tal-filter-2", "free": true,  "notes": "Swell envelope filter"}
+    {"name": "kHs Filter",          "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Swell envelope filter"}
   ],
   "Pedal_ShredZone": [
-    {"name": "ChowDSP BYOD",        "manufacturer": "Chow DSP",       "format": "VST3", "url": "https://chowdsp.com/products.html",             "free": true,  "notes": "High-gain distortion for shred tone"}
+    {"name": "kHs Distortion",      "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "High-gain distortion for shred"}
   ],
   "Pedal_Enbiggenator": [
-    {"name": "Klanghelm IVGI",      "manufacturer": "Klanghelm",      "format": "VST3", "url": "https://klanghelm.com/contents/products/IVGI.php", "free": true, "notes": "Saturation = 'embiggens' the signal"}
+    {"name": "kHs Distortion",      "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Low drive + soft type for 'embiggen' saturation"}
   ],
   "Bass_Pedal_BassEnbig": [
-    {"name": "Klanghelm IVGI",      "manufacturer": "Klanghelm",      "format": "VST3", "url": "https://klanghelm.com/contents/products/IVGI.php", "free": true, "notes": "Bass saturation"}
+    {"name": "kHs Distortion",      "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Bass saturation"}
   ],
   "Pedal_SendInTheClones": [
-    {"name": "TAL-Chorus-LX",       "manufacturer": "TAL Software",   "format": "VST3", "url": "https://tal-software.com/products/tal-chorus-lx", "free": true, "notes": "Doubling/clones effect = thick stereo chorus"}
+    {"name": "kHs Chorus",          "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Doubling/clones = thick stereo chorus"}
   ],
   "Bass_Pedal_EdenWTDI": [
-    {"name": "Klanghelm IVGI",      "manufacturer": "Klanghelm",      "format": "VST3", "url": "https://klanghelm.com/contents/products/IVGI.php", "free": true, "notes": "DI saturation"}
+    {"name": "kHs Distortion",      "manufacturer": "Kilohearts",  "format": "VST3", "url": "https://kilohearts.com/products/essentials", "free": true, "notes": "Low drive + clean type for DI saturation"}
   ]
 }
