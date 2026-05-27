@@ -117,18 +117,42 @@ function rbChainGainTargetFor(chainSpec) {
     if (!Array.isArray(chainSpec)) return 1.0;
     let hasActiveAmp = false;
     let hasActiveCab = false;
+    let activeNamCount = 0;     // total NAM stages (amp + pedals + racks)
     for (const stage of chainSpec) {
         if (!stage || stage.bypassed) continue;
-        // type 1 = NAM; slot 'amp' = it's an amp (vs pedal/rack)
-        if (stage.type === 1 && stage.slot === 'amp') hasActiveAmp = true;
+        if (stage.type === 1) {
+            activeNamCount++;
+            if (stage.slot === 'amp') hasActiveAmp = true;
+        }
         // type 2 = IR; we treat ANY active IR as a cab even if slot is
         // tagged differently (rs_ir master_pre, etc.) because the
         // attenuation profile is similar.
         if (stage.type === 2) hasActiveCab = true;
     }
-    if (hasActiveAmp && hasActiveCab) return 2.0;   // +6 dB
-    if (hasActiveAmp && !hasActiveCab) return 0.5;  // -6 dB
-    return 1.0;
+    // Scale the makeup gain by chain length. Background: every NAM
+    // capture was authored at unity in/out, but in practice each one
+    // introduces ~2–3 dB of cumulative loss (pedal NAMs especially —
+    // they were often captured at -3 dB headroom). The cab IR adds
+    // another ~6 dB attenuation via its `gain: 0.5` state.
+    //
+    // nam_tone's 2-stage path (1 NAM + IR) gets +6 dB (×2.0) and
+    // sounds about right. Our full-chain path with 3–5 NAMs needs
+    // proportionally more makeup or it lands noticeably quieter than
+    // a song loaded via the bundle's 2-stage flow.
+    //
+    // Formula (in dB):
+    //   base = +6 dB if a cab IR is active, -6 dB if amp-only.
+    //   + 2 dB per additional NAM beyond the first.
+    //   capped at +18 dB total so a buggy 10-stage chain can't blow up.
+    if (!hasActiveAmp) return 1.0;
+    let dB;
+    if (hasActiveCab) {
+        dB = 6 + 2 * Math.max(0, activeNamCount - 1);
+    } else {
+        dB = -6 + 2 * Math.max(0, activeNamCount - 1);
+    }
+    dB = Math.max(-12, Math.min(18, dB));
+    return Math.pow(10, dB / 20);
 }
 
 // Mute everything the engine can mute just long enough that the bundle's
