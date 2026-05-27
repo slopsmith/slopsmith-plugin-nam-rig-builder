@@ -113,10 +113,43 @@ def normalize_dir(root, target_l2=TARGET_L2, peak_cap=PEAK_CAP):
     return files, changed, skipped, examples
 
 
+def _default_ir_dir():
+    """Find where the extracted Rocksmith IRs actually live on this OS.
+
+    The extractor (`extract_irs.py`) writes them to the Slopsmith config
+    dir, not next to this script. We try a small set of well-known
+    paths in priority order so `python3 normalize_irs.py` Just Works on
+    every machine without the user having to type the full path.
+    """
+    candidates = [
+        # 1. Slopsmith config dir on macOS.
+        os.path.expanduser(
+            "~/Library/Application Support/slopsmith-desktop/"
+            "slopsmith-config/nam_irs/rocksmith"),
+        # 2. Slopsmith config dir on Linux (XDG default).
+        os.path.expanduser(
+            "~/.config/slopsmith-desktop/slopsmith-config/nam_irs/rocksmith"),
+        # 3. Windows app-data — best effort, only relevant when run
+        #    from WSL or similar.
+        os.path.expanduser(
+            "~/AppData/Roaming/slopsmith-desktop/slopsmith-config/nam_irs/rocksmith"),
+        # 4. Legacy fallback: relative to the script (developer setup
+        #    with the dir copied in).
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "rocksmith"),
+    ]
+    for path in candidates:
+        if os.path.isdir(path):
+            return path
+    return candidates[0]   # surface the most-likely path in the error
+
+
 def main(argv):
-    root = argv[1] if len(argv) > 1 else os.path.join(os.path.dirname(__file__), "rocksmith")
+    root = argv[1] if len(argv) > 1 else _default_ir_dir()
     if not os.path.isdir(root):
         print("not a directory: %s" % root, file=sys.stderr)
+        print("usage: python3 normalize_irs.py [<dir>]", file=sys.stderr)
+        print("If your IRs live elsewhere, pass the path explicitly.",
+              file=sys.stderr)
         return 1
     files, changed, skipped, examples = normalize_dir(root)
     print("normalized %d files, skipped %d (of %d) in %s"
