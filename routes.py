@@ -1709,10 +1709,15 @@ def _list_library_songs() -> tuple[list[Path], int]:
     return songs, cloud_only
 
 
-def _existing_assignment_for_gear(rs_type: str) -> dict | None:
+def _existing_assignment_for_gear(rs_type: str, tone3000_id: int | None = None) -> dict | None:
     """Find a capture already assigned to this Rocksmith gear in ANY song's
     preset, so a manual (or earlier auto) choice propagates library-wide
     instead of the batch re-searching tone3000 from scratch.
+
+    When `tone3000_id` is provided, restricts the search to rows that
+    were downloaded for that exact tone3000_id — this is how amp gain
+    variants stay separated (the "clean" capture for Twin doesn't get
+    reused for a tone that wants the "dist" variant).
 
     Prefers hand-assigned pieces (so a manual choice spreads to the auto/
     untouched songs), then the most recent. Returns a full piece-shaped dict
@@ -1720,17 +1725,31 @@ def _existing_assignment_for_gear(rs_type: str) -> dict | None:
     falls back to a search)."""
     if _config_dir is None:
         return None
-    rows = _get_conn().execute(
-        """
-        SELECT kind, file, tone3000_id, vst_path, vst_format, vst_state
-        FROM preset_pieces
-        WHERE rs_gear_type = ? AND kind IN ('nam', 'ir', 'rs_ir', 'vst')
-              AND ((file IS NOT NULL AND file != '')
-                   OR (vst_path IS NOT NULL AND vst_path != ''))
-        ORDER BY (assigned_mode IN ('manual', 'manual_vst')) DESC, id DESC
-        """,
-        (rs_type,),
-    ).fetchall()
+    if tone3000_id is not None:
+        rows = _get_conn().execute(
+            """
+            SELECT kind, file, tone3000_id, vst_path, vst_format, vst_state
+            FROM preset_pieces
+            WHERE rs_gear_type = ? AND tone3000_id = ?
+                  AND kind IN ('nam', 'ir', 'rs_ir', 'vst')
+                  AND ((file IS NOT NULL AND file != '')
+                       OR (vst_path IS NOT NULL AND vst_path != ''))
+            ORDER BY (assigned_mode IN ('manual', 'manual_vst')) DESC, id DESC
+            """,
+            (rs_type, tone3000_id),
+        ).fetchall()
+    else:
+        rows = _get_conn().execute(
+            """
+            SELECT kind, file, tone3000_id, vst_path, vst_format, vst_state
+            FROM preset_pieces
+            WHERE rs_gear_type = ? AND kind IN ('nam', 'ir', 'rs_ir', 'vst')
+                  AND ((file IS NOT NULL AND file != '')
+                       OR (vst_path IS NOT NULL AND vst_path != ''))
+            ORDER BY (assigned_mode IN ('manual', 'manual_vst')) DESC, id DESC
+            """,
+            (rs_type,),
+        ).fetchall()
     models_dir = _config_dir / "nam_models"
     irs_dir = _config_dir / "nam_irs"
     for kind, file, tone3000_id, vst_path, vst_format, vst_state in rows:
@@ -1875,6 +1894,16 @@ def _batch_worker(mode: str = "all"):
                     query = info.get("tone3000_query") or rs_type
                     platform = _PLATFORM_FOR_CATEGORY.get(category, "nam")
 
+                    # Amp gain variant pick: see _auto_download_for_song
+                    # for the rationale. Same per-gear-and-variant cache
+                    # key so the batch downloads each variant only once
+                    # across the entire library, not once per tone that
+                    # uses it.
+                    amp_variant = None
+                    if category == "amp":
+                        amp_variant = _pick_amp_gain_variant(info, _gear_rs_gain(piece))
+                    cache_key = (rs_type, amp_variant["tone3000_id"]) if amp_variant else rs_type
+
                     # 0. Manual is sacred. If the user hand-assigned this gear
                     #    in THIS tone, keep it exactly as-is — the batch never
                     #    overwrites a per-song manual choice. (Only reachable in
@@ -1932,14 +1961,18 @@ def _batch_worker(mode: str = "all"):
                         })
                         continue
 
-                    candidate = seen_gears.get(rs_type)
+                    candidate = seen_gears.get(cache_key)
                     if candidate is None:
                         candidate = {}
                         # 1. Reuse a capture already assigned to this gear in
                         #    ANY song (manual choice → propagates library-wide).
-                        #    This is what makes "map all songs with the gear I
-                        #    selected" actually work without Export defaults.
-                        reused = _existing_assignment_for_gear(rs_type)
+                        #    For amps with variants we restrict the reuse to
+                        #    the SAME variant — otherwise tone B's "dist"
+                        #    would reuse tone A's "clean" download.
+                        reused = _existing_assignment_for_gear(
+                            rs_type,
+                            tone3000_id=(amp_variant["tone3000_id"] if amp_variant else None),
+                        )
                         if reused:
                             candidate = reused
                             _batch_log(f"reused existing {rs_type} → {reused.get('file')}")
@@ -1947,19 +1980,25 @@ def _batch_worker(mode: str = "all"):
                         elif client.has_api_access and query:
                             try:
                                 from tone3000_client import pick_top_candidate
-                                # Prefer a bundled default capture for this gear
-                                # (default_captures.json) over a fresh search,
-                                # so a new install reproduces the curated tones.
-                                _dflt = _load_default_captures().get(rs_type)
-                                if _dflt and _dflt.get("tone3000_id"):
-                                    top = {"id": _dflt["tone3000_id"], "title": "default"}
+                                if amp_variant:
+                                    # Curated variant wins: use its
+                                    # tone3000_id directly. No search.
+                                    top = {"id": amp_variant["tone3000_id"],
+                                           "title": f"variant:{amp_variant.get('_picked_level')}"}
                                 else:
-                                    resp = client.search_tones(query, gears=gears or None, platform=platform, page_size=5)
-                                    top = pick_top_candidate(
-                                        resp,
-                                        aggressive=settings.get("aggressive", False),
-                                        min_downloads=settings.get("min_downloads", 50),
-                                    )
+                                    # Prefer a bundled default capture for this gear
+                                    # (default_captures.json) over a fresh search,
+                                    # so a new install reproduces the curated tones.
+                                    _dflt = _load_default_captures().get(rs_type)
+                                    if _dflt and _dflt.get("tone3000_id"):
+                                        top = {"id": _dflt["tone3000_id"], "title": "default"}
+                                    else:
+                                        resp = client.search_tones(query, gears=gears or None, platform=platform, page_size=5)
+                                        top = pick_top_candidate(
+                                            resp,
+                                            aggressive=settings.get("aggressive", False),
+                                            min_downloads=settings.get("min_downloads", 50),
+                                        )
                                 if top:
                                     candidate = {"tone3000_id": top.get("id"), "title": top.get("title")}
                                     # v3: auto-download the picked model into
@@ -1984,7 +2023,7 @@ def _batch_worker(mode: str = "all"):
                                             _batch_log(f"no download for {rs_type} (budget? api? no models?)")
                             except Exception:
                                 log.warning("tone3000 search failed for %s", rs_type, exc_info=True)
-                        seen_gears[rs_type] = candidate
+                        seen_gears[cache_key] = candidate
 
                     pieces.append({
                         "slot": piece["slot"],
@@ -2107,14 +2146,39 @@ def _auto_download_for_song(filename: str, path: Path) -> dict:
                 query = info.get("tone3000_query") or rs_type
                 platform = _PLATFORM_FOR_CATEGORY.get(category, "nam")
 
+                # Amp gain variant pick — for amps with curated variants,
+                # this returns the tone3000_id that matches THIS tone's
+                # Gain knob value (a clean Twin tone gets the Twin-clean
+                # variant, a saturated one gets the Twin-dist variant).
+                # `cache_key` keys the per-song dedupe by both gear AND
+                # variant, so the same amp at two different gain settings
+                # downloads as two separate captures.
+                amp_variant = None
+                if category == "amp":
+                    amp_variant = _pick_amp_gain_variant(info, _gear_rs_gain(piece))
+                cache_key = (rs_type, amp_variant["tone3000_id"]) if amp_variant else rs_type
+
                 # Skip pieces that already have a usable assignment in
-                # the DB (re-opening a song shouldn't re-download).
-                existing = conn.execute(
-                    "SELECT kind, file FROM preset_pieces "
-                    "WHERE rs_gear_type = ? AND file IS NOT NULL AND file != '' "
-                    "ORDER BY id DESC LIMIT 1",
-                    (rs_type,),
-                ).fetchone()
+                # the DB (re-opening a song shouldn't re-download). For
+                # amps with curated variants we look for the SPECIFIC
+                # variant we need; without that, picking a "clean" for
+                # tone A would mean tone B's "dist" check also matches
+                # the clean and skips the dist download.
+                if amp_variant:
+                    existing = conn.execute(
+                        "SELECT kind, file FROM preset_pieces "
+                        "WHERE rs_gear_type = ? AND tone3000_id = ? "
+                        "  AND file IS NOT NULL AND file != '' "
+                        "ORDER BY id DESC LIMIT 1",
+                        (rs_type, amp_variant["tone3000_id"]),
+                    ).fetchone()
+                else:
+                    existing = conn.execute(
+                        "SELECT kind, file FROM preset_pieces "
+                        "WHERE rs_gear_type = ? AND file IS NOT NULL AND file != '' "
+                        "ORDER BY id DESC LIMIT 1",
+                        (rs_type,),
+                    ).fetchone()
                 if existing:
                     pieces.append({
                         "slot": piece["slot"],
@@ -2149,26 +2213,36 @@ def _auto_download_for_song(filename: str, path: Path) -> dict:
                     counts["processed"] += 1
                     continue
 
-                # tone3000 search + download. Dedupe per gear so the
-                # same amp appearing in 3 tones only hits the API once.
-                cached = seen_gears.get(rs_type)
+                # tone3000 search + download. Dedupe per gear (+ variant
+                # when applicable) so the same amp appearing in 3 tones
+                # only hits the API once PER variant.
+                cached = seen_gears.get(cache_key)
                 if cached is None:
                     cached = {}
                     try:
                         from tone3000_client import pick_top_candidate
-                        # Prefer a bundled default capture (default_captures.json).
-                        _dflt = _load_default_captures().get(rs_type)
-                        if _dflt and _dflt.get("tone3000_id"):
-                            top = {"id": _dflt["tone3000_id"], "title": "default"}
+                        if amp_variant:
+                            # Curated variant wins: no search, just use
+                            # the tone3000_id the curator chose for this
+                            # gain range. Log the level we picked so the
+                            # user can spot in the batch log which tones
+                            # got which variant.
+                            top = {"id": amp_variant["tone3000_id"],
+                                   "title": f"variant:{amp_variant.get('_picked_level')}"}
                         else:
-                            resp = client.search_tones(
-                                query, gears=gears or None, platform=platform, page_size=5,
-                            )
-                            top = pick_top_candidate(
-                                resp,
-                                aggressive=settings.get("aggressive", False),
-                                min_downloads=settings.get("min_downloads", 50),
-                            )
+                            # Prefer a bundled default capture (default_captures.json).
+                            _dflt = _load_default_captures().get(rs_type)
+                            if _dflt and _dflt.get("tone3000_id"):
+                                top = {"id": _dflt["tone3000_id"], "title": "default"}
+                            else:
+                                resp = client.search_tones(
+                                    query, gears=gears or None, platform=platform, page_size=5,
+                                )
+                                top = pick_top_candidate(
+                                    resp,
+                                    aggressive=settings.get("aggressive", False),
+                                    min_downloads=settings.get("min_downloads", 50),
+                                )
                         if top:
                             cached["tone3000_id"] = top.get("id")
                             downloaded = _download_candidate(
@@ -2186,7 +2260,7 @@ def _auto_download_for_song(filename: str, path: Path) -> dict:
                     except Exception:
                         log.warning("auto_download_song search failed for %s", rs_type, exc_info=True)
                         counts["failed"] += 1
-                    seen_gears[rs_type] = cached
+                    seen_gears[cache_key] = cached
 
                 if cached.get("file"):
                     counts["downloaded"] += 1
