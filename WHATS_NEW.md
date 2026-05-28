@@ -1,3 +1,71 @@
+# Rig Builder 1.2.0 — amp variants, instant tone switching, louder & cleaner (2026-05-27)
+
+A big **amp + library overhaul**: per-gain-stage amp captures, a real library
+manager, near-instant tone switching, and a stack of loudness/audio fixes. This
+release closes the four open issues (#12, #13, #14, #15).
+
+## Headline changes
+
+- **🎚 Amp gain variants (clean / crunch / dist).** Each amp can carry up to
+  three captures keyed to its gain range, so a song's clean and high-gain tones
+  pull the *right* capture instead of one compromise. New Gear-catalog panel to
+  pick per-variant captures (▶ audition per variant), backend CRUD, and a
+  curation workflow — pin captures by `model_id`, import a shared CSV, and the
+  `inspect_tone3000` helper.
+
+- **📚 Library management overhaul.** New **Manage** tab, on-disk storage
+  subdirs, and file classification by *content* (not by which folder a file
+  happens to live in) so captures, IRs and VSTs sort correctly.
+
+- **⚡ Chain preloader — instant tone switching (now the default).** The whole
+  song's chain is pre-loaded and a tone change flips bypass instead of
+  rebuilding the chain. No audible rebuild on every tone change, and dedupes
+  shared NAMs/IRs across a song's tones. *(fixes #12)*
+
+- **🔉 Loudness & saturation fixes.** Per-NAM loudness normalization, chain
+  makeup gain scaled by NAM count (asymmetric cap), and the engine now drives
+  amp NAMs with enough input level to actually saturate. Rocksmith cab IRs are
+  L2-normalized to match tone3000 IRs (they were 10–20 dB quieter). NAMs are no
+  longer almost-inaudible. *(fixes #15)*
+
+- **🔗 Master chain reliably applies in real songs.** The preloader + AMP-toggle
+  auto-apply + persisted master/per-tone bypass mean the master chain engages
+  when you actually play a song — not only in Listen, and without the
+  "load song → toggle AMP → reload" dance. *(fixes #13)*
+
+- **🔇 No more tone-change spike.** The monitor is muted during `loadPreset`
+  with a fade-in on restore, killing the loud feedback/click on tone changes.
+  *(fixes #12)*
+
+- **🎛 Bigger free-VST catalog + RS knob mapping.** Pedal VST suggestions grew
+  23 → 81 (free plugins only), standardized on the free **Kilohearts Essentials**
+  bundle, with 41 seeded Rocksmith-knob → VST-param mappings. RS knob values are
+  shown per piece so you can dial them in by hand.
+
+- **🖼 Generic gear-photo extraction** for pedals, racks, cabs and amps
+  (`extract_gear_photos.py`).
+
+## Issue fixes
+
+- **#15 — NAMs very quiet.** Per-NAM normalization + input-gain drive into the
+  amp NAMs + Rocksmith-IR L2-normalization.
+- **#12 — feedback spike on tone change.** Chain preload + monitor mute/fade.
+- **#13 — master chain not applying to song.** Chain preloader + AMP-toggle
+  auto-apply + persisted bypass.
+- **#14 — Extract Rocksmith IRs on mac.** IR extraction pipeline reworked
+  (auto-locate the extracted-IR directory + L2 normalization). If a mac
+  `gears.psarc` still yields 0 IRs, the Windows `gears.psarc` extracts cleanly.
+
+## Upgrade notes
+
+- After updating, **quit and reopen Slopsmith** (no hot reload). DB migrations
+  run automatically on first boot.
+- The **Chain preloader** is on by default (was the "Mega-chain" toggle). If a
+  weak machine crackles past 2–3 `standard` NAMs, raise the audio buffer or use
+  lighter captures for pedals/racks.
+
+---
+
 # Rig Builder 1.1.0 — sign in, don't paste keys (2026-05-26)
 
 This release removes the need to handle a sensitive tone3000 API key and makes

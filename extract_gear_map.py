@@ -370,6 +370,18 @@ def main():
         sys.exit(1)
 
     mapping = build_mapping(psarc_path)
+    # Guard: never overwrite the shipped gear map with an empty one. This
+    # happens when the file is the wrong archive (e.g. guitars.psarc instead
+    # of gears.psarc) — parsing yields 0 entries and would otherwise wipe
+    # rs_to_real.json, cascading every downstream lookup (and IR mapping) to 0.
+    if not mapping:
+        print(
+            f"error: parsed 0 gear entries from {psarc_path} — refusing to "
+            f"overwrite rs_to_real.json. Point this at your game's "
+            f"gears.psarc (not guitars.psarc or another archive).",
+            file=sys.stderr,
+        )
+        sys.exit(3)
     out_path = Path(__file__).parent / "rs_to_real.json"
     out_path.write_text(json.dumps(mapping, indent=2, sort_keys=True))
 

@@ -86,14 +86,23 @@
                 // Restore happens on a timer (~300ms covers a 4-NAM standard
                 // chain at buffer 256). Kill-switch:
                 // `window.__rbMutePreLoad = false`.
-                rbPreLoadMute(chain.length).catch(() => {});
+                rbPreLoadMute(chain.length, rbChainGainTargetFor(chain)).catch(() => {});
                 // Schedule a VST-param re-apply after the bundle's
                 // loadPreset finishes. Without this, VSTs in the chain
                 // play at plug-in defaults until the user opens each
                 // VST editor (which itself triggers a setParameter
-                // walk). Delay = hold time + 50 ms cushion.
-                const reapplyDelay = (30 + 15 * Math.max(1, chain.length | 0)) + 50;
+                // walk). Delay = hold time + 50 ms cushion. Matches
+                // rbPreLoadMute's new 100 + 50/stage baseline.
+                const reapplyDelay = (100 + 50 * Math.max(1, chain.length | 0)) + 50;
                 rbReapplyVstParamsAfterLoad(chain, reapplyDelay);
+                // Re-apply the chain-input drive after the bundle's
+                // loadPreset finishes. The engine resets `input` to 1.0
+                // on every chain reload — without this re-apply, amp
+                // NAMs sit in their clean operating region and the
+                // entire library sounds "very clean and similar".
+                // Same delay strategy as the VST param re-apply so it
+                // lands after the chain has settled in the engine.
+                setTimeout(() => { rbApplyChainInputDrive(); }, reapplyDelay);
             } catch (_) {
                 return origFetch(input, init);
             }
@@ -102,32 +111,116 @@
     };
 })();
 
+// Engine input drive — pre-NAM gain set via setGain('input', X). The
+// audio engine's `state.inputLevel` on each NAM stage was empirically
+// confirmed to be a no-op (raising it from 1.0 to 8.0 had zero effect
+// on tone). The chain-level input gain DOES work: setting it to 8.0
+// (≈+18 dB) drives the amp NAMs from their clean operating region into
+// the saturation captured at -3 dBFS test tones, restoring the actual
+// "JCM800 at gain 10" character the captures contain.
+//
+// Read from /settings (`nam_chain_input_drive`, default 8.0). Cached
+// in `window.__rbChainInputDrive` so repeated calls (4 hooks below)
+// don't all refetch — the boot-time fetch in rbInit / mega-chain hook
+// populates it. Falls back to 8.0 if the cache hasn't loaded yet.
+//
+// The engine resets input gain to 1.0 on every chain reload, so we
+// have to re-apply after each loadPreset. Hooks:
+//   - fetch interceptor (bundle's chain load)
+//   - mega-chain build (initial preload at song start)
+//   - rbListenTone (Listen ▶ in per-song view)
+//   - rbAuditionFile (▶ in Gear catalog)
+function rbApplyChainInputDrive() {
+    const audio = window.slopsmithDesktop && window.slopsmithDesktop.audio;
+    if (!audio || typeof audio.setGain !== 'function') return;
+    const drive = (typeof window.__rbChainInputDrive === 'number' && window.__rbChainInputDrive > 0)
+        ? window.__rbChainInputDrive : 8.0;
+    return audio.setGain('input', drive).catch((e) => {
+        console.warn('[rig_builder] setGain(input,', drive, ') failed:', e);
+    });
+}
+
+// Compute the chain-gain target for a given chain spec: looks at what's
+// actually active to estimate how much output level the chain will
+// produce, and returns a multiplier that brings it to a perceived-flat
+// level. Solves the "amp raw is loud / amp through cab is quiet"
+// asymmetry without a slider — the caller passes this to rbPreLoadMute
+// so the fade-in lands at the right level for whatever this chain has.
+//
+//   active amp + active cab IR → ×2.0 (compensate cab attenuation)
+//   active amp + no cab IR     → ×0.5 (knock the raw-amp spike down)
+//   no active amp / fallback   → ×1.0 (don't change anything)
+function rbChainGainTargetFor(chainSpec) {
+    if (!Array.isArray(chainSpec)) return 1.0;
+    let hasActiveAmp = false;
+    let hasActiveCab = false;
+    let activeNamCount = 0;     // total NAM stages (amp + pedals + racks)
+    for (const stage of chainSpec) {
+        if (!stage || stage.bypassed) continue;
+        if (stage.type === 1) {
+            activeNamCount++;
+            if (stage.slot === 'amp') hasActiveAmp = true;
+        }
+        // type 2 = IR; we treat ANY active IR as a cab even if slot is
+        // tagged differently (rs_ir master_pre, etc.) because the
+        // attenuation profile is similar.
+        if (stage.type === 2) hasActiveCab = true;
+    }
+    // Scale the makeup gain by chain length. Background: every NAM
+    // capture was authored at unity in/out, but in practice each one
+    // introduces ~2–3 dB of cumulative loss (pedal NAMs especially —
+    // they were often captured at -3 dB headroom). The cab IR adds
+    // another ~6 dB attenuation via its `gain: 0.5` state.
+    //
+    // nam_tone's 2-stage path (1 NAM + IR) gets +6 dB (×2.0) and
+    // sounds about right. Our full-chain path with 3–5 NAMs needs
+    // proportionally more makeup or it lands noticeably quieter than
+    // a song loaded via the bundle's 2-stage flow.
+    //
+    // Formula (in dB):
+    //   base = +6 dB if a cab IR is active, -6 dB if amp-only.
+    //   + 2 dB per additional NAM beyond the first.
+    //   capped at +18 dB total so a buggy 10-stage chain can't blow up.
+    if (!hasActiveAmp) return 1.0;
+    let dB;
+    if (hasActiveCab) {
+        dB = 6 + 2 * Math.max(0, activeNamCount - 1);
+    } else {
+        dB = -6 + 2 * Math.max(0, activeNamCount - 1);
+    }
+    dB = Math.max(-12, Math.min(18, dB));
+    return Math.pow(10, dB / 20);
+}
+
 // Mute everything the engine can mute just long enough that the bundle's
 // clearChain + loadPreset runs at silence, then restore with a short
 // fade-in so the un-mute doesn't pop. Called from the fetch interceptor
-// right before the bundle pulls the preset JSON, and from rbListenTone
-// / rbReloadPreview right before clearChain.
+// right before the bundle pulls the preset JSON, and from rbListenTone /
+// rbReloadPreview / RbMegaChain right before clearChain.
 //
-// Hold-time tuning (assumes `feather`-size NAMs, the recommended setting):
-//   feather load ≈ 5-15 ms per stage. We give 15 ms/stage + 30 ms baseline
-//   so a 4-NAM chain = 90 ms, a 6-NAM chain = 120 ms. Smaller than the
-//   first version (which was sized for `standard` NAMs at 80+50/stage =
-//   380 ms for 6 stages, which felt like a noticeable audio drop-out).
-//   Users on `standard` size can override via `window.__rbMutePreLoadHold`.
+// `targetGain` controls where the fade-in lands. If omitted, falls back
+// to 1.0. Callers should compute it via rbChainGainTargetFor(chain) so
+// the chain output is normalised regardless of whether the user has a
+// cab IR active or not.
 //
-// Fade-in instead of instant restore so the chain-gain transition from 0
-// to 1.0 doesn't click. 4 steps over 24 ms (≈ 5 audio buffers at 256
-// samples / 48 kHz) sounds like a gentle swell, not a switch.
+// Hold-time tuning: assumed worst case is "engine loads stages
+// sequentially and only the last one is in place by the time loadPreset
+// resolves". To cover that window with margin we use a more
+// conservative 100 ms baseline + 50 ms/stage (chain of 5 → 350 ms).
+// Override with `window.__rbMutePreLoadHold` if it feels too long.
 let _rbMuteInFlight = false;
-async function rbPreLoadMute(chainLen) {
+async function rbPreLoadMute(chainLen, targetGain) {
     if (window.__rbMutePreLoad === false) return;
     if (_rbMuteInFlight) return;            // coalesce rapid tone changes
     _rbMuteInFlight = true;
     const audio = window.slopsmithDesktop && window.slopsmithDesktop.audio;
     if (!audio) { _rbMuteInFlight = false; return; }
+    const target = (typeof targetGain === 'number' && isFinite(targetGain) && targetGain >= 0)
+        ? Math.max(0, Math.min(4, targetGain))
+        : 1.0;
     const hold = (typeof window.__rbMutePreLoadHold === 'number')
         ? Math.max(20, window.__rbMutePreLoadHold | 0)
-        : 30 + 15 * Math.max(1, chainLen | 0);
+        : 100 + 50 * Math.max(1, chainLen | 0);
     let wasMuted = false;
     try { if (typeof audio.isMonitorMuted === 'function') wasMuted = !!(await audio.isMonitorMuted()); } catch (_) {}
     try {
@@ -140,11 +233,12 @@ async function rbPreLoadMute(chainLen) {
         try {
             // Un-mute the monitor immediately (it's a hard mute, no transient).
             if (!wasMuted && typeof audio.setMonitorMute === 'function') await audio.setMonitorMute(false);
-            // Fade chain gain 0 → 1.0 over ~24 ms in 4 steps so the
-            // restore doesn't click. The audio thread sees each step
-            // as a discrete value, but ear-perceived it's a smooth swell.
+            // Fade chain gain 0 → target over ~24 ms in 4 steps so the
+            // restore doesn't click. Final value is the smart target,
+            // not a fixed 1.0 — that's how we normalise across "amp +
+            // cab" and "amp only" without a user-facing knob.
             if (typeof audio.setGain === 'function') {
-                const steps = [0.25, 0.5, 0.8, 1.0];
+                const steps = [target * 0.25, target * 0.5, target * 0.8, target];
                 for (const v of steps) {
                     await audio.setGain('chain', v);
                     await new Promise(r => setTimeout(r, 6));
@@ -224,6 +318,14 @@ async function rbPreLoadMute(chainLen) {
 
     async function autoApplyChain() {
         if (window.__rbAmpAutoApply === false) return;
+        // When mega-chain mode owns the engine, we MUST NOT call
+        // loadPreset here — it would clobber the pre-loaded whole-song
+        // chain and leave only this single tone's stages loaded. The
+        // mega-chain switcher will handle the AMP-on case itself.
+        if (typeof RbMegaChain !== 'undefined' && RbMegaChain.isActive && RbMegaChain.isActive()) {
+            console.log('[rig_builder] AMP auto-apply skipped — mega-chain owns the engine');
+            return;
+        }
         if (inFlight) return;
         inFlight = true;
         try {
@@ -284,7 +386,8 @@ let rbState = {
     status: null,
     songTones: null,        // currently inspected song
     batchPoll: null,        // setInterval handle while batch is running
-    currentTab: 'dashboard',
+    currentTab: 'song',        // post-restructure default (Songs is the working tab)
+    currentGearFilter: 'all',  // chip filter inside the Gear tab
     currentSongFile: null,  // filename of the song open in the per-song view
     listeningTone: null,    // toneIdx currently previewed, or null
     _previewMode: null,     // 'native' (full chain) | 'nam' (WASM fallback)
@@ -298,6 +401,568 @@ let rbState = {
 
 const RB_API = '/api/plugins/rig_builder';
 const NAM_API = '/api/plugins/nam_tone';
+
+// ── RbMegaChain: pre-loaded whole-song chain with bypass-flip switching
+//
+// DEFAULT playback path (2026-05-28). Toggle in Settings → "Chain
+// preloader" or via the runtime kill-switch `window.__rbMegaChain =
+// false`. Replaces the bundle's clearChain +
+// loadPreset cycle on every tone change with a single loadPreset at song
+// load + setBypass(slot_range, on/off) on each tone change. Result: zero
+// tone-change transient (no spike, no mute parche needed) at the cost of
+// every NAM staying in memory + processing (bypassed = passthrough,
+// still costs a fraction of CPU each).
+//
+// Coordination with the bundle:
+//   - When mega-chain mode is ON, we automatically force the bundle's
+//     AMP button OFF (the bundle's _namApplyCurrentSongTone would call
+//     clearChain + loadPreset on every tone change, destroying our
+//     mega-chain). We drive startAudio + monitor un-mute ourselves.
+//   - The fetch interceptor that redirects /native-preset/{id} stops
+//     firing in this mode (bundle won't fetch with AMP off).
+//   - We replicate _namDuckGuitarStem so the song's stem guitar gets
+//     muted just like the bundle would have done.
+//
+// Lifecycle:
+//   - song:loaded → RbMegaChain.buildForSong(filename)
+//   - polling-based tone-change detection via window.highway
+//   - song:unloaded / song change → RbMegaChain.teardown()
+const RbMegaChain = (function () {
+    let _active = false;       // are we currently driving the engine for a song
+    let _mega = null;          // last fetched /mega_chain response
+    let _activeToneKey = null; // tone_key currently un-bypassed
+    let _pollHandle = null;    // setInterval handle watching highway tone changes
+    let _duckedStems = null;   // saved gain nodes to restore on teardown
+    // Map from chain-array INDEX (what the backend gives us in
+    // active_slots, master_pre_indices etc.) to the ENGINE'S slot ID
+    // (what setBypass/setMultiBypass actually uses). The two are not the
+    // same — the engine assigns its own IDs during loadPreset. We capture
+    // them via getChainState() right after loading.
+    let _indexToSlotId = [];   // chain index → engine slotId
+
+    function _settingOn() {
+        if (window.__rbMegaChain === false) return false;
+        // Mirror written by rbSaveSettings; falls back to false until
+        // /settings has been fetched at least once.
+        return !!window.__rbMegaChainSetting;
+    }
+
+    function _api() {
+        const a = window.slopsmithDesktop && window.slopsmithDesktop.audio;
+        return (a && typeof a.loadPreset === 'function') ? a : null;
+    }
+
+    function _resolveActiveToneKey() {
+        try {
+            const hw = window.highway;
+            if (!hw || typeof hw.getTime !== 'function') return null;
+            const t = hw.getTime();
+            const changes = hw.getToneChanges ? hw.getToneChanges() : [];
+            const base = hw.getToneBase ? hw.getToneBase() : '';
+            let active = base;
+            if (Array.isArray(changes)) {
+                for (const tc of changes) {
+                    if (tc && tc.t <= t) active = tc.name;
+                    else break;
+                }
+            }
+            return (active && String(active).trim()) || null;
+        } catch (_) { return null; }
+    }
+
+    function _findToneByKey(toneKey) {
+        if (!_mega || !Array.isArray(_mega.tones) || !toneKey) return null;
+        const exact = _mega.tones.find(t => t.tone_key === toneKey);
+        if (exact) return exact;
+        const wanted = String(toneKey).trim().toLowerCase();
+        return _mega.tones.find(t =>
+            String(t.tone_key || '').trim().toLowerCase() === wanted
+        ) || null;
+    }
+
+    // Mute the song's "guitar" stem so the original DI doesn't double up
+    // with our chain output — same job the bundle's _namDuckGuitarStem
+    // does when AMP is on. Saves the previous gain values for teardown.
+    function _duckGuitarStem() {
+        const stems = window._stemsState;
+        if (!stems || !Array.isArray(stems)) return;
+        _duckedStems = [];
+        for (const s of stems) {
+            if (/guitar/i.test(s.id || '') && s.gain && s.gain.gain) {
+                _duckedStems.push({ stem: s, prevGain: s.gain.gain.value });
+                try { s.gain.gain.value = 0; } catch (_) {}
+            }
+        }
+    }
+    function _restoreGuitarStem() {
+        if (!_duckedStems) return;
+        for (const d of _duckedStems) {
+            try { if (d.stem && d.stem.gain && d.stem.gain.gain) d.stem.gain.gain.value = d.prevGain; } catch (_) {}
+        }
+        _duckedStems = null;
+    }
+
+    // If the bundle's AMP is on, click it off so it stops doing its own
+    // clearChain+loadPreset on every tone change.
+    function _forceBundleAmpOff() {
+        const btn = document.getElementById('btn-nam');
+        if (!btn) return;
+        const isOn = /(?:^|\s)bg-green-/.test(btn.className);
+        if (isOn) {
+            try { btn.click(); } catch (_) {}
+        }
+    }
+
+    // Apply bypass state across the chain so only `activeToneKey` runs.
+    // Each slot has an "intended" bypass set by the user (Master Chain
+    // tab toggle, per-song bypass button). We respect that bypass for
+    // slots belonging to the active tone + master. Slots that DON'T
+    // belong to the active tone get force-bypassed (signal passes
+    // through them transparently).
+    //
+    // Data model (set by the backend):
+    //   - tones[i].slots = [{idx, bypassed}, ...]       per-tone slots with persisted bypass
+    //   - master_pre_slots / master_post_slots          same shape, always considered "active"
+    //
+    // The backend gives us chain INDICES (0..N-1), but setBypass/
+    // setMultiBypass want the engine's actual slot IDs, which loadPreset
+    // assigns dynamically. We translate via _indexToSlotId captured
+    // right after loadPreset returned.
+    async function _applyActiveTone(activeToneKey) {
+        const api = _api();
+        if (!api || !_mega) return;
+        const tone = _findToneByKey(activeToneKey);
+        const totalStages = (_mega.native_preset && _mega.native_preset.chain && _mega.native_preset.chain.length) || 0;
+        if (!totalStages) return;
+
+        // Build a map: idx → desired bypass. Default for every slot is
+        // bypassed=true (passthrough). For master + active-tone slots,
+        // use the persisted bypass from the backend.
+        const bypassByIdx = new Array(totalStages).fill(true);
+        const applyEntry = (entry) => {
+            if (!entry || typeof entry.idx !== 'number') return;
+            if (entry.idx < 0 || entry.idx >= totalStages) return;
+            bypassByIdx[entry.idx] = !!entry.bypassed;
+        };
+        (_mega.master_pre_slots  || []).forEach(applyEntry);
+        (_mega.master_post_slots || []).forEach(applyEntry);
+        if (tone && Array.isArray(tone.slots)) tone.slots.forEach(applyEntry);
+
+        const changes = [];
+        const mapLen = _indexToSlotId.length;
+        for (let idx = 0; idx < totalStages; idx++) {
+            // Skip chain indices whose stage failed to load (slot ID is
+            // null in the map). Firing setBypass with the raw index as
+            // fallback would hit the WRONG slot in the engine since
+            // engine IDs aren't sequential 0..N-1.
+            if (idx >= mapLen || _indexToSlotId[idx] == null) continue;
+            const slotId = _indexToSlotId[idx];
+            changes.push({ slotId, bypassed: bypassByIdx[idx] });
+        }
+        try {
+            if (typeof api.setMultiBypass === 'function') {
+                await api.setMultiBypass(changes);
+            } else if (typeof api.setBypass === 'function') {
+                for (const c of changes) await api.setBypass(c.slotId, c.bypassed);
+            }
+        } catch (e) {
+            console.warn('[rig_builder mega-chain] applyActiveTone failed:', e);
+        }
+        _activeToneKey = activeToneKey;
+    }
+
+    async function buildForSong(filename) {
+        if (!_settingOn()) {
+            console.log('[rig_builder mega-chain] buildForSong skipped — setting off');
+            return false;
+        }
+        const api = _api();
+        if (!api) {
+            console.warn('[rig_builder mega-chain] buildForSong aborted — no native audio API');
+            return false;
+        }
+        if (!filename) {
+            console.warn('[rig_builder mega-chain] buildForSong aborted — no filename');
+            return false;
+        }
+        // Tear down any previous session before starting a fresh one.
+        await teardown(true);   // silent — no stem restore on chained calls
+
+        let resp;
+        try {
+            resp = await fetch(`${RB_API}/mega_chain/${encodeURIComponent(filename)}`);
+        } catch (e) {
+            console.warn('[rig_builder mega-chain] fetch failed:', e);
+            return false;
+        }
+        if (!resp.ok) {
+            // No mappings for this song, or backend error → silently fall
+            // back to the cooperative path. The bundle will still work.
+            console.warn(`[rig_builder mega-chain] /mega_chain/${filename} → HTTP ${resp.status} (no tone mappings for this song? Run Batch all or open it in per-song tab first to seed mappings)`);
+            return false;
+        }
+        const mega = await resp.json();
+        if (!mega || !mega.native_preset
+            || !Array.isArray(mega.native_preset.chain)
+            || mega.native_preset.chain.length === 0) {
+            console.warn('[rig_builder mega-chain] empty chain returned by backend:', mega);
+            return false;
+        }
+        _mega = mega;
+
+        // 1. Force the bundle's AMP off so it stops fighting us.
+        _forceBundleAmpOff();
+
+        // 2. Mute the bundle's guitar stem so the song's DI doesn't
+        //    play through alongside our chain.
+        _duckGuitarStem();
+
+        // 3. Load the mega-chain into the engine — single loadPreset call.
+        //    AWAIT the pre-load mute so the chain output is actually at 0
+        //    before clearChain+loadPreset run. Earlier this was a fire-and-
+        //    forget call, which raced the loadPreset and let the attack
+        //    transient leak through ("still gives feedback sometimes on
+        //    initial song load" — Discord report).
+        await rbPreLoadMute(
+            mega.native_preset.chain.length,
+            rbChainGainTargetFor(mega.native_preset.chain)
+        ).catch(() => {});
+        try {
+            if (api.clearChain) await api.clearChain().catch(() => {});
+            const res = await api.loadPreset(JSON.stringify(mega.native_preset));
+            if (!res || res.success === false) {
+                throw new Error((res && res.error) || 'loadPreset failed');
+            }
+            // Compute dedupe savings: total active_slot entries across
+            // all tones vs unique stages in the chain. A 4-tone song that
+            // shares one amp + one cab across all four tones reports
+            // something like "20 → 8 stages (60% saved)".
+            const sumActiveSlots = (mega.tones || []).reduce((acc, t) =>
+                acc + (t.slots ? t.slots.length : 0), 0)
+                + (mega.master_pre_count || 0) * (mega.tones || []).length   // master appears in every tone conceptually
+                + (mega.master_post_count || 0) * (mega.tones || []).length;
+            const totalStages = mega.native_preset.chain.length;
+            const savings = sumActiveSlots > 0
+                ? Math.round((1 - totalStages / sumActiveSlots) * 100)
+                : 0;
+            console.log(`[rig_builder mega-chain] loaded ${totalStages} unique stages`
+                + ` for "${filename}" — ${mega.tones.length} tones`
+                + ` (master ${mega.master_pre_count}+${mega.master_post_count}, ${savings}% deduped)`,
+                res);
+            // Capture the engine's actual slot IDs so _applyActiveTone can
+            // bypass the right ones. setBypass uses ENGINE slot IDs, not
+            // chain-array indices — and the engine assigns its own IDs
+            // during loadPreset (verified: slot.id and slot.slotId in the
+            // getChainState() response, mirroring rbReapplyVstParamsToChain).
+            // Without this map every bypass call used wrong IDs and the
+            // user heard a random mix of stages active.
+            _indexToSlotId = [];
+            try {
+                if (typeof api.getChainState === 'function') {
+                    const loaded = await api.getChainState();
+                    if (Array.isArray(loaded)) {
+                        for (let i = 0; i < loaded.length; i++) {
+                            const s = loaded[i];
+                            const id = (s && (s.id != null ? s.id : s.slotId != null ? s.slotId : i));
+                            _indexToSlotId[i] = id;
+                        }
+                        const expected = mega.native_preset.chain.length;
+                        const got = _indexToSlotId.length;
+                        if (got !== expected) {
+                            // The engine couldn't load every stage we sent. Likely a
+                            // missing file or a malformed plugin. Mark the unreachable
+                            // chain indices as null so _applyActiveTone skips them
+                            // rather than firing setBypass on the WRONG slot ID via
+                            // the index-as-fallback path.
+                            const skipped = expected - got;
+                            console.warn(`[rig_builder mega-chain] STAGE LOAD MISMATCH: sent ${expected} stages but engine reported only ${got} — ${skipped} stage(s) failed to load. Likely culprit: missing NAM/IR file, malformed VST, or a path that no longer exists. The remaining ${skipped} chain index/indices will be skipped in bypass updates so we don't fire setBypass on the wrong slot.`);
+                            for (let i = got; i < expected; i++) _indexToSlotId[i] = null;
+                        }
+                        console.log(`[rig_builder mega-chain] captured ${got} slot IDs (engine assigned IDs vs chain index — first 5: ${_indexToSlotId.slice(0, 5).join(',')}…)`);
+                    }
+                }
+            } catch (e) {
+                console.warn('[rig_builder mega-chain] getChainState failed:', e);
+            }
+            // VST params: walk the freshly-loaded mega-chain and dispatch
+            // setParameter so VSTs come up at their saved values, not the
+            // plug-in defaults. Without this users had to open each VST
+            // editor manually for the saved params to take effect.
+            await rbReapplyVstParamsToChain(api, mega.native_preset.chain).catch((e) =>
+                console.warn('[rig_builder mega-chain] re-apply VST params:', e));
+        } catch (e) {
+            console.warn('[rig_builder mega-chain] loadPreset failed, falling back:', e);
+            _mega = null;
+            _restoreGuitarStem();
+            return false;
+        }
+
+        // 4. Set initial bypass: only the song's CURRENT tone runs.
+        // The highway may not have populated its tone changes / base yet
+        // at this point (we ran 600 ms after song:loaded, but the WS feed
+        // arrives in pieces). If _resolveActiveToneKey returns null we
+        // DELIBERATELY leave every tone bypassed — silence — instead of
+        // falling back to tones[0]. The previous fallback gave us the
+        // wrong tone audible for ~1 s on most songs (DB-order != song-
+        // intro-order). The initial-recheck schedule below catches the
+        // real tone within 100-700 ms once the highway publishes it,
+        // and applies it then. Brief silence is a better failure mode
+        // than playing the wrong tone confidently.
+        const initialKey = _resolveActiveToneKey();
+        const initialTone = initialKey ? _findToneByKey(initialKey) : null;
+        await _applyActiveTone(initialTone ? initialTone.tone_key : null);
+        console.log(`[rig_builder mega-chain] initial tone → ${initialTone
+            ? `"${initialTone.tone_key}" (from highway)`
+            : 'NONE (highway not ready yet — waiting for first recheck)'}`);
+
+        // 5. Start audio if it isn't running yet (bundle would have done this).
+        // DO NOT manually un-mute chain/monitor here — rbPreLoadMute's
+        // setTimeout will fade chain gain 0→1 + un-mute monitor on its
+        // own timer. Doing setGain('chain', 1.0) here would defeat the
+        // mute, letting the first-buffer attack of the freshly-loaded
+        // NAMs leak through.
+        try {
+            const wasRunning = api.isAudioRunning ? await api.isAudioRunning().catch(() => true) : true;
+            if (!wasRunning && api.startAudio) await api.startAudio();
+            // Input gain to chain-input-drive — pre-NAM, drives the amp
+            // captures from clean region into their saturation operating
+            // point (see rbApplyChainInputDrive comment).
+            await rbApplyChainInputDrive();
+        } catch (e) { console.warn('[rig_builder mega-chain] startAudio failed:', e); }
+
+        // 6. Start watching highway for tone changes AND the bundle's
+        // AMP button (we have to turn it back off if anything in the
+        // bundle re-prends it, or it will tear down our mega-chain).
+        _startPolling();
+        _startAmpGuard();
+
+        // 7. Re-check the active tone a few times over the next 3 seconds
+        // to catch the case where the highway populates its tone base
+        // AFTER our 600 ms initial trigger. The polling already does this
+        // every 200 ms via lastKey-diff, but we kick it explicitly here
+        // with a forced re-apply so the user doesn't hear ~600 ms of the
+        // wrong tone before the polling notices.
+        // Recheck schedule: front-loaded so we catch the highway tone-base
+        // publication as soon as it lands (most of the time inside the
+        // first second), without giving up too early if the WS feed lags.
+        const recheckSchedule = [100, 200, 400, 700, 1000, 1500, 2000, 2700, 3500, 4500, 5500];
+        recheckSchedule.forEach((delay, i) => {
+            setTimeout(() => {
+                if (!_active || !_mega) return;
+                const key = _resolveActiveToneKey();
+                if (!key || key === _activeToneKey) return;
+                const tone = _findToneByKey(key);
+                if (!tone) return;
+                _applyActiveTone(tone.tone_key).then(() => {
+                    console.log(`[rig_builder mega-chain] initial-recheck #${i+1} (t+${delay}ms) → switched to "${tone.tone_key}"`);
+                }).catch(() => {});
+            }, delay);
+        });
+        // Last-chance fallback: if after 6 s the highway still hasn't
+        // given us a tone (broken WS, unmapped song, exotic arrangement),
+        // pick a guitar tone (or whatever's available) so the user isn't
+        // stuck in dead silence forever. Prefer GUITAR over BASS: the
+        // tones array's order comes from DB insertion (often alphabetical
+        // by tone_key) which sometimes lists bass tones first — e.g.
+        // Reptilia → tones[0] is "Reptilia_bass", which made the user
+        // hear a bass tone when they were playing guitar. The instrument
+        // hint we can extract is whether the tone_key looks bass-flavored.
+        // Matches the strings nam_tone names bass tones with: "_bass",
+        // "Bass_", or the gear referenced is in the Bass_* family.
+        setTimeout(() => {
+            if (!_active || !_mega) return;
+            if (_activeToneKey) return;     // any recheck already landed
+            const all = (mega.tones || []);
+            if (!all.length) return;
+            const isBassFlavored = t =>
+                /(^|_)bass(_|\b)/i.test(t.tone_key || '')
+                || (Array.isArray(t.chain) && t.chain.some(p => /^Bass_/i.test(p.rs_gear || '')));
+            // Prefer a guitar tone, fall back to first available if all
+            // are bass-flavoured (rare — bass-only songs).
+            const fallback = all.find(t => !isBassFlavored(t)) || all[0];
+            _applyActiveTone(fallback.tone_key).then(() => {
+                const flavour = isBassFlavored(fallback) ? 'BASS (no guitar tones in this song)' : 'guitar';
+                console.warn(`[rig_builder mega-chain] FALLBACK after 6s: applying "${fallback.tone_key}" [${flavour}] — highway never published a tone base for this song`);
+            }).catch(() => {});
+        }, 6000);
+
+        _active = true;
+        return true;
+    }
+
+    // Watch the bundle's AMP button and click it back off if anything
+    // turns it on while we're active. The bundle re-prends AMP on some
+    // events (tone-mapping reload, song restart, MIDI mode toggles…)
+    // and once on it will call _namApplyCurrentSongTone, which does a
+    // clearChain + loadPreset that destroys our mega-chain. Mute monitor
+    // momentarily so the click of the toggle isn't audible.
+    let _ampGuardHandle = null;
+    function _startAmpGuard() {
+        _stopAmpGuard();
+        _ampGuardHandle = setInterval(() => {
+            if (!_active) return;
+            const btn = document.getElementById('btn-nam');
+            if (!btn) return;
+            const isOn = /(?:^|\s)bg-green-/.test(btn.className);
+            if (isOn) {
+                console.warn('[rig_builder mega-chain] AMP turned on by bundle — turning it back off');
+                try { btn.click(); } catch (_) {}
+                // After AMP-off the bundle has already done clearChain;
+                // rebuild our mega-chain so audio comes back.
+                const filename = window.slopsmith && window.slopsmith.currentSong
+                    && window.slopsmith.currentSong.filename;
+                if (filename) {
+                    setTimeout(() => {
+                        buildForSong(filename).catch(e =>
+                            console.warn('[rig_builder mega-chain] re-build after AMP-off failed:', e));
+                    }, 200);
+                }
+            }
+        }, 500);
+    }
+    function _stopAmpGuard() {
+        if (_ampGuardHandle) { clearInterval(_ampGuardHandle); _ampGuardHandle = null; }
+    }
+
+    function _startPolling() {
+        _stopPolling();
+        let lastKey = _activeToneKey;
+        _pollHandle = setInterval(async () => {
+            if (!_active || !_mega) return;
+            const key = _resolveActiveToneKey();
+            if (!key || key === lastKey) return;
+            const tone = _findToneByKey(key);
+            if (!tone) return;
+            lastKey = key;
+            await _applyActiveTone(tone.tone_key);
+            const slots = Array.isArray(tone.slots) ? tone.slots : [];
+            console.log(`[rig_builder mega-chain] switch → "${tone.tone_key}" (${slots.length} slots)`);
+        }, 200);
+    }
+
+    function _stopPolling() {
+        if (_pollHandle) { clearInterval(_pollHandle); _pollHandle = null; }
+    }
+
+    async function teardown(silent) {
+        _stopPolling();
+        _stopAmpGuard();
+        if (!silent) _restoreGuitarStem();
+        if (_active) {
+            const api = _api();
+            if (api && api.clearChain) {
+                try { await api.clearChain(); } catch (_) {}
+            }
+        }
+        _active = false;
+        _mega = null;
+        _activeToneKey = null;
+        _indexToSlotId = [];
+    }
+
+    function isActive() { return _active; }
+    function settingOn() { return _settingOn(); }
+
+    return { buildForSong, teardown, isActive, settingOn };
+})();
+
+// Hook into the slopsmith song lifecycle. `song:loaded` fires from
+// highway.js whenever the in-game player has fully loaded a CDLC.
+// `song:unloaded` doesn't appear to fire reliably across all builds, so
+// we also tear down whenever buildForSong is called again (the body of
+// buildForSong does teardown(true) before starting a new session).
+//
+// Also fall back to polling `window.slopsmith.currentSong` for cases
+// where the song was loaded BEFORE this hook installed itself (the
+// EventEmitter doesn't replay missed events, so a song:loaded fired
+// during plugin boot would otherwise be lost).
+(function () {
+    if (window.__rbMegaChainHookInstalled) return;
+    window.__rbMegaChainHookInstalled = true;
+
+    // Initialise window.__rbMegaChainSetting from the persisted /settings
+    // value AS EARLY AS POSSIBLE. rbLoadSettings (called from rbInit when
+    // the user opens the Rig Builder plugin) is normally what writes this
+    // flag, but if the user loads a song before ever opening Rig Builder
+    // the flag stays undefined and the hook below thinks the setting is
+    // off. Fire-and-forget — the polling fallback will pick up the song
+    // as soon as the flag flips.
+    fetch(`${RB_API}/settings`).then(r => r.json()).then(s => {
+        if (s && typeof s.mega_chain_mode !== 'undefined') {
+            window.__rbMegaChainSetting = !!s.mega_chain_mode;
+            console.log(`[rig_builder mega-chain] boot setting=${window.__rbMegaChainSetting} (read from /settings)`);
+        }
+        // Cache the chain-input drive so rbApplyChainInputDrive (called
+        // from many hooks) doesn't have to refetch /settings every time.
+        if (s && typeof s.nam_chain_input_drive === 'number') {
+            window.__rbChainInputDrive = s.nam_chain_input_drive;
+            console.log(`[rig_builder] chain input drive = ${window.__rbChainInputDrive} (read from /settings)`);
+        }
+    }).catch(() => {});
+
+    function triggerBuild(filename, source) {
+        if (!RbMegaChain.settingOn()) {
+            console.log('[rig_builder mega-chain] skip — setting off');
+            return;
+        }
+        if (!filename) {
+            console.log('[rig_builder mega-chain] skip — no filename from', source);
+            return;
+        }
+        console.log(`[rig_builder mega-chain] song detected via ${source}: ${filename} — scheduling buildForSong in 600 ms`);
+        // Give the bundle ~600 ms to inject its #btn-nam etc. so our
+        // AMP-off click hits a real button. Also lets the highway
+        // stabilise so resolveActiveToneKey reads a sensible value.
+        setTimeout(() => {
+            RbMegaChain.buildForSong(filename).then(ok => {
+                if (!ok) console.warn(`[rig_builder mega-chain] buildForSong returned false for "${filename}" (no mappings? bundle interfered?)`);
+            }).catch(e =>
+                console.warn('[rig_builder mega-chain] buildForSong threw:', e));
+        }, 600);
+    }
+
+    let _lastSeenFile = null;
+
+    function hook() {
+        if (!window.slopsmith || typeof window.slopsmith.on !== 'function') {
+            setTimeout(hook, 500);
+            return;
+        }
+        window.slopsmith.on('song:loaded', (info) => {
+            // Some Slopsmith builds emit song:loaded with no payload (or a
+            // payload missing `filename`). Fall back to currentSong before
+            // giving up — same info, different source.
+            const filename = (info && info.filename)
+                || (window.slopsmith.currentSong && window.slopsmith.currentSong.filename);
+            _lastSeenFile = filename;
+            triggerBuild(filename, info && info.filename ? 'song:loaded event' : 'song:loaded event (fallback to currentSong)');
+        });
+        window.slopsmith.on('song:unloaded', () => {
+            _lastSeenFile = null;
+            if (RbMegaChain.isActive()) RbMegaChain.teardown(false).catch(() => {});
+        });
+        // Catch up on a song that was already loaded when we hooked in:
+        // the event has already fired and EventEmitter won't replay it.
+        const cur = window.slopsmith.currentSong;
+        if (cur && cur.filename && cur.filename !== _lastSeenFile) {
+            _lastSeenFile = cur.filename;
+            triggerBuild(cur.filename, 'currentSong catch-up');
+        }
+        // Belt-and-suspenders: poll every 2 s for currentSong changes the
+        // event might miss (or fire while the setting was off and was then
+        // flipped on mid-song).
+        setInterval(() => {
+            if (!RbMegaChain.settingOn()) return;
+            if (RbMegaChain.isActive()) return;
+            const c = window.slopsmith && window.slopsmith.currentSong;
+            const f = c && c.filename;
+            if (!f || f === _lastSeenFile) return;
+            _lastSeenFile = f;
+            triggerBuild(f, 'currentSong poll');
+        }, 2000);
+    }
+    hook();
+})();
 
 // ── HTML helper ─────────────────────────────────────────────────────
 
@@ -400,11 +1065,278 @@ function rbShowTab(name) {
         b.classList.toggle('border-transparent', !active);
     });
 
-    if (name === 'dashboard') rbLoadCoverage();
-    if (name === 'pending') rbLoadPending();
-    if (name === 'gear') rbLoadCatalog();
+    // Post-restructure: only 4 active tabs. The old dashboard/pending/
+    // manage are absorbed — dashboard → settings (top), pending and
+    // manage → gear (chip-filtered sub-views).
+    if (name === 'gear') rbGearFilter(rbState.currentGearFilter || 'all');
     if (name === 'master') rbLoadMasterChain();
-    if (name === 'settings') { rbLoadSettings(); rbUpdateScanStatus(); }
+    if (name === 'settings') {
+        rbLoadCoverage();        // batch / coverage panel (was dashboard)
+        rbLoadSettings();        // tone3000 + prefs
+        rbUpdateScanStatus();
+    }
+}
+
+// Chip filter inside the Gear tab. Toggles between the catalog, the
+// pending list, and the file inventory — all three share the same
+// top-level tab so the user doesn't ping-pong between two tabs to
+// resolve a gear and inspect its file.
+function rbGearFilter(filter) {
+    if (!['all', 'pending', 'files'].includes(filter)) filter = 'all';
+    rbState.currentGearFilter = filter;
+    document.querySelectorAll('.rb-gear-view').forEach(v => v.classList.add('hidden'));
+    const view = document.getElementById(`rb-gear-view-${filter}`);
+    if (view) view.classList.remove('hidden');
+    document.querySelectorAll('.rb-gear-filter-btn').forEach(b => {
+        const active = b.dataset.rbGearFilter === filter;
+        b.classList.toggle('bg-dark-700', active);
+        b.classList.toggle('text-white', active);
+        b.classList.toggle('text-gray-400', !active);
+    });
+    if (filter === 'all') rbLoadCatalog();
+    else if (filter === 'pending') rbLoadPending();
+    else if (filter === 'files') rbLoadManageTab();
+}
+
+// ── Manage tab: inventory of downloaded NAM/IR files ────────────────
+//
+// Lists every file currently on disk under nam_models/* and nam_irs/*,
+// grouped by category subdir (amps/pedals/racks/cabs/other). Each row
+// shows the file's gear assignment(s), size, and how many presets
+// reference it. The user can delete a single file or purge a whole
+// bucket from here.
+
+const RB_BUCKET_META = {
+    amps:   { label: 'Amps',   icon: '🎛️', color: 'bg-orange-900/20 border-orange-700/40' },
+    pedals: { label: 'Pedals', icon: '🎚️', color: 'bg-blue-900/20 border-blue-700/40' },
+    racks:  { label: 'Racks',  icon: '🗄️', color: 'bg-purple-900/20 border-purple-700/40' },
+    cabs:   { label: 'Cabs',   icon: '📦', color: 'bg-yellow-900/20 border-yellow-700/40' },
+    other:  { label: 'Other',  icon: '❓', color: 'bg-gray-700/30 border-gray-600/40' },
+};
+
+function rbFmtBytes(n) {
+    if (!n) return '0 B';
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+    if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
+    return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
+}
+
+async function rbLoadManageTab() {
+    const summary = document.getElementById('rb-manage-summary');
+    const root = document.getElementById('rb-manage-buckets');
+    if (!summary || !root) return;
+    // If a preload is in flight, latch onto its polling instead of
+    // overwriting the live progress line with a "Loading inventory…"
+    // flash. The poll will fill `summary` on the next tick.
+    try {
+        const st = await (await fetch(`${RB_API}/preload_status`)).json();
+        if (st && st.running) {
+            rbPreloadStartPolling();
+        }
+    } catch (_) { /* non-fatal */ }
+    summary.textContent = 'Loading inventory…';
+    root.innerHTML = '';
+    let data;
+    try {
+        const r = await fetch(`${RB_API}/nam_inventory`);
+        data = await r.json();
+        if (!r.ok) throw new Error(data.error || r.status);
+    } catch (e) {
+        summary.textContent = `Inventory failed: ${e.message || e}`;
+        summary.className = 'text-red-400 text-sm mt-1';
+        return;
+    }
+    const totals = data.totals || { count: 0, total_bytes: 0 };
+    summary.textContent = `${totals.count} files, ${rbFmtBytes(totals.total_bytes)} total on disk`;
+    summary.className = 'text-gray-500 text-sm mt-1';
+
+    const buckets = data.buckets || {};
+    const order = ['amps', 'pedals', 'racks', 'cabs', 'other'];
+    const ordered = [
+        ...order.filter(k => k in buckets).map(k => [k, buckets[k]]),
+        ...Object.entries(buckets).filter(([k]) => !order.includes(k)),
+    ];
+    if (!ordered.length) {
+        root.innerHTML = `<div class="text-center text-gray-500 py-8">
+            No downloaded files yet.</div>`;
+        return;
+    }
+    root.innerHTML = ordered.map(([bucket, b]) => rbRenderManageBucket(bucket, b)).join('');
+}
+
+function rbRenderManageBucket(bucket, b) {
+    const meta = RB_BUCKET_META[bucket] || RB_BUCKET_META.other;
+    const filesHtml = b.files.map(f => rbRenderManageFile(f)).join('');
+    return `<div class="rounded-xl border ${meta.color}">
+        <div class="flex items-center justify-between p-4 border-b border-gray-800/40">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl">${meta.icon}</span>
+                <div>
+                    <div class="text-white font-semibold">${meta.label}</div>
+                    <div class="text-xs text-gray-500">
+                        ${b.count} files · ${rbFmtBytes(b.total_bytes)}
+                    </div>
+                </div>
+            </div>
+            <button onclick="rbPurgeNams({bucket: ${JSON.stringify(bucket)}}, ${JSON.stringify(meta.label + ' (' + b.count + ' files)')})"
+                    class="bg-red-900/20 hover:bg-red-900/50 text-red-300 border border-red-800/30 px-2.5 py-1 rounded text-xs transition">
+                🗑 Delete all
+            </button>
+        </div>
+        <div class="divide-y divide-gray-800/30">${filesHtml}</div>
+    </div>`;
+}
+
+function rbRenderManageFile(f) {
+    const gears = (f.real_names && f.real_names.length)
+        ? f.real_names.map(rbEsc).join(', ')
+        : '<span class="text-gray-600 italic">orphan</span>';
+    const presetHint = f.preset_count
+        ? `<span class="text-xs text-gray-500">used by ${f.preset_count} preset${f.preset_count === 1 ? '' : 's'}</span>`
+        : '<span class="text-xs text-gray-600 italic">no preset references this file</span>';
+    const tone3000 = (f.tone3000_ids && f.tone3000_ids.length)
+        ? `<a href="https://www.tone3000.com/tones/${f.tone3000_ids[0]}" target="_blank"
+              class="text-xs text-cyan-500 hover:text-cyan-300">tone ${f.tone3000_ids[0]}</a>`
+        : '';
+    const orphanClass = f.orphan ? 'bg-amber-900/10' : '';
+    return `<div class="flex items-center justify-between gap-3 p-3 hover:bg-gray-800/30 ${orphanClass}">
+        <div class="min-w-0 flex-1">
+            <div class="text-sm text-gray-200 truncate" title="${rbEsc(f.name)}">${gears}</div>
+            <div class="text-xs text-gray-500 truncate font-mono" title="${rbEsc(f.name)}">${rbEsc(f.name)}</div>
+            <div class="flex items-center gap-3 mt-0.5">
+                <span class="text-xs text-gray-500">${rbFmtBytes(f.size_bytes)}</span>
+                ${presetHint}
+                ${tone3000}
+            </div>
+        </div>
+        <button onclick="rbDeleteNamFile(${JSON.stringify(f.name)})"
+                class="bg-red-900/20 hover:bg-red-900/50 text-red-300 border border-red-800/30 px-2.5 py-1 rounded text-xs transition shrink-0">
+            🗑
+        </button>
+    </div>`;
+}
+
+async function rbDeleteNamFile(path) {
+    if (!confirm(`Delete this file?\n\n${path}\n\nGears using it will revert to Pending. (The download can be re-fetched anytime.)`)) {
+        return;
+    }
+    try {
+        const r = await fetch(`${RB_API}/nam_file?path=${encodeURIComponent(path)}`, {
+            method: 'DELETE',
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || r.status);
+        rbLoadManageTab();
+    } catch (e) {
+        alert(`Delete failed: ${e.message || e}`);
+    }
+}
+
+async function rbPreloadCuratedVariants() {
+    if (!confirm('One-click curate:\n\n'
+               + '1. Rename any legacy cryptic filenames to readable titles\n'
+               + '2. Download every curated amp variant from rs_to_real.json\n'
+               + '   (files already on disk skip the network)\n'
+               + '3. Wire each variant to the preset rows that need it\n\n'
+               + 'Live progress shown below. Continue?')) {
+        return;
+    }
+    try {
+        const r = await fetch(`${RB_API}/preload_curated_variants`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({}),
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || r.status);
+        if (d.started === false) {
+            alert('Already running — current progress is shown live in the Manage tab.');
+            rbPreloadStartPolling();
+            return;
+        }
+        rbPreloadStartPolling();
+    } catch (e) {
+        alert(`Could not start preload: ${e.message || e}`);
+    }
+}
+
+// Live progress polling for the curated-variants preload. Polls the
+// backend's /preload_status every 500ms while a run is in flight,
+// stops automatically when `running` flips to false, and surfaces the
+// final summary in an alert.
+let _rbPreloadPollTimer = null;
+
+function rbPreloadStartPolling() {
+    if (_rbPreloadPollTimer) return;   // already polling
+    rbPreloadPollOnce();
+    _rbPreloadPollTimer = setInterval(rbPreloadPollOnce, 500);
+}
+
+function rbPreloadStopPolling() {
+    if (_rbPreloadPollTimer) {
+        clearInterval(_rbPreloadPollTimer);
+        _rbPreloadPollTimer = null;
+    }
+}
+
+async function rbPreloadPollOnce() {
+    let st;
+    try {
+        st = await (await fetch(`${RB_API}/preload_status`)).json();
+    } catch (e) {
+        return;
+    }
+    const summary = document.getElementById('rb-manage-summary');
+    const total = st.total || 0;
+    const done = st.done || 0;
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    if (st.running) {
+        if (summary) {
+            summary.className = 'text-emerald-300 text-sm mt-1';
+            summary.innerHTML = `Downloading ${done} / ${total} (${pct}%) — `
+                              + `<span class="text-gray-400">${rbEsc(st.current || '…')}</span>`;
+        }
+    } else if (st.started_at) {
+        // Finished. Stop polling, refresh manage list, show final tally.
+        rbPreloadStopPolling();
+        rbLoadManageTab();
+        const lines = [
+            `${st.downloaded} newly downloaded`,
+            `${st.already_present} already cached`,
+        ];
+        if ((st.failed || []).length) {
+            lines.push(`${st.failed.length} failed:\n  ` + st.failed.slice(0, 5).join('\n  '));
+        }
+        if ((st.errors || []).length) {
+            lines.push(`${st.errors.length} errors:\n  ` + st.errors.slice(0, 5).join('\n  '));
+        }
+        const elapsed = ((st.finished_at - st.started_at) || 0).toFixed(1);
+        lines.push(`\nElapsed: ${elapsed}s`);
+        alert('Done.\n\n' + lines.join('\n'));
+    }
+}
+
+async function rbPurgeNams(filter, label) {
+    if (!confirm(`Purge ${label}?\n\nThis deletes the file(s) AND reverts every gear using them to Pending. Cannot be undone.`)) {
+        return;
+    }
+    try {
+        const r = await fetch(`${RB_API}/nam_purge`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...filter, confirm: true }),
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || r.status);
+        rbLoadManageTab();
+        if ((d.errors || []).length) {
+            alert(`Purged ${d.deleted_count} files. ${d.errors.length} errors:\n` +
+                  d.errors.slice(0, 5).join('\n'));
+        }
+    } catch (e) {
+        alert(`Purge failed: ${e.message || e}`);
+    }
 }
 
 // ── Dashboard: coverage stats ──────────────────────────────────────
@@ -492,6 +1424,17 @@ async function rbLoadPending() {
         return;
     }
     const pending = (data.items || []).filter(i => i.pending_chain_slots > 0);
+    // Update the chip badge so the user sees the count without leaving the
+    // current sub-view. Hidden when zero so it doesn't add visual noise.
+    const badge = document.getElementById('rb-gear-pending-badge');
+    if (badge) {
+        if (pending.length) {
+            badge.textContent = pending.length;
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
+    }
     if (!pending.length) {
         el.innerHTML = '<p class="text-gray-500">No pending gear. (Have you run the batch yet?)</p>';
         return;
@@ -961,6 +1904,30 @@ function rbRenderPiece(p, toneIdx, pIdx) {
             </div>`;
     }
 
+    // Amp gain variant badge: only present when the curator has shipped
+    // `gain_variants` for this amp in rs_to_real.json. Shows which level
+    // (clean / crunch / dist / whatever the curator named it) the system
+    // auto-picked based on the song's Gain knob value. Read-only: to
+    // switch to another variant the user picks a different NAM file via
+    // 📚 Library or the file input — the existing manual flow already
+    // covers the override case without us needing a separate UI.
+    let ampVariantBadge = '';
+    if (p.amp_variant && p.amp_variant.picked) {
+        const av = p.amp_variant;
+        const availList = (av.available || []).map(level =>
+            level === av.picked
+                ? `<span class="text-emerald-300 font-semibold">${rbEsc(level)}</span>`
+                : `<span class="text-gray-500">${rbEsc(level)}</span>`
+        ).join(' · ');
+        ampVariantBadge = `
+            <div class="mt-2 bg-emerald-900/15 border border-emerald-800/30 rounded px-2 py-1.5 text-[11px] leading-snug"
+                 title="Multi-NAM amp: the system auto-picks the variant whose gain range matches this tone's Gain knob (=${rbEsc(av.rs_gain)}). To use a different variant, swap the NAM file via 📚 Library below.">
+                <span class="text-emerald-400">🎛 Amp gain variant:</span>
+                <span class="text-emerald-200">${availList}</span>
+                <span class="text-gray-500 ml-1">· auto from Gain=${rbEsc(av.rs_gain)}</span>
+            </div>`;
+    }
+
     // Rocksmith knob configuration for this piece — the values the in-game
     // tone uses for this gear (e.g. Pedal_Chorus20 with Rate=50 Depth=30 Mix=70).
     // Shown read-only so the user can either replicate manually in the VST
@@ -1041,6 +2008,7 @@ function rbRenderPiece(p, toneIdx, pIdx) {
             </div>
             <div id="rb-lib-${toneIdx}-${pIdx}" class="hidden mt-2 bg-indigo-900/10 border border-indigo-800/30 rounded p-2"></div>
             <div id="rb-tone-vst-editor-${toneIdx}-${pIdx}" class="hidden mt-2 bg-purple-900/10 border border-purple-800/30 rounded p-2 space-y-2"></div>
+            ${ampVariantBadge}
             ${rsKnobsBlock}
             ${rsIrControl}
         </div>`;
@@ -2810,6 +3778,10 @@ function rbRenderVstPanelBody(toneIdx, pIdx, currentVstPath, currentFormat) {
                    class="flex-1 bg-dark-800 border border-gray-800 rounded text-[11px] text-gray-300 px-2 py-1 font-mono">
         </div>
         <div id="rb-vst-selected-${toneIdx}-${pIdx}" class="text-[10px] text-purple-200/80 break-all">Selected: ${rbEsc(stagedName)}</div>
+        <div class="text-[10px] text-gray-500 leading-snug">
+            Path also supports <code>.component</code> (Audio Units). Pasting a full
+            path auto-assigns; using the file picker requires clicking <strong class="text-purple-200">✓ Use this VST</strong> below.
+        </div>
         <div class="flex items-center gap-2 flex-wrap">
             <button onclick="rbLoadAndEditVst(${toneIdx}, ${pIdx})"
                     class="bg-blue-700 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded">
@@ -2930,12 +3902,26 @@ function rbStagePath(toneIdx, pIdx, path) {
 
 // Stage from the manual path input AND update the "Selected" display
 // without re-rendering the whole panel (keeps the text cursor in the input).
+// Also auto-assigns the VST when the user finished typing a real path
+// (.vst3 or .component) — saves the explicit "✓ Use this VST" click
+// in the common case where you already know the path you want. Picking
+// from the dropdown or file picker still requires the Assign button so
+// accidental clicks don't override your current pick.
 function rbUpdatePathFromInput(toneIdx, pIdx, path) {
     rbStagePath(toneIdx, pIdx, path);
     const sel = document.getElementById(`rb-vst-selected-${toneIdx}-${pIdx}`);
     if (sel) {
         const name = (path || '').split('/').pop() || '(none selected)';
         sel.textContent = `Selected: ${name}`;
+    }
+    // Auto-assign when the user pasted/typed a real plugin path. Heuristic:
+    // ends with .vst3 or .component AND looks like an absolute filesystem
+    // path (starts with /). Anything else is half-typed and we leave it
+    // as a stage for now.
+    const looksReady = /^\/.+\.(vst3|component)$/i.test((path || '').trim());
+    if (looksReady) {
+        rbAssignVst(toneIdx, pIdx).catch((e) =>
+            console.warn('[rig_builder] auto-assign VST from path input failed:', e));
     }
 }
 
@@ -3240,15 +4226,17 @@ async function rbReapplyVstParamsToChain(api, chainSpec) {
 
 // Schedule a VST param re-apply after a loadPreset call. Used by the
 // fetch interceptor (song playback via bundle, where we don't control
-// the loadPreset call directly). Waits `delayMs` before reapplying so
-// the engine has time to finish instantiating each VST — calling
-// setParameter before the plug-in is fully loaded crashes some hosts.
+// the loadPreset call directly) and by other paths that have a chain
+// spec on hand. Waits `delayMs` before reapplying so the engine has
+// time to finish instantiating each VST — calling setParameter before
+// the plug-in is fully loaded crashes some hosts.
 //
 // Why this matters: the engine's loadPreset restores VSTs from an
 // opaque state blob, but in practice the parameter restore is flaky —
 // users report that VSTs in a chain stay at plug-in defaults until
 // they open the editor (which forces a setParameter walk). Calling
-// this helper after every loadPreset shortcuts that.
+// this helper after every loadPreset shortcuts that — the user no
+// longer has to open each VST editor for the saved params to apply.
 function rbReapplyVstParamsAfterLoad(chainSpec, delayMs) {
     if (!chainSpec || !Array.isArray(chainSpec)) return;
     const hasVst = chainSpec.some(s => s && s.type === 0);
@@ -3665,28 +4653,29 @@ async function rbReloadPreview(refetchPresetId) {
     const payload = rbState._previewPayload;
     if (!payload) return;
     rbApplyBypassToChain(payload, rbState.listeningTone);
-    const chainLen = (payload.native_preset.chain && payload.native_preset.chain.length) || 1;
+    const chainArr = payload.native_preset.chain || [];
+    const chainLen = chainArr.length || 1;
     try {
-        // Same pre-load mute used by the fetch interceptor for the bundle's
-        // tone-change path: zero chain gain + mute monitor BEFORE clearChain,
-        // so the first audio buffer after loadPreset (which carries the NAM
-        // attack transient) runs silently. The chain gain restores itself
-        // to 1.0 inside rbPreLoadMute on a timer scaled to chain length.
-        rbPreLoadMute(chainLen).catch(() => {});
+        // AWAIT the pre-load mute so chain gain is genuinely at 0 before
+        // clearChain+loadPreset run. Previously fire-and-forget, racing
+        // the loadPreset and letting the attack transient leak through.
+        // rbPreLoadMute returns once mute is applied; the un-mute happens
+        // on its own internal timer with a fade-in so we don't pop.
+        // Target gain is computed from the chain itself (amp+cab → ×2.0,
+        // amp only → ×0.5) so the output is normalised across configs.
+        await rbPreLoadMute(chainLen, rbChainGainTargetFor(chainArr)).catch(() => {});
         if (api.clearChain) await api.clearChain().catch(() => {});
         await api.loadPreset(JSON.stringify(payload.native_preset));
         // Engine sometimes leaves a slot bypassed across reloads — force each
         // slot's bypass to match the spec so toggling un-bypass actually un-bypasses.
-        await rbReapplyBypassToChain(api, payload.native_preset.chain || []);
+        await rbReapplyBypassToChain(api, chainArr);
         // VST params: the opaque state in the chain JSON doesn't reliably
         // restore plug-in params; walk the chain and call setParameter
         // explicitly so VSTs come up at their saved values, not defaults.
-        await rbReapplyVstParamsToChain(api, payload.native_preset.chain || []).catch((e) =>
+        await rbReapplyVstParamsToChain(api, chainArr).catch((e) =>
             console.warn('[rig_builder] reload re-apply VST params:', e));
-        // Note: rbPreLoadMute restores setMonitorMute(false) on its own
-        // timer, but we also explicitly unmute here in case the timer
-        // hasn't fired yet — the chain is now safely loaded.
-        if (api.setMonitorMute) await api.setMonitorMute(false).catch(() => {});
+        // Don't manually un-mute here — rbPreLoadMute does it with a fade
+        // on its own timer. Forcing un-mute now would defeat the fade.
     } catch (e) { console.warn('[rig_builder] reload preview failed', e); }
 }
 
@@ -3738,7 +4727,7 @@ async function rbAuditionFile(file, kind, btnId) {
         if (api.clearChain) await api.clearChain().catch(() => {});
         const res = await api.loadPreset(JSON.stringify(payload.native_preset));
         if (!res || res.success === false) throw new Error((res && res.error) || 'loadPreset failed');
-        if (api.setGain) { await api.setGain('input', 1.0).catch(() => {}); await api.setGain('chain', 1.0).catch(() => {}); }
+        if (api.setGain) { await rbApplyChainInputDrive(); await api.setGain('chain', 1.0).catch(() => {}); }
         if (api.setMonitorMute) await api.setMonitorMute(false).catch(() => {});
         const wasRunning = api.isAudioRunning ? await api.isAudioRunning().catch(() => true) : true;
         await api.startAudio();
@@ -3777,6 +4766,19 @@ async function rbAuditionCandidate(btn, rsGear, toneId) {
 
 // ── Gear catalog grouped by type ─────────────────────────────
 let _rbCatalogSeq = 0;
+// Gear-tab nav state. Lives on rbState so toggling filters mid-session
+// doesn't lose the user's setup, and so tab switches re-apply the same
+// filters when they come back. The Set is rebuilt fresh per session.
+if (!rbState.gearCollapsedCats) rbState.gearCollapsedCats = new Set();
+
+const RB_GEAR_LABEL = {
+    amp:   'Amplifiers',
+    pedal: 'Pedals',
+    cab:   'Cabinets',
+    rack:  'Racks',
+    other: 'Other',
+};
+
 async function rbLoadCatalog() {
     const el = document.getElementById('rb-catalog');
     if (!el) return;
@@ -3785,27 +4787,176 @@ async function rbLoadCatalog() {
     let data;
     try { data = await (await fetch(`${RB_API}/gear_catalog`)).json(); }
     catch (e) { el.innerHTML = `<p class="text-red-400">Error: ${rbEsc(e.message)}</p>`; return; }
-    const cats = (data && data.categories) || {};
-    const keys = Object.keys(cats);
-    if (!keys.length) {
-        el.innerHTML = '<p class="text-gray-500">No gear yet. Map a song first (the “By song” tab or the Dashboard batch).</p>';
+    rbState.gearCatalog = (data && data.categories) || {};
+    if (!Object.keys(rbState.gearCatalog).length) {
+        el.innerHTML = '<p class="text-gray-500">No gear yet. Map a song first.</p>';
         return;
     }
-    const LABEL = { amp: 'Amplifiers', pedal: 'Pedals', cab: 'Cabinets', rack: 'Racks', other: 'Other' };
+    rbApplyGearFilters();
+}
+
+// 150 ms debounce on search input so we don't re-render the whole
+// catalog on every keystroke. Re-renders are cheap (~150 cards) but
+// the network of nested template literals adds up if you spam it.
+let _rbGearSearchTimer = null;
+function rbDebouncedGearFilter() {
+    if (_rbGearSearchTimer) clearTimeout(_rbGearSearchTimer);
+    _rbGearSearchTimer = setTimeout(() => rbApplyGearFilters(), 150);
+}
+
+function rbApplyGearFilters() {
+    const el = document.getElementById('rb-catalog');
+    if (!el || !rbState.gearCatalog) return;
+    const search = ((document.getElementById('rb-gear-search') || {}).value || '')
+        .toLowerCase().trim();
+    const onlyUnassigned = !!((document.getElementById('rb-gear-only-unassigned') || {}).checked);
+    const compact = !!((document.getElementById('rb-gear-compact') || {}).checked);
+
+    // Filter items per category based on search + status. Empty
+    // categories drop out so we don't render an empty header.
+    const filtered = {};
+    let total = 0;
+    for (const cat in rbState.gearCatalog) {
+        const items = rbState.gearCatalog[cat].filter(g => {
+            if (onlyUnassigned && g.assigned) return false;
+            if (!search) return true;
+            const hay = (
+                (g.real_name || '') + ' ' +
+                (g.make || '') + ' ' +
+                (g.model || '') + ' ' +
+                (g.rs_gear || '') + ' ' +
+                (g.tone3000_title || '')
+            ).toLowerCase();
+            return hay.includes(search);
+        });
+        if (items.length) {
+            filtered[cat] = items;
+            total += items.length;
+        }
+    }
+
+    // Jump pills — one per category, with the FILTERED count so the
+    // user knows how many matches landed in each. Active pill = the
+    // category currently scrolled-to is not tracked (it'd need a
+    // scroll observer); just style them all uniformly.
+    const pillsEl = document.getElementById('rb-gear-jump-pills');
+    if (pillsEl) {
+        if (Object.keys(filtered).length <= 1) {
+            pillsEl.innerHTML = '';   // no point in pills for one section
+        } else {
+            pillsEl.innerHTML = Object.keys(filtered).map(cat => {
+                const collapsed = rbState.gearCollapsedCats.has(cat);
+                return `<button onclick="rbScrollToCategory('${cat}')"
+                        class="text-xs px-2 py-1 rounded-full transition
+                               ${collapsed ? 'bg-dark-800 text-gray-500' : 'bg-dark-600 text-gray-200 hover:bg-dark-500'}">
+                    ${rbEsc(RB_GEAR_LABEL[cat] || cat)}
+                    <span class="text-gray-400 ml-1">${filtered[cat].length}</span>
+                </button>`;
+            }).join('');
+        }
+    }
+
+    // Render sections. Each has a clickable header that toggles collapse.
+    if (!total) {
+        el.innerHTML = `<div class="text-center text-gray-500 py-10">
+            No matches.${search ? ` Try clearing the search.` : ''}</div>`;
+        return;
+    }
     try {
-        el.innerHTML = keys.map(cat => {
-            const items = cats[cat] || [];
-            const cards = items.map(g => rbRenderCatalogCard(g)).join('');
-            return `
-                <div>
-                    <h3 class="text-white font-semibold mb-3">${rbEsc(LABEL[cat] || cat)} <span class="text-gray-500 text-xs">(${items.length})</span></h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">${cards}</div>
-                </div>`;
+        el.innerHTML = Object.keys(filtered).map(cat => {
+            const items = filtered[cat];
+            const collapsed = rbState.gearCollapsedCats.has(cat);
+            const label = RB_GEAR_LABEL[cat] || cat;
+            const body = collapsed ? '' :
+                (compact
+                    ? `<div class="bg-dark-800/30 border border-gray-800/30 rounded-lg divide-y divide-gray-800/30">
+                          ${items.map(rbRenderCatalogCardCompact).join('')}
+                       </div>`
+                    : `<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          ${items.map(rbRenderCatalogCard).join('')}
+                       </div>`);
+            return `<div id="rb-cat-${cat}" class="scroll-mt-4">
+                <h3 onclick="rbToggleCategoryCollapse('${cat}')"
+                    class="text-white font-semibold mb-3 cursor-pointer select-none flex items-center gap-2 hover:text-accent transition">
+                    <span class="text-gray-500 text-xs w-3 inline-block">${collapsed ? '▶' : '▼'}</span>
+                    ${rbEsc(label)}
+                    <span class="text-gray-500 text-xs font-normal">(${items.length})</span>
+                </h3>
+                ${body}
+            </div>`;
         }).join('');
     } catch (e) {
         console.error('[rig_builder] catalog render failed', e);
         el.innerHTML = `<p class="text-red-400">Error rendering: ${rbEsc(e.message)}</p>`;
     }
+}
+
+function rbScrollToCategory(cat) {
+    const target = document.getElementById(`rb-cat-${cat}`);
+    if (!target) return;
+    // Expand if collapsed so the user actually sees the cards.
+    if (rbState.gearCollapsedCats.has(cat)) {
+        rbState.gearCollapsedCats.delete(cat);
+        rbApplyGearFilters();
+        // Wait for the re-render to land before scrolling.
+        setTimeout(() => {
+            document.getElementById(`rb-cat-${cat}`)?.scrollIntoView({behavior: 'smooth', block: 'start'});
+        }, 30);
+    } else {
+        target.scrollIntoView({behavior: 'smooth', block: 'start'});
+    }
+}
+
+function rbToggleCategoryCollapse(cat) {
+    if (rbState.gearCollapsedCats.has(cat)) rbState.gearCollapsedCats.delete(cat);
+    else rbState.gearCollapsedCats.add(cat);
+    rbApplyGearFilters();
+}
+
+function rbClearGearFilters() {
+    const s = document.getElementById('rb-gear-search');
+    const u = document.getElementById('rb-gear-only-unassigned');
+    const c = document.getElementById('rb-gear-compact');
+    if (s) s.value = '';
+    if (u) u.checked = false;
+    if (c) c.checked = false;
+    rbState.gearCollapsedCats.clear();
+    rbApplyGearFilters();
+}
+
+// One-line card used in compact mode. Drops the photo to a thumbnail
+// and skips the controls panel — click ▶ still works, and the rs_gear
+// name is shown small for quick scanning at scale (100+ gears).
+function rbRenderCatalogCardCompact(g) {
+    const btnId = `rb-aud-${_rbCatalogSeq++}`;
+    const photo = g.image
+        ? `<img src="${rbEsc(g.image)}" alt="" loading="lazy"
+               class="w-8 h-8 rounded object-cover bg-dark-900 flex-shrink-0"
+               onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'w-8 h-8 rounded bg-dark-900 flex-shrink-0'}))">`
+        : `<div class="w-8 h-8 rounded bg-dark-900 flex-shrink-0"></div>`;
+    const status = g.assigned
+        ? `<span class="text-emerald-400 text-xs" title="Assigned">●</span>`
+        : `<span class="text-amber-400 text-xs" title="Pending">●</span>`;
+    // Compact rows still let you audition. Suggest / library picker
+    // are one step away: clicking anywhere else on the row toggles
+    // back to a full card for that single gear (planned).
+    const file = g.file
+        ? `<span class="text-xs text-gray-500 truncate font-mono" title="${rbEsc(g.file)}">${rbEsc(g.file.split('/').pop())}</span>`
+        : (g.vst_path
+            ? `<span class="text-xs text-purple-400 truncate" title="${rbEsc(g.vst_path)}">VST: ${rbEsc(g.vst_path.split('/').pop())}</span>`
+            : `<span class="text-xs text-gray-600 italic">unassigned</span>`);
+    return `<div class="flex items-center gap-2 px-3 py-2 hover:bg-dark-700/30">
+        ${photo}
+        ${status}
+        <div class="min-w-0 flex-1">
+            <div class="text-gray-200 truncate text-xs"><strong>${rbEsc(g.real_name)}</strong>
+                <span class="text-gray-500 text-[10px]">${rbEsc(g.rs_gear)}</span>
+            </div>
+            ${file}
+        </div>
+        ${g.file ? `<button id="${btnId}" onclick="rbAuditionFile(${JSON.stringify(g.file)},${JSON.stringify(g.kind || 'nam')},'${btnId}')"
+                            class="text-gray-400 hover:text-emerald-300 px-1.5 py-0.5 text-xs">▶</button>` : ''}
+    </div>`;
 }
 
 function rbRenderCatalogCard(g) {
@@ -3842,6 +4993,38 @@ function rbRenderCatalogCard(g) {
     const vstPanelId = `rb-cat-vst-${g.rs_gear.replace(/[^a-zA-Z0-9_-]/g,'_')}`;
     const knownCount = rbState.knownVsts ? rbState.knownVsts.length : 0;
 
+    // Amp gain variants button — only on amps. Opens the multi-NAM
+    // picker where the curator can map distinct captures to gain
+    // ranges (clean/crunch/dist), with a per-row capture dropdown for
+    // tone3000 pages that host multiple captures.
+    const safeId = g.rs_gear.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const variantsBtn = g.category === 'amp' ? `
+        <button onclick="rbToggleAmpVariants('${rbEsc(g.rs_gear)}')"
+                title="Set clean / crunch / dist captures so the song's Gain knob picks the right one"
+                class="bg-emerald-900/30 hover:bg-emerald-900/50 text-emerald-300 border border-emerald-800/40 px-2.5 py-1 rounded text-xs">🎚 Variants</button>` : '';
+
+    // Audition row for amps with curated gain_variants — one mini ▶
+    // per variant (clean/crunch/dist/whatever the curator named them).
+    // Lets the user A/B the 3 captures without opening a song. The
+    // backend stamps `available: false` on variants whose NAM file is
+    // missing on disk; those render as a dimmed button.
+    let variantAuditionRow = '';
+    if (Array.isArray(g.variants) && g.variants.length) {
+        const btns = g.variants.map(v => {
+            const vId = `rb-aud-${_rbCatalogSeq++}`;
+            if (!v.available || !v.file) {
+                return `<button disabled title="NAM not downloaded — Setup → Download all curated variants"
+                                class="text-[10px] px-2 py-0.5 rounded bg-dark-800/50 text-gray-600 cursor-not-allowed">▶ ${rbEsc(v.level)}</button>`;
+            }
+            return `<button id="${vId}" onclick="rbAuditionFile('${rbEsc(v.file).replace(/'/g,"\\'")}','nam','${vId}')"
+                            title="${rbEsc(v.notes || v.level)}"
+                            class="text-[10px] px-2 py-0.5 rounded bg-emerald-900/30 hover:bg-emerald-900/60 text-emerald-300 border border-emerald-800/40">▶ ${rbEsc(v.level)}</button>`;
+        }).join(' ');
+        variantAuditionRow = `<div class="flex items-center gap-1 flex-wrap pl-[3.75rem]">
+            <span class="text-[10px] text-gray-500">variants:</span>${btns}
+        </div>`;
+    }
+
     return `
         <div class="bg-dark-700/50 border border-gray-800/50 rounded-lg p-3 flex flex-col gap-2">
             <div class="flex items-center gap-3">
@@ -3858,10 +5041,208 @@ function rbRenderCatalogCard(g) {
                     <button onclick="rbToggleCatalogLibrary('${rbEsc(g.rs_gear)}','${rbEsc(g.category || '')}','${rbEsc(g.vst_path || '')}','${rbEsc(g.vst_format || 'VST3')}')"
                             title="Pick a downloaded NAM/IR or an installed VST/AU and bulk-assign to every preset using this gear"
                             class="bg-indigo-900/30 hover:bg-indigo-900/50 text-indigo-300 border border-indigo-800/40 px-2.5 py-1 rounded text-xs">📚 Library</button>
+                    ${variantsBtn}
                 </div>
             </div>
-            <div id="rb-cat-lib-${rbEsc(g.rs_gear).replace(/[^a-zA-Z0-9_-]/g,'_')}" class="hidden bg-indigo-900/10 border border-indigo-800/30 rounded p-2"></div>
+            ${variantAuditionRow}
+            <div id="rb-cat-lib-${safeId}" class="hidden bg-indigo-900/10 border border-indigo-800/30 rounded p-2"></div>
+            <div id="rb-cat-variants-${safeId}" class="hidden bg-emerald-900/10 border border-emerald-800/30 rounded p-2"></div>
         </div>`;
+}
+
+// Toggle + render the Gain-variants panel for an amp in the Gear catalog.
+// Fetches GET /amp_variants/{rs_gear}, then builds three slots
+// (clean / crunch / dist) showing the current pick + edit controls.
+async function rbToggleAmpVariants(rsGear) {
+    const safeId = rsGear.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const el = document.getElementById(`rb-cat-variants-${safeId}`);
+    if (!el) return;
+    if (!el.classList.contains('hidden')) {
+        el.classList.add('hidden');
+        return;
+    }
+    el.classList.remove('hidden');
+    el.innerHTML = `<div class="text-xs text-gray-500">Loading…</div>`;
+    try {
+        const r = await fetch(`${RB_API}/amp_variants/${encodeURIComponent(rsGear)}`);
+        if (!r.ok) throw new Error((await r.json().catch(()=>({}))).error || r.status);
+        const data = await r.json();
+        el.innerHTML = rbRenderAmpVariantsPanel(rsGear, data);
+    } catch (e) {
+        el.innerHTML = `<div class="text-xs text-red-400">load failed: ${rbEsc(e.message || e)}</div>`;
+    }
+}
+
+// Build HTML for the three-slot variants panel. Pre-fills each slot
+// with the current variant (if any) and shows the default range
+// labels next to each level name.
+function rbRenderAmpVariantsPanel(rsGear, data) {
+    const safeId = rsGear.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const variants = data.variants || {};
+    const defaults = data.default_levels || {};
+    const levels = ['clean', 'crunch', 'dist'];
+    const rows = levels.map(level => {
+        const v = variants[level] || {};
+        const def = defaults[level] || { rs_gain_range: [0, 100] };
+        const range = v.rs_gain_range || def.rs_gain_range;
+        const tone3000Id = v.tone3000_id || '';
+        const modelId = v.model_id || '';
+        const isSaved = !!v.tone3000_id;
+        const slotPrefix = `rb-amp-variants-${safeId}-${level}`;
+        return `
+            <div class="bg-dark-800/60 border border-gray-800/40 rounded p-2 mb-2" id="${slotPrefix}">
+                <div class="flex items-center justify-between mb-1.5">
+                    <div class="flex items-center gap-2">
+                        <span class="font-semibold text-emerald-300 capitalize">${level}</span>
+                        <span class="text-[10px] text-gray-500">Gain ${range[0]}-${range[1]}</span>
+                        ${isSaved ? '<span class="text-[10px] text-emerald-400">✓ saved</span>' : '<span class="text-[10px] text-gray-600">empty</span>'}
+                    </div>
+                    ${isSaved ? `<button onclick="rbDeleteAmpVariant('${rbEsc(rsGear)}', '${level}')"
+                                        class="text-[10px] text-red-400 hover:text-red-300 px-1.5 py-0.5">Remove</button>` : ''}
+                </div>
+                <div class="flex items-center gap-2 mb-1.5">
+                    <input id="${slotPrefix}-tone" type="text" placeholder="tone3000 URL or ID (e.g. 37987)"
+                           value="${rbEsc(tone3000Id)}"
+                           class="flex-1 bg-dark-900 border border-gray-800 rounded text-[11px] text-gray-200 px-2 py-1 font-mono">
+                    <button onclick="rbInspectAmpVariant('${rbEsc(rsGear)}', '${level}')"
+                            class="bg-dark-600 hover:bg-dark-500 text-gray-200 text-[10px] px-2 py-1 rounded whitespace-nowrap">↓ Captures</button>
+                </div>
+                <div id="${slotPrefix}-captures" class="hidden flex items-center gap-2 mb-1.5">
+                    <span class="text-[10px] text-gray-500">capture:</span>
+                    <select id="${slotPrefix}-model" class="flex-1 bg-dark-900 border border-gray-800 rounded text-[10px] text-gray-200 px-1 py-1"></select>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="rbSaveAmpVariant('${rbEsc(rsGear)}', '${level}')"
+                            class="bg-emerald-700 hover:bg-emerald-600 text-white text-[11px] px-2.5 py-1 rounded">💾 Save ${level}</button>
+                    <span id="${slotPrefix}-status" class="text-[10px] text-gray-500"></span>
+                </div>
+            </div>`;
+    }).join('');
+    return `
+        <div class="text-xs text-gray-400 mb-2">
+            Each level downloads a separate capture; the song's Gain knob
+            picks which one plays. Leave a level empty to skip it (the
+            closest other variant covers that range).
+        </div>
+        ${rows}`;
+}
+
+// Inspect the captures inside a tone3000 page (GET /tone3000/captures/{id})
+// and populate the per-row dropdown. The "tone3000 URL or ID" input
+// accepts either format — we extract the trailing number from URLs.
+async function rbInspectAmpVariant(rsGear, level) {
+    const safeId = rsGear.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const slotPrefix = `rb-amp-variants-${safeId}-${level}`;
+    const input = document.getElementById(`${slotPrefix}-tone`);
+    const statusEl = document.getElementById(`${slotPrefix}-status`);
+    const capsRow = document.getElementById(`${slotPrefix}-captures`);
+    const select  = document.getElementById(`${slotPrefix}-model`);
+    if (!input || !statusEl || !capsRow || !select) return;
+    const raw = (input.value || '').trim();
+    const m = raw.match(/(\d+)\s*$/);
+    if (!m) {
+        statusEl.textContent = 'enter a tone3000 URL or numeric ID';
+        statusEl.className = 'text-[10px] text-amber-300';
+        return;
+    }
+    const toneId = parseInt(m[1], 10);
+    statusEl.textContent = 'fetching captures…';
+    statusEl.className = 'text-[10px] text-gray-500';
+    try {
+        const r = await fetch(`${RB_API}/tone3000/captures/${toneId}`);
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || r.status);
+        const caps = data.captures || [];
+        if (!caps.length) {
+            statusEl.textContent = 'no captures in this tone';
+            statusEl.className = 'text-[10px] text-amber-300';
+            capsRow.classList.add('hidden');
+            return;
+        }
+        // Build options. Add a sentinel "(auto: best by size)" at top
+        // so the user can explicitly let pick_best_model decide.
+        //
+        // Order matters here: the capture's title (which encodes knob
+        // settings like "G7 B5 M5 T5 P5 V5") is what the user reads to
+        // match a Rocksmith gain level — put it first. Size/license
+        // are secondary metadata tail-tagged at the end.
+        select.innerHTML = `<option value="">(auto: best by size)</option>` +
+            caps.map(c => {
+                const meta = [c.size || '?', c.license || ''].filter(Boolean).join(' · ');
+                return `<option value="${c.model_id}">${rbEsc(c.name)} — ${rbEsc(meta)}</option>`;
+            }).join('');
+        capsRow.classList.remove('hidden');
+        statusEl.textContent = `${caps.length} capture${caps.length === 1 ? '' : 's'} loaded — pick one and Save`;
+        statusEl.className = 'text-[10px] text-emerald-400';
+    } catch (e) {
+        statusEl.textContent = `failed: ${e.message || e}`;
+        statusEl.className = 'text-[10px] text-red-400';
+    }
+}
+
+// Persist a single variant. POSTs to /amp_variants/{rs_gear}/{level}.
+async function rbSaveAmpVariant(rsGear, level) {
+    const safeId = rsGear.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const slotPrefix = `rb-amp-variants-${safeId}-${level}`;
+    const input = document.getElementById(`${slotPrefix}-tone`);
+    const select = document.getElementById(`${slotPrefix}-model`);
+    const statusEl = document.getElementById(`${slotPrefix}-status`);
+    if (!input || !statusEl) return;
+    const raw = (input.value || '').trim();
+    const m = raw.match(/(\d+)\s*$/);
+    if (!m) {
+        statusEl.textContent = 'enter a tone3000 URL or numeric ID first';
+        statusEl.className = 'text-[10px] text-amber-300';
+        return;
+    }
+    const tone3000Id = parseInt(m[1], 10);
+    const modelId = (select && select.value) ? parseInt(select.value, 10) : null;
+    statusEl.textContent = 'saving…';
+    statusEl.className = 'text-[10px] text-gray-500';
+    try {
+        const r = await fetch(`${RB_API}/amp_variants/${encodeURIComponent(rsGear)}/${encodeURIComponent(level)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tone3000_id: tone3000Id, model_id: modelId }),
+        });
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || r.status);
+        statusEl.textContent = '✓ saved — re-run Batch all to download';
+        statusEl.className = 'text-[10px] text-emerald-400';
+        // Re-render the panel so the saved badge appears.
+        setTimeout(() => rbReopenAmpVariants(rsGear), 600);
+    } catch (e) {
+        statusEl.textContent = `save failed: ${e.message || e}`;
+        statusEl.className = 'text-[10px] text-red-400';
+    }
+}
+
+// Remove a single variant.
+async function rbDeleteAmpVariant(rsGear, level) {
+    if (!confirm(`Remove the "${level}" variant for ${rsGear}?`)) return;
+    try {
+        const r = await fetch(`${RB_API}/amp_variants/${encodeURIComponent(rsGear)}/${encodeURIComponent(level)}`, {
+            method: 'DELETE',
+        });
+        if (!r.ok) {
+            const data = await r.json().catch(()=>({}));
+            alert(`delete failed: ${data.error || r.status}`);
+            return;
+        }
+        rbReopenAmpVariants(rsGear);
+    } catch (e) {
+        alert(`delete failed: ${e.message || e}`);
+    }
+}
+
+// Helper: close + re-open the panel so it reloads from the backend after
+// a Save / Delete. Cheaper than rendering diffs in place.
+function rbReopenAmpVariants(rsGear) {
+    const safeId = rsGear.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const el = document.getElementById(`rb-cat-variants-${safeId}`);
+    if (!el) return;
+    el.classList.add('hidden');
+    rbToggleAmpVariants(rsGear);
 }
 
 // Open the catalog-card library picker (bulk-assigns to every preset using
@@ -4076,13 +5457,16 @@ function rbRenderCatalogVstPanelBody(panelId, rsGear, currentVstPath, currentFor
             </button>
         </div>
         <div class="flex items-center gap-2">
-            <input type="text"
-                   placeholder="Or paste path: /Library/Audio/Plug-Ins/VST3/TAL-Chorus-LX.vst3"
+            <input id="${panelId}-pathinput" type="text"
+                   placeholder="Or paste path: /Library/Audio/Plug-Ins/VST3/TAL-Chorus-LX.vst3 (or .component for AU)"
                    value="${rbEsc(stagedPath)}"
-                   onchange="rbCatalogStagePath('${rbEsc(panelId)}', this.value); var s = document.getElementById('${rbEsc(panelId)}-selected'); if (s) s.textContent = 'Selected: ' + (this.value.split('/').pop() || '(none selected)');"
+                   onchange="rbCatalogUpdatePathFromInput('${rbEsc(panelId)}','${rbEsc(rsGear)}', this.value)"
                    class="flex-1 bg-dark-800 border border-gray-800 rounded text-[11px] text-gray-300 px-2 py-1 font-mono">
         </div>
         <div id="${panelId}-selected" class="text-[10px] text-purple-200/80 break-all">Selected: ${rbEsc(stagedName)}</div>
+        <div class="text-[10px] text-gray-500 leading-snug">
+            The text input above wins over the dropdown — pasting a full path overrides any scanned plugin selection. <code>.component</code> (Audio Units) and <code>.vst3</code> both work.
+        </div>
         <div class="flex items-center gap-2 flex-wrap">
             <button onclick="rbCatalogLoadAndEdit('${rbEsc(panelId)}')"
                     class="bg-blue-700 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded">
@@ -4107,11 +5491,43 @@ function rbCatalogStagePath(panelId, path) {
 }
 
 function rbCatalogResolveStagedPath(panelId) {
+    // Resolution order, highest priority first:
+    //   1. The manual path input — what the user explicitly pasted/typed
+    //      ALWAYS wins over the dropdown. This is the fix for the bug
+    //      where pasting a .component path got silently replaced by
+    //      whatever VST happened to be selected in the scanned-plugin
+    //      dropdown when the user clicked "Assign to ALL".
+    //   2. dataset.stagedPath — what previous interactions parked on the
+    //      panel (file-picker output, deliberate stage from another
+    //      source). Used as a stable fallback when the input is empty.
+    //   3. The scanned-plugin dropdown — only kicks in when neither the
+    //      input nor the dataset have anything, i.e. the user hasn't
+    //      touched anything manually and the dropdown is the only source.
+    const input = document.getElementById(`${panelId}-pathinput`);
+    if (input && input.value && input.value.trim()) return input.value.trim();
     const el = document.getElementById(panelId);
     if (el && el.dataset.stagedPath) return el.dataset.stagedPath;
     const select = document.getElementById(`${panelId}-select`);
     if (select && select.value) return select.value;
     return '';
+}
+
+// Manual path input → stage AND optionally auto-assign across all
+// presets when the path looks like a real plugin (absolute path ending
+// in .vst3 or .component). Mirrors rbUpdatePathFromInput in the
+// per-song flow.
+async function rbCatalogUpdatePathFromInput(panelId, rsGear, path) {
+    rbCatalogStagePath(panelId, path);
+    const sel = document.getElementById(`${panelId}-selected`);
+    if (sel) {
+        const name = (path || '').split('/').pop() || '(none selected)';
+        sel.textContent = `Selected: ${name}`;
+    }
+    const looksReady = /^\/.+\.(vst3|component)$/i.test((path || '').trim());
+    if (looksReady) {
+        await rbCatalogAssignVst(panelId, rsGear).catch((e) =>
+            console.warn('[rig_builder] catalog auto-assign from path input failed:', e));
+    }
 }
 
 async function rbCatalogPickFile(panelId, rsGear, currentFormat) {
@@ -4327,12 +5743,11 @@ async function rbListenTone(toneIdx, filename) {
             }
             rbState._previewPayload = payload;
             rbApplyBypassToChain(payload, toneIdx);   // honour any pre-set bypasses
-            // Pre-load mute (same as the fetch interceptor uses for the
-            // bundle's tone-change path): zero chain gain + mute monitor
-            // BEFORE clearChain so the loadPreset attack transient runs
-            // silently. rbPreLoadMute restores on its own timer scaled
-            // to chain length.
-            rbPreLoadMute(chain.length).catch(() => {});
+            // AWAIT pre-load mute so chain gain is at 0 before clearChain+
+            // loadPreset run. Target gain is computed from the chain
+            // (amp+cab → ×2.0, amp only → ×0.5) so Listen mode normalises
+            // levels the same way the song-playback path does.
+            await rbPreLoadMute(chain.length, rbChainGainTargetFor(chain)).catch(() => {});
             if (api.clearChain) await api.clearChain().catch(() => {});
             const res = await api.loadPreset(JSON.stringify(payload.native_preset));
             const got = res && res.slotsLoaded;
@@ -4347,8 +5762,11 @@ async function rbListenTone(toneIdx, filename) {
             // setParameter for each saved {paramId: value} entry.
             await rbReapplyVstParamsToChain(api, chain).catch((e) =>
                 console.warn('[rig_builder] re-apply VST params:', e));
-            if (api.setGain) { await api.setGain('input', 1.0).catch(() => {}); await api.setGain('chain', 1.0).catch(() => {}); }
-            if (api.setMonitorMute) await api.setMonitorMute(false).catch(() => {});
+            // Input gain to chain-input-drive (pre-chain, safe to set).
+            // Don't touch chain gain or monitor mute — rbPreLoadMute fades
+            // chain back to its target and un-mutes on its own timer
+            // with a smooth ramp. Forcing them here defeats the fade.
+            if (api.setGain) { await rbApplyChainInputDrive(); }
             const wasRunning = api.isAudioRunning ? await api.isAudioRunning().catch(() => true) : true;
             await api.startAudio();
             rbState._previewStartedAudio = !wasRunning;
@@ -4390,8 +5808,19 @@ async function rbLoadSettings() {
     }
     document.getElementById('rb-aggressive').checked = !!s.aggressive;
     document.getElementById('rb-min-downloads').value = s.min_downloads;
-    const sizeSel = document.getElementById('rb-preferred-size');
-    if (sizeSel) sizeSel.value = s.preferred_size || 'standard';
+    const megaCb = document.getElementById('rb-mega-chain-mode');
+    if (megaCb) megaCb.checked = !!s.mega_chain_mode;
+    const bac = document.getElementById('rb-bypass-all-cabs');
+    if (bac) bac.checked = !!s.bypass_all_cabs;
+    // Mirror the persisted flag onto the runtime mirror so RbMegaChain
+    // sees it even if the user never opens Settings. rbLoadSettings is
+    // called from rbInit so this runs at page-load.
+    window.__rbMegaChainSetting = !!s.mega_chain_mode;
+    // Refresh the chain-input drive cache too — picks up any change the
+    // user made via Settings (or via a direct settings POST in DevTools).
+    if (typeof s.nam_chain_input_drive === 'number') {
+        window.__rbChainInputDrive = s.nam_chain_input_drive;
+    }
     // OAuth (Connect with tone3000) state.
     const oauthStatus = document.getElementById('rb-oauth-status');
     const oauthBtn = document.getElementById('rb-oauth-btn');
@@ -4456,13 +5885,17 @@ async function rbOauthDisconnect() {
 async function rbSaveSettings() {
     const aggressive = document.getElementById('rb-aggressive').checked;
     const min_downloads = parseInt(document.getElementById('rb-min-downloads').value, 10) || 0;
-    const sizeSel = document.getElementById('rb-preferred-size');
-    const preferred_size = sizeSel ? sizeSel.value : 'standard';
+    const megaCb = document.getElementById('rb-mega-chain-mode');
+    const mega_chain_mode = megaCb ? !!megaCb.checked : false;
+    const bac = document.getElementById('rb-bypass-all-cabs');
+    const bypass_all_cabs = bac ? !!bac.checked : false;
     await fetch(`${RB_API}/settings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ aggressive, min_downloads, preferred_size }),
+        body: JSON.stringify({ aggressive, min_downloads, mega_chain_mode, bypass_all_cabs }),
     });
+    // Mirror to the runtime so RbMegaChain picks it up without a restart.
+    window.__rbMegaChainSetting = mega_chain_mode;
 }
 
 // Open a native file picker (Electron desktop bridge) and drop the chosen
@@ -4531,10 +5964,11 @@ async function rbDownloadForGear(btn, rsGear, toneId) {
         }
         // The backend already stamped the file onto pending preset_pieces
         // and refreshed the affected presets, so refresh whichever view
-        // is open to reflect that the gear is no longer pending.
-        if (rbState.currentTab === 'pending') rbLoadPending();
-        else if (rbState.currentTab === 'dashboard') rbLoadCoverage();
-        else if (rbState.currentTab === 'gear') rbLoadCatalog();
+        // is open to reflect that the gear is no longer pending. Post-
+        // restructure the dashboard + pending tabs are gone; Setup now
+        // owns coverage, and Gear owns the pending sub-view.
+        if (rbState.currentTab === 'settings') rbLoadCoverage();
+        else if (rbState.currentTab === 'gear') rbGearFilter(rbState.currentGearFilter || 'all');
         // Reflect the new assignment in the open song view now (and
         // re-audition if a tone using this gear is currently previewing) —
         // no need to re-select the song.
@@ -4551,51 +5985,58 @@ async function rbDownloadForGear(btn, rsGear, toneId) {
     }
 }
 
-async function rbExtractGearMap() {
-    const path = document.getElementById('rb-gears-psarc').value.trim();
+// Combined "Extract everything" — runs the gear map first (the IR mapping
+// depends on it), then the IRs, against one gears.psarc. Aborts before the
+// IR step if the gear map fails (e.g. wrong archive), so a bad file can't
+// leave a half-set-up state.
+async function rbExtractAll() {
+    const path = document.getElementById('rb-all-psarc').value.trim();
     if (!path) return;
-    const status = document.getElementById('rb-extract-status');
-    status.textContent = 'Extracting…';
+    const status = document.getElementById('rb-extract-all-status');
+    status.textContent = 'Step 1/2: rebuilding gear map…';
     try {
-        const r = await fetch(`${RB_API}/extract_gear_map`, {
+        let r = await fetch(`${RB_API}/extract_gear_map`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ gears_psarc: path }),
         });
-        const data = await r.json();
+        let data = await r.json();
         if (!r.ok) {
-            status.innerHTML = `<span class="text-red-400">Error: ${rbEsc(data.error || r.status)}</span>`;
+            status.innerHTML = `<span class="text-red-400">Gear map failed: ${rbEsc(data.error || r.status)} — is this really gears.psarc?</span>`;
             return;
         }
-        status.innerHTML = `<span class="text-green-400">Done: ${data.count} entries. Reloading status…</span>`;
+        const gearCount = data.count;
+        status.innerHTML = `<span class="text-gray-400">Gear map: ${gearCount} entries. Step 2/2: extracting cab IRs (30-60s)…</span>`;
+        r = await fetch(`${RB_API}/extract_irs`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ gears_psarc: path }),
+        });
+        data = await r.json();
+        if (!r.ok) {
+            status.innerHTML = `<span class="text-yellow-400">Gear map OK (${gearCount}), but IR extraction failed: ${rbEsc(data.error || r.status)}</span>`;
+            return;
+        }
+        status.innerHTML = `<span class="text-green-400">Done: ${gearCount} gear entries + ${data.count} cabs with IR. Reloading…</span>`;
         rbInit();
     } catch (e) {
         status.innerHTML = `<span class="text-red-400">${rbEsc(e.message)}</span>`;
     }
 }
 
-async function rbExtractIRs() {
-    const path = document.getElementById('rb-irs-psarc').value.trim();
-    if (!path) return;
-    const status = document.getElementById('rb-extract-irs-status');
-    status.textContent = 'Extracting IRs (may take 30-60s)…';
-    try {
-        const r = await fetch(`${RB_API}/extract_irs`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ gears_psarc: path }),
-        });
-        const data = await r.json();
-        if (!r.ok) {
-            status.innerHTML = `<span class="text-red-400">Error: ${rbEsc(data.error || r.status)}</span>`;
-            return;
-        }
-        status.innerHTML = `<span class="text-green-400">Done: ${data.count} RS entities with IR. Reloading status…</span>`;
-        rbInit();
-    } catch (e) {
-        status.innerHTML = `<span class="text-red-400">${rbEsc(e.message)}</span>`;
-    }
-}
+// NOTE: rbNormalizeRsIrs (the "Normalize existing Rocksmith IRs"
+// button) was removed from the Settings UI because peak-normalising
+// the WAV samples didn't change the audible level — the engine
+// ignores the per-stage IR `gain` we tried to write, AND it doesn't
+// have a peak-triggered limiter that the over-unity WEM samples were
+// activating either. The real fix lives in the Cab makeup gain
+// slider, which goes through `setGain('chain', X)` (the only knob
+// the engine actually respects).
+//
+// The backend `/normalize_rocksmith_irs` endpoint and the
+// `_peak_normalize_float32` step inside extract_irs.py are kept —
+// they put the IRs into a standard ±1.0 float32 range, which is
+// good hygiene even if it doesn't move audible level.
 
 async function rbExportDefaults() {
     const status = document.getElementById('rb-export-defaults-status');

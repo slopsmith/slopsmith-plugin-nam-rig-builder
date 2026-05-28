@@ -80,6 +80,38 @@ def _parse_didx(didx: bytes) -> list[tuple[int, int, int]]:
     return out
 
 
+_IR_TARGET_L2 = 2.4    # match tone3000 cab IRs' broadband convolution gain
+_IR_PEAK_CAP = 2.0     # clip safety — never let an IR's peak exceed this
+
+
+def _peak_normalize_float32(samples: bytes) -> bytes:
+    """Scale raw float32 cab-IR PCM so its **L2 norm** (sqrt of total energy)
+    hits a tone3000-like target — capping the peak for clip safety.
+
+    A cab IR's playback loudness tracks its L2 (the broadband convolution
+    gain), NOT its peak. Rocksmith's raw IRs are unnormalized (peaks ~7-19) AND,
+    even after peak-normalizing, carry only ~half the L2 of a tone3000 IR — so
+    the guitar/bass comes out far quieter with a Rocksmith cab engaged. Matching
+    L2 equalizes cab loudness across the set and against tone3000. Scaling is
+    uniform across (interleaved) channels — level only, not frequency response.
+    (Name kept for the call site; it's an L2 normalize now.)"""
+    import math
+    n = len(samples) // 4
+    if n == 0:
+        return samples
+    vals = struct.unpack("<%df" % n, samples)
+    peak = max((abs(v) for v in vals), default=0.0)
+    l2 = math.sqrt(sum(v * v for v in vals))
+    if l2 <= 0.0 or peak <= 0.0:
+        return samples
+    scale = _IR_TARGET_L2 / l2
+    if peak * scale > _IR_PEAK_CAP:
+        scale = _IR_PEAK_CAP / peak
+    if abs(scale - 1.0) < 1e-3:   # already normalized — leave it (idempotent)
+        return samples
+    return struct.pack("<%df" % n, *(v * scale for v in vals))
+
+
 def _write_float32_wav(path: Path, samples: bytes, sample_rate: int, channels: int) -> None:
     """Write a 32-bit IEEE float PCM WAV file.
 
@@ -153,6 +185,7 @@ def extract_all(gears_psarc: str, irs_root: Path) -> dict:
             if not samples:
                 continue
             out_name = f"{bank_name}_{idx:02d}.wav"
+            samples = _peak_normalize_float32(samples)
             _write_float32_wav(out_dir / out_name, samples, sample_rate, channels)
             ir_files.append(f"rocksmith/{out_name}")
             total_irs += 1
