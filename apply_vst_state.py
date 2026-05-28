@@ -91,15 +91,17 @@ _VST_PARAM_RANGES: dict[str, dict[str, tuple[str, float, float]]] = {
         "Knee size":   ("linear",  0.0, 100.0),
     },
     "mequalizer": {
+        # Top-level (band-agnostic) params
         "Gain":          ("linear", -24.0, 24.0),
         "Dry/Wet":       ("linear",  0.0, 100.0),
         "Soft saturation": ("linear", 0.0, 100.0),
-        # Bands 1..16 — Melda free MEqualizer exposes up to 16 bands. Curated
-        # entries only use 1..6, but cover the rest so a future curator
-        # mapping (e.g. EQ8 → all 8 bands) Just Works.
-        **{f"Band {i} Gain":      ("linear", -24.0, 24.0)    for i in range(1, 17)},
-        **{f"Band {i} Frequency": ("log",     20.0, 20000.0) for i in range(1, 17)},
-        **{f"Band {i} Q":         ("log",      0.1,   100.0) for i in range(1, 17)},
+        # Per-band params. Verified Melda free MEqualizer naming via runtime
+        # `getParameters` log: each band exposes "<Field> N (EQ N)" — NOT
+        # "Band N <Field>". 16 bands total (6 used by curated mappings;
+        # remaining 7..16 covered defensively).
+        **{f"Gain {i} (EQ {i})":      ("linear", -24.0, 24.0)    for i in range(1, 17)},
+        **{f"Frequency {i} (EQ {i})": ("log",     20.0, 20000.0) for i in range(1, 17)},
+        **{f"Q {i} (EQ {i})":         ("log",      0.1,   100.0) for i in range(1, 17)},
     },
     "mtremolo": {
         "Depth":       ("linear", 0.0, 100.0),

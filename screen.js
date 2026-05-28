@@ -4155,6 +4155,12 @@ function rbResolveStagedPath(toneIdx, pIdx) {
 // plugin defaults). Without clamping, an out-of-range value gets pinned
 // to the param's min or behaves erratically (see `Gain -2328 dB` bug).
 async function rbRestoreSavedParamsToSlot(api, slotId, savedParams) {
+    // Small grace period after loadVST. Some JUCE-hosted VST3 plugins (esp.
+    // larger ones like MCompressor with 150 params) finish parameter setup
+    // a tick or two after loadVST resolves; calling setParameter inside that
+    // window can silently no-op even though it returns without throwing.
+    // Empirically 50 ms is enough on M1 with kHs / Melda free.
+    await new Promise(r => setTimeout(r, 50));
     let params = [];
     if (typeof api.getParameters === 'function') {
         try {
@@ -4171,15 +4177,20 @@ async function rbRestoreSavedParamsToSlot(api, slotId, savedParams) {
         return params;
     }
     const nameToId = {};
+    const idToName = {};
     params.forEach((p, idx) => {
         const pid = p.id ?? p.paramId ?? p.index ?? idx;
         const pname = (p.name ?? p.label ?? '').toLowerCase();
-        if (pname) nameToId[pname] = pid;
+        if (pname) {
+            nameToId[pname] = pid;
+            idToName[pid] = p.name || p.label;
+        }
     });
     const sampleParam = params[0] || {};
     console.log(`[rig_builder restore] slot=${slotId} · live param shape keys: ${Object.keys(sampleParam).join(', ')} · first 5 names: ${params.slice(0, 5).map(p => p.name || p.label || '<no-name>').join(' | ')}`);
     let applied = 0;
     const failed = [];
+    const appliedDetail = [];
     for (const [pid, v] of Object.entries(savedParams)) {
         let targetId = parseInt(pid, 10);
         let resolvedBy = 'numeric';
@@ -4195,6 +4206,7 @@ async function rbRestoreSavedParamsToSlot(api, slotId, savedParams) {
         try {
             await api.setParameter(slotId, targetId, clamped);
             applied++;
+            appliedDetail.push(`${pid}→[${targetId}]${idToName[targetId] ? '=' + idToName[targetId] : ''}=${clamped.toFixed(3)}`);
         } catch (e) {
             failed.push(`${pid}→${targetId}(setParam threw: ${e.message || e})`);
         }
@@ -4202,13 +4214,28 @@ async function rbRestoreSavedParamsToSlot(api, slotId, savedParams) {
     if (failed.length) {
         console.warn(`[rig_builder restore] slot=${slotId}: applied ${applied}, FAILED: ${failed.join(', ')}`);
     } else {
-        console.log(`[rig_builder restore] slot=${slotId}: applied ${applied}/${savedKeys.length} saved params ✓`);
+        console.log(`[rig_builder restore] slot=${slotId}: applied ${applied}/${savedKeys.length} ✓ ${appliedDetail.slice(0, 4).join(' | ')}${appliedDetail.length > 4 ? '…' : ''}`);
     }
-    // Refresh so the caller sees the actual post-restore values.
+    // Refresh so the caller sees the actual post-restore values, and log a
+    // verification line confirming the engine accepted the writes (compares
+    // requested vs actual for up to 4 touched params).
     if (typeof api.getParameters === 'function') {
         try {
             const refreshed = await api.getParameters(slotId);
-            if (Array.isArray(refreshed)) params = refreshed;
+            if (Array.isArray(refreshed)) {
+                params = refreshed;
+                const verify = [];
+                for (const detail of appliedDetail.slice(0, 4)) {
+                    const m = detail.match(/^.+→\[(\d+)\].*=([\d.]+)$/);
+                    if (!m) continue;
+                    const tid = parseInt(m[1], 10);
+                    const want = parseFloat(m[2]);
+                    const actual = refreshed.find(p => (p.id ?? p.paramId ?? p.index) === tid);
+                    const actualVal = actual ? (actual.value ?? actual.current) : null;
+                    verify.push(`[${tid}] want=${want.toFixed(3)} got=${typeof actualVal === 'number' ? actualVal.toFixed(3) : 'n/a'}`);
+                }
+                if (verify.length) console.log(`[rig_builder restore] slot=${slotId} verify: ${verify.join(' | ')}`);
+            }
         } catch (_) {}
     }
     return params;
@@ -5120,8 +5147,8 @@ function rbRenderCatalogCard(g) {
         // editor window. Saves a click vs the 📚 Library re-pick flow when
         // the gear already has a VST assigned (the common case after the
         // bulk-assign step).
-        editBtn = `<button onclick="rbCatalogEditVst('${rbEsc(g.vst_path).replace(/'/g,"\\'")}','${rbEsc(g.vst_format || 'VST3')}')"
-                           title="Edit this VST's settings (loads + opens native editor)"
+        editBtn = `<button onclick="rbCatalogEditVst('${rbEsc(g.vst_path).replace(/'/g,"\\'")}','${rbEsc(g.vst_format || 'VST3')}','${rbEsc(g.rs_gear)}')"
+                           title="Edit this VST's settings (loads + opens native editor, applies _static defaults)"
                            class="bg-purple-900/40 hover:bg-purple-900/60 text-purple-200 border border-purple-800/50 px-2.5 py-1 rounded text-xs flex-shrink-0">🎛 Edit</button>`;
     } else if (g.assigned) {
         listenBtn = `<button id="${btnId}" onclick="rbAuditionFile('${rbEsc(g.file).replace(/'/g,"\\'")}', '${rbEsc(g.kind || 'nam')}', '${btnId}')"
@@ -5813,7 +5840,7 @@ async function rbLoadCatalogVstSuggestions(rsGearType, panelId) {
 // → re-pick the same VST → open editor" detour once a gear already has a
 // VST assigned. Stops any other preview/audition first and closes any
 // open VST editor window (orphaned windows are the known crash trigger).
-async function rbCatalogEditVst(vstPath, vstFormat) {
+async function rbCatalogEditVst(vstPath, vstFormat, rsGear) {
     const api = rbNativeAudio();
     if (!api || typeof api.loadVST !== 'function') {
         alert('Native VST hosting not available.');
@@ -5833,6 +5860,26 @@ async function rbCatalogEditVst(vstPath, vstFormat) {
             return;
         }
         rbState._vstEditorSlot = slotId;
+        // Apply the (gear, vst) `_static` defaults if any — pinned params
+        // curated in rs_knob_to_vst_param.json (e.g. kHs Distortion's
+        // Mode + Dynamics for fuzz/od/dist subtypes). Without this, the
+        // Edit button shows the plugin's defaults regardless of subtype,
+        // and the user can't preview what a fuzz-vs-overdrive default
+        // sounds like. RS-knob translations are NOT applied here (catalog
+        // is gear-level, no per-tone knob values).
+        if (rsGear) {
+            const vstStem = vstPath.split('/').pop().replace(/\.(vst3|component)$/i, '').toLowerCase();
+            try {
+                const r = await fetch(`${RB_API}/vst/knob_mapping?rs_gear_type=${encodeURIComponent(rsGear)}&vst_name=${encodeURIComponent(vstStem)}`);
+                const data = await r.json();
+                const staticBlock = data && data.mapping && data.mapping._static;
+                if (staticBlock && typeof staticBlock === 'object') {
+                    await rbRestoreSavedParamsToSlot(api, slotId, staticBlock);
+                }
+            } catch (e) {
+                console.warn('[rig_builder catalog-edit] _static apply skipped:', e);
+            }
+        }
         if (api.openPluginEditor) {
             await api.openPluginEditor(slotId).catch((e) => {
                 console.warn('[rig_builder] openPluginEditor failed:', e);

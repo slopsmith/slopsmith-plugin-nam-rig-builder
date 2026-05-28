@@ -1194,29 +1194,36 @@
     },
     "mequalizer": {
       "63": {
-        "param": "Band 1 Gain",
+        "param": "Gain 1 (EQ 1)",
         "scale": 1.0,
         "_hint": "RS 63Hz \u2192 MEqualizer Band 1. dB direct. Curator: set Band 1 Frequency = 63 Hz + Band 1 On = true in the editor once, then save state."
       },
       "250": {
-        "param": "Band 2 Gain",
+        "param": "Gain 2 (EQ 2)",
         "scale": 1.0,
         "_hint": "RS 250Hz \u2192 MEqualizer Band 2. dB direct. Curator: set Band 2 Frequency = 250 Hz + Band 2 On = true in the editor once, then save state."
       },
       "750": {
-        "param": "Band 3 Gain",
+        "param": "Gain 3 (EQ 3)",
         "scale": 1.0,
         "_hint": "RS 750Hz \u2192 MEqualizer Band 3. dB direct. Curator: set Band 3 Frequency = 750 Hz + Band 3 On = true in the editor once, then save state."
       },
       "2200": {
-        "param": "Band 4 Gain",
+        "param": "Gain 4 (EQ 4)",
         "scale": 1.0,
         "_hint": "RS 2200Hz \u2192 MEqualizer Band 4. dB direct. Curator: set Band 4 Frequency = 2200 Hz + Band 4 On = true in the editor once, then save state."
       },
       "5700": {
-        "param": "Band 5 Gain",
+        "param": "Gain 5 (EQ 5)",
         "scale": 1.0,
         "_hint": "RS 5700Hz \u2192 MEqualizer Band 5. dB direct. Curator: set Band 5 Frequency = 5700 Hz + Band 5 On = true in the editor once, then save state."
+      },
+      "_static": {
+        "Enable 1 (EQ 1)": 1.0,
+        "Enable 2 (EQ 2)": 1.0,
+        "Enable 3 (EQ 3)": 1.0,
+        "Enable 4 (EQ 4)": 1.0,
+        "Enable 5 (EQ 5)": 1.0
       }
     }
   },
@@ -1240,34 +1247,42 @@
     },
     "mequalizer": {
       "100": {
-        "param": "Band 1 Gain",
+        "param": "Gain 1 (EQ 1)",
         "scale": 1.0,
         "_hint": "RS 100Hz \u2192 MEqualizer Band 1. dB direct. Curator: set Band 1 Frequency = 100 Hz + Band 1 On = true in the editor once, then save state."
       },
       "200": {
-        "param": "Band 2 Gain",
+        "param": "Gain 2 (EQ 2)",
         "scale": 1.0,
         "_hint": "RS 200Hz \u2192 MEqualizer Band 2. dB direct. Curator: set Band 2 Frequency = 200 Hz + Band 2 On = true in the editor once, then save state."
       },
       "400": {
-        "param": "Band 3 Gain",
+        "param": "Gain 3 (EQ 3)",
         "scale": 1.0,
         "_hint": "RS 400Hz \u2192 MEqualizer Band 3. dB direct. Curator: set Band 3 Frequency = 400 Hz + Band 3 On = true in the editor once, then save state."
       },
       "800": {
-        "param": "Band 4 Gain",
+        "param": "Gain 4 (EQ 4)",
         "scale": 1.0,
         "_hint": "RS 800Hz \u2192 MEqualizer Band 4. dB direct. Curator: set Band 4 Frequency = 800 Hz + Band 4 On = true in the editor once, then save state."
       },
       "1600": {
-        "param": "Band 5 Gain",
+        "param": "Gain 5 (EQ 5)",
         "scale": 1.0,
         "_hint": "RS 1600Hz \u2192 MEqualizer Band 5. dB direct. Curator: set Band 5 Frequency = 1600 Hz + Band 5 On = true in the editor once, then save state."
       },
       "3200": {
-        "param": "Band 6 Gain",
+        "param": "Gain 6 (EQ 6)",
         "scale": 1.0,
         "_hint": "RS 3200Hz \u2192 MEqualizer Band 6. dB direct. Curator: set Band 6 Frequency = 3200 Hz + Band 6 On = true in the editor once, then save state."
+      },
+      "_static": {
+        "Enable 1 (EQ 1)": 1.0,
+        "Enable 2 (EQ 2)": 1.0,
+        "Enable 3 (EQ 3)": 1.0,
+        "Enable 4 (EQ 4)": 1.0,
+        "Enable 5 (EQ 5)": 1.0,
+        "Enable 6 (EQ 6)": 1.0
       }
     }
   },
@@ -1291,34 +1306,42 @@
     },
     "mequalizer": {
       "75": {
-        "param": "Band 1 Gain",
+        "param": "Gain 1 (EQ 1)",
         "scale": 1.0,
         "_hint": "RS 75Hz \u2192 MEqualizer Band 1. dB direct. Curator: set Band 1 Frequency = 75 Hz + Band 1 On = true in the editor once, then save state."
       },
       "185": {
-        "param": "Band 2 Gain",
+        "param": "Gain 2 (EQ 2)",
         "scale": 1.0,
         "_hint": "RS 185Hz \u2192 MEqualizer Band 2. dB direct. Curator: set Band 2 Frequency = 185 Hz + Band 2 On = true in the editor once, then save state."
       },
       "460": {
-        "param": "Band 3 Gain",
+        "param": "Gain 3 (EQ 3)",
         "scale": 1.0,
         "_hint": "RS 460Hz \u2192 MEqualizer Band 3. dB direct. Curator: set Band 3 Frequency = 460 Hz + Band 3 On = true in the editor once, then save state."
       },
       "1100": {
-        "param": "Band 4 Gain",
+        "param": "Gain 4 (EQ 4)",
         "scale": 1.0,
         "_hint": "RS 1100Hz \u2192 MEqualizer Band 4. dB direct. Curator: set Band 4 Frequency = 1100 Hz + Band 4 On = true in the editor once, then save state."
       },
       "2700": {
-        "param": "Band 5 Gain",
+        "param": "Gain 5 (EQ 5)",
         "scale": 1.0,
         "_hint": "RS 2700Hz \u2192 MEqualizer Band 5. dB direct. Curator: set Band 5 Frequency = 2700 Hz + Band 5 On = true in the editor once, then save state."
       },
       "6800": {
-        "param": "Band 6 Gain",
+        "param": "Gain 6 (EQ 6)",
         "scale": 1.0,
         "_hint": "RS 6800Hz \u2192 MEqualizer Band 6. dB direct. Curator: set Band 6 Frequency = 6800 Hz + Band 6 On = true in the editor once, then save state."
+      },
+      "_static": {
+        "Enable 1 (EQ 1)": 1.0,
+        "Enable 2 (EQ 2)": 1.0,
+        "Enable 3 (EQ 3)": 1.0,
+        "Enable 4 (EQ 4)": 1.0,
+        "Enable 5 (EQ 5)": 1.0,
+        "Enable 6 (EQ 6)": 1.0
       }
     }
   },
@@ -1341,51 +1364,57 @@
     },
     "mequalizer": {
       "Bass": {
-        "param": "Band 1 Gain",
+        "param": "Gain 1 (EQ 1)",
         "scale": 1.0,
         "_hint": "Set Band 1 On = true. dB direct."
       },
       "BassFreq": {
-        "param": "Band 1 Frequency",
+        "param": "Frequency 1 (EQ 1)",
         "scale": 1.0,
         "_hint": "RS BassFreq is Hz direct (e.g. 65-485)"
       },
       "LoMid": {
-        "param": "Band 2 Gain",
+        "param": "Gain 2 (EQ 2)",
         "scale": 1.0
       },
       "LoMidFreq": {
-        "param": "Band 2 Frequency",
+        "param": "Frequency 2 (EQ 2)",
         "scale": 1.0,
         "_hint": "RS LoMidFreq is Hz direct (120-2000)"
       },
       "LoMidQ": {
-        "param": "Band 2 Q",
+        "param": "Q 2 (EQ 2)",
         "scale": 1.0,
         "_hint": "RS LoMidQ ~0-4 \u2014 verify Melda Q range matches"
       },
       "HiMid": {
-        "param": "Band 3 Gain",
+        "param": "Gain 3 (EQ 3)",
         "scale": 1.0
       },
       "HiMidFreq": {
-        "param": "Band 3 Frequency",
+        "param": "Frequency 3 (EQ 3)",
         "scale": 1000.0,
         "_hint": "RS HiMidFreq is in kHz (0.3-8) \u2014 multiply by 1000 to land in Hz"
       },
       "HiMidQ": {
-        "param": "Band 3 Q",
+        "param": "Q 3 (EQ 3)",
         "scale": 1.0,
         "_hint": "RS HiMidQ ~0-1"
       },
       "Treble": {
-        "param": "Band 4 Gain",
+        "param": "Gain 4 (EQ 4)",
         "scale": 1.0
       },
       "TrebleFreq": {
-        "param": "Band 4 Frequency",
+        "param": "Frequency 4 (EQ 4)",
         "scale": 1000.0,
         "_hint": "RS TrebleFreq is in kHz (2-13) \u2014 multiply by 1000"
+      },
+      "_static": {
+        "Enable 1 (EQ 1)": 1.0,
+        "Enable 2 (EQ 2)": 1.0,
+        "Enable 3 (EQ 3)": 1.0,
+        "Enable 4 (EQ 4)": 1.0
       }
     }
   },
@@ -1572,66 +1601,78 @@
   "Pedal_AmpEQ": {
     "mequalizer": {
       "Bass": {
-        "param": "Band 1 Gain",
+        "param": "Gain 1 (EQ 1)",
         "scale": 1.0,
         "_hint": "RS Bass knob \u2192 MEqualizer Band 1. Curator: set Band 1 Frequency \u2248 80 Hz, On = true. dB direct."
       },
       "Mid": {
-        "param": "Band 2 Gain",
+        "param": "Gain 2 (EQ 2)",
         "scale": 1.0,
         "_hint": "RS Mid \u2192 Band 2. Frequency \u2248 800 Hz."
       },
       "Treble": {
-        "param": "Band 3 Gain",
+        "param": "Gain 3 (EQ 3)",
         "scale": 1.0,
         "_hint": "RS Treble \u2192 Band 3. Frequency \u2248 6 kHz."
+      },
+      "_static": {
+        "Enable 1 (EQ 1)": 1.0,
+        "Enable 2 (EQ 2)": 1.0,
+        "Enable 3 (EQ 3)": 1.0
       }
     }
   },
   "Rack_StudioGraphicEQ": {
     "mequalizer": {
       "Bass": {
-        "param": "Band 1 Gain",
+        "param": "Gain 1 (EQ 1)",
         "scale": 1.0
       },
       "BassFreq": {
-        "param": "Band 1 Frequency",
+        "param": "Frequency 1 (EQ 1)",
         "scale": 1.0
       },
       "LoMid": {
-        "param": "Band 2 Gain",
+        "param": "Gain 2 (EQ 2)",
         "scale": 1.0
       },
       "LoMidFreq": {
-        "param": "Band 2 Frequency",
+        "param": "Frequency 2 (EQ 2)",
         "scale": 1.0
       },
       "Mid": {
-        "param": "Band 3 Gain",
+        "param": "Gain 3 (EQ 3)",
         "scale": 1.0
       },
       "MidFreq": {
-        "param": "Band 3 Frequency",
+        "param": "Frequency 3 (EQ 3)",
         "scale": 1000.0,
         "_hint": "RS MidFreq is kHz"
       },
       "HiMid": {
-        "param": "Band 4 Gain",
+        "param": "Gain 4 (EQ 4)",
         "scale": 1.0
       },
       "HiMidFreq": {
-        "param": "Band 4 Frequency",
+        "param": "Frequency 4 (EQ 4)",
         "scale": 1000.0,
         "_hint": "kHz"
       },
       "Treble": {
-        "param": "Band 5 Gain",
+        "param": "Gain 5 (EQ 5)",
         "scale": 1.0
       },
       "TrebleFreq": {
-        "param": "Band 5 Frequency",
+        "param": "Frequency 5 (EQ 5)",
         "scale": 1000.0,
         "_hint": "kHz"
+      },
+      "_static": {
+        "Enable 1 (EQ 1)": 1.0,
+        "Enable 2 (EQ 2)": 1.0,
+        "Enable 3 (EQ 3)": 1.0,
+        "Enable 4 (EQ 4)": 1.0,
+        "Enable 5 (EQ 5)": 1.0
       }
     }
   },
