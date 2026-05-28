@@ -290,6 +290,31 @@
             </div>
         </div>
 
+        <!-- Extract from gears.psarc — first step of the Quick start
+             workflow, surfaced here (right under Scan) so the user
+             doesn't have to scroll past the other Settings cards to
+             find it. Same handler, same status div as before — only
+             the position in the Setup tab changed. -->
+        <div class="bg-dark-700/50 border border-gray-800/50 rounded-xl p-5 mb-6">
+            <h3 class="text-white font-semibold mb-3">Extract from gears.psarc</h3>
+            <p class="text-gray-500 text-sm mb-3">
+                Point this at your game's
+                <code class="bg-dark-800 px-1 rounded">gears.psarc</code> (the gear
+                archive — <strong>not</strong> <code class="bg-dark-800 px-1 rounded">guitars.psarc</code>).
+                It rebuilds the gear map, extracts every gear's photo, and pulls
+                the cab IRs — all in one step. Re-run it whenever Rocksmith
+                ships new gear; your curated picks in <code class="bg-dark-800 px-1 rounded">rs_to_real.json</code>
+                are preserved automatically.
+            </p>
+            <div class="flex gap-3 mb-2">
+                <input type="text" id="rb-all-psarc" placeholder="/path/to/gears.psarc"
+                       class="flex-1 bg-dark-800 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 placeholder-gray-600 focus:border-accent/50 outline-none">
+                <button onclick="rbBrowseForPsarc('rb-all-psarc')" class="bg-dark-600 hover:bg-dark-500 text-gray-300 px-4 py-2 rounded-lg text-sm transition">Browse…</button>
+                <button onclick="rbExtractAll()" class="bg-accent hover:bg-accent/80 text-white px-4 py-2 rounded-lg text-sm transition">Extract</button>
+            </div>
+            <div id="rb-extract-all-status" class="text-xs text-gray-500"></div>
+        </div>
+
         <div class="bg-dark-700/50 border border-gray-800/50 rounded-xl p-5 mb-6">
             <h3 class="text-white font-semibold mb-2">Gear map (rs_to_real.json)</h3>
             <div id="rb-gear-coverage" class="text-sm text-gray-400">Loading…</div>
@@ -373,25 +398,6 @@
         </div>
 
         <div class="bg-dark-700/50 border border-gray-800/50 rounded-xl p-5">
-            <h3 class="text-white font-semibold mb-3">Set up Rocksmith gear</h3>
-            <p class="text-gray-500 text-sm mb-3">
-                Point this at your game's
-                <code class="bg-dark-800 px-1 rounded">gears.psarc</code> (the gear
-                archive — <strong>not</strong> <code class="bg-dark-800 px-1 rounded">guitars.psarc</code>).
-                It rebuilds the gear map, extracts every gear's photo, and pulls
-                the cab IRs — all in one step. Re-run it whenever Rocksmith
-                ships new gear.
-            </p>
-            <div class="flex gap-3 mb-2">
-                <input type="text" id="rb-all-psarc" placeholder="/path/to/gears.psarc"
-                       class="flex-1 bg-dark-800 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 placeholder-gray-600 focus:border-accent/50 outline-none">
-                <button onclick="rbBrowseForPsarc('rb-all-psarc')" class="bg-dark-600 hover:bg-dark-500 text-gray-300 px-4 py-2 rounded-lg text-sm transition">Browse…</button>
-                <button onclick="rbExtractAll()" class="bg-accent hover:bg-accent/80 text-white px-4 py-2 rounded-lg text-sm transition">Extract</button>
-            </div>
-            <div id="rb-extract-all-status" class="text-xs text-gray-500"></div>
-        </div>
-
-        <div class="bg-dark-700/50 border border-gray-800/50 rounded-xl p-5 mt-6">
             <h3 class="text-white font-semibold mb-3">Export my mappings as defaults</h3>
             <p class="text-gray-500 text-sm mb-3">
                 Snapshot your current gear → tone3000 capture choices into
