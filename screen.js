@@ -5339,6 +5339,13 @@ function rbRenderCatalogCard(g) {
     const safeId = g.rs_gear.replace(/[^a-zA-Z0-9_-]/g, '_');
     const expanded = rbState.gearExpanded && rbState.gearExpanded.has(g.rs_gear);
     const isVst = g.kind === 'vst' && g.vst_path;
+    // Status is communicated entirely through the photo now: when
+    // nothing is assigned (no NAM, no IR, no VST) the photo goes
+    // grayscale + dimmed, matching the "off" feel of a bypassed piece
+    // in the song editor. No colored dot needed — the visual state is
+    // the indicator.
+    const isAssigned = isVst || g.assigned;
+    const photoOff = isAssigned ? '' : 'grayscale opacity-40';
 
     // Assignment label — only rendered inside the expanded action panel
     // now (the collapsed row used to show it under the rs_gear codename,
@@ -5354,13 +5361,6 @@ function rbRenderCatalogCard(g) {
         assignedLine = `<div class="text-xs text-gray-500">(unassigned)</div>`;
     }
 
-    // Status dot — moved to the far-right of the card so it reads as a
-    // status indicator rather than a bullet attached to the name.
-    let dotColor, dotTitle;
-    if (isVst) { dotColor = 'bg-purple-400'; dotTitle = 'VST plugin loaded'; }
-    else if (g.assigned) { dotColor = 'bg-green-400'; dotTitle = 'NAM/IR assigned'; }
-    else { dotColor = 'bg-gray-600 ring-1 ring-gray-700'; dotTitle = 'Unassigned'; }
-
     // Rocksmith art with tone3000 image as a fallback. The sibling-swap
     // trick avoids the HTML-in-attribute escaping issue we hit in the
     // song editor — onerror just hides this img and reveals the next
@@ -5373,7 +5373,8 @@ function rbRenderCatalogCard(g) {
                onerror="${onerrChain}">`
         : '';
     const photoBlock = `
-        <div class="flex-shrink-0 w-16 h-16 flex items-center justify-center rounded bg-dark-900 overflow-hidden">
+        <div class="flex-shrink-0 w-16 h-16 flex items-center justify-center rounded bg-dark-900 overflow-hidden transition ${photoOff}"
+             title="${isAssigned ? '' : 'Unassigned — no NAM/IR/VST mapped yet'}">
             <img src="${rsArt}" alt="" loading="lazy"
                  class="max-w-full max-h-full rounded object-contain"
                  onerror="${onerrChain}">
@@ -5459,10 +5460,7 @@ function rbRenderCatalogCard(g) {
                     <div class="text-gray-100 font-medium leading-tight break-words" title="${rbEsc(g.real_name)}">${rbEsc(g.real_name)}</div>
                     <div class="text-[11px] text-gray-500 font-mono break-all">${rbEsc(g.rs_gear)}</div>
                 </div>
-                <div class="flex flex-col items-end gap-2 flex-shrink-0">
-                    <span class="text-gray-500 text-xs select-none" aria-hidden="true">${chevron}</span>
-                    <span class="w-2.5 h-2.5 rounded-full ${dotColor}" title="${rbEsc(dotTitle)}"></span>
-                </div>
+                <span class="text-gray-500 text-xs select-none flex-shrink-0 mt-0.5" aria-hidden="true">${chevron}</span>
             </div>
             ${actionsPanel}
         </div>`;
