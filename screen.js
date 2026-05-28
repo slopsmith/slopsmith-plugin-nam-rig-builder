@@ -462,7 +462,22 @@ const RbMegaChain = (function () {
         return (a && typeof a.loadPreset === 'function') ? a : null;
     }
 
-    function _resolveActiveToneKey() {
+    // `opts.useFirstChangeIfNoBase`: when set, and the highway didn't
+    // publish a tone base but DID publish a non-empty `toneChanges`
+    // schedule, use the FIRST scheduled change's tone name as the
+    // intro. Some songs (notably Bon Jovi "Livin' on a Prayer", Police
+    // "Message in a Bottle", anything where Slopsmith's PSARC parser
+    // populated the change list but not the base) leave `getToneBase`
+    // empty even though the schedule is fully there — without this
+    // option, we'd fall through to a heuristic guess after the 10 s
+    // timeout. WITH this option, the intro tone lands ~100 ms after
+    // song:loaded, exactly like for well-formed songs.
+    //
+    // Default off so the regular polling loop still distinguishes
+    // "no base + no changes yet" (return null → keep waiting) from
+    // "no base + schedule populated" (return first scheduled tone).
+    // The recheck schedule + the final-fallback timer pass `true`.
+    function _resolveActiveToneKey(opts) {
         try {
             const hw = window.highway;
             if (!hw || typeof hw.getTime !== 'function') return null;
@@ -474,6 +489,10 @@ const RbMegaChain = (function () {
                 for (const tc of changes) {
                     if (tc && tc.t <= t) active = tc.name;
                     else break;
+                }
+                if (!active && opts && opts.useFirstChangeIfNoBase
+                    && changes.length > 0 && changes[0] && changes[0].name) {
+                    active = changes[0].name;
                 }
             }
             return (active && String(active).trim()) || null;
@@ -755,33 +774,63 @@ const RbMegaChain = (function () {
         // Recheck schedule: front-loaded so we catch the highway tone-base
         // publication as soon as it lands (most of the time inside the
         // first second), without giving up too early if the WS feed lags.
-        const recheckSchedule = [100, 200, 400, 700, 1000, 1500, 2000, 2700, 3500, 4500, 5500];
+        // Schedule extended to 10 s (was 6 s) — gives slow highway WS
+        // publishes time to arrive before we commit to the heuristic
+        // fallback. Each tick first tries the strict resolver, then
+        // (on later ticks) the relaxed resolver that accepts the first
+        // scheduled tone-change as the intro when no base is published.
+        const recheckSchedule = [
+            100, 200, 400, 700, 1000, 1500, 2000, 2700, 3500, 4500, 5500,
+            6500, 7500, 8500, 9500,
+        ];
         recheckSchedule.forEach((delay, i) => {
             setTimeout(() => {
                 if (!_active || !_mega) return;
-                const key = _resolveActiveToneKey();
+                // First 4 rechecks: strict mode. After 700 ms, accept
+                // first-change-as-base too so songs with missing
+                // toneBase metadata get their intro tone within 1 s
+                // instead of waiting for the 10 s heuristic fallback.
+                const allowFirstChange = delay > 700;
+                const key = _resolveActiveToneKey({
+                    useFirstChangeIfNoBase: allowFirstChange,
+                });
                 if (!key || key === _activeToneKey) return;
                 const tone = _findToneByKey(key);
                 if (!tone) return;
                 _applyActiveTone(tone.tone_key).then(() => {
-                    console.log(`[rig_builder mega-chain] initial-recheck #${i+1} (t+${delay}ms) → switched to "${tone.tone_key}"`);
+                    const src = allowFirstChange ? 'first-change-or-base' : 'base';
+                    console.log(`[rig_builder mega-chain] initial-recheck #${i+1} (t+${delay}ms, ${src}) → switched to "${tone.tone_key}"`);
                 }).catch(() => {});
             }, delay);
         });
-        // Last-chance fallback: if after 6 s the highway still hasn't
-        // given us a tone (broken WS, unmapped song, exotic arrangement),
-        // pick a guitar tone (or whatever's available) so the user isn't
-        // stuck in dead silence forever. Prefer GUITAR over BASS: the
-        // tones array's order comes from DB insertion (often alphabetical
-        // by tone_key) which sometimes lists bass tones first — e.g.
-        // Reptilia → tones[0] is "Reptilia_bass", which made the user
-        // hear a bass tone when they were playing guitar. The instrument
-        // hint we can extract is whether the tone_key looks bass-flavored.
+        // Last-chance fallback: if after 10 s the highway still hasn't
+        // given us a tone (broken WS, unmapped song, truly exotic
+        // arrangement with no schedule at all), pick a guitar tone
+        // (or whatever's available) so the user isn't stuck in dead
+        // silence forever. Prefer GUITAR over BASS: the tones array's
+        // order comes from DB insertion (often alphabetical by tone_key)
+        // which sometimes lists bass tones first — e.g. Reptilia →
+        // tones[0] is "Reptilia_bass", which made the user hear a bass
+        // tone when they were playing guitar. The instrument hint we
+        // can extract is whether the tone_key looks bass-flavored.
         // Matches the strings nam_tone names bass tones with: "_bass",
         // "Bass_", or the gear referenced is in the Bass_* family.
         setTimeout(() => {
             if (!_active || !_mega) return;
             if (_activeToneKey) return;     // any recheck already landed
+            // One more shot at the relaxed resolver before guessing —
+            // catches songs where the change schedule arrived between
+            // the last recheck (t+9500) and now (t+10000).
+            const lastShot = _resolveActiveToneKey({ useFirstChangeIfNoBase: true });
+            if (lastShot) {
+                const tone = _findToneByKey(lastShot);
+                if (tone) {
+                    _applyActiveTone(tone.tone_key).then(() => {
+                        console.log(`[rig_builder mega-chain] late base/first-change → "${tone.tone_key}"`);
+                    }).catch(() => {});
+                    return;
+                }
+            }
             const all = (mega.tones || []);
             if (!all.length) return;
             const isBassFlavored = t =>
@@ -792,9 +841,9 @@ const RbMegaChain = (function () {
             const fallback = all.find(t => !isBassFlavored(t)) || all[0];
             _applyActiveTone(fallback.tone_key).then(() => {
                 const flavour = isBassFlavored(fallback) ? 'BASS (no guitar tones in this song)' : 'guitar';
-                console.warn(`[rig_builder mega-chain] FALLBACK after 6s: applying "${fallback.tone_key}" [${flavour}] — highway never published a tone base for this song`);
+                console.warn(`[rig_builder mega-chain] FALLBACK after 10s: applying "${fallback.tone_key}" [${flavour}] — highway never published a tone base OR a tone change schedule for this song`);
             }).catch(() => {});
-        }, 6000);
+        }, 10000);
 
         _active = true;
         return true;
@@ -839,7 +888,14 @@ const RbMegaChain = (function () {
         let lastKey = _activeToneKey;
         _pollHandle = setInterval(async () => {
             if (!_active || !_mega) return;
-            const key = _resolveActiveToneKey();
+            // Relaxed resolver: accepts first scheduled tone-change as
+            // intro when base is missing. Safe in steady-state polling
+            // because the resolver still walks all changes <= t first
+            // — useFirstChangeIfNoBase only kicks in when NO change has
+            // fired yet (i.e. we're before the song's first scheduled
+            // tone). After that, the regular "last change <= t" branch
+            // gives the right answer regardless.
+            const key = _resolveActiveToneKey({ useFirstChangeIfNoBase: true });
             if (!key || key === lastKey) return;
             const tone = _findToneByKey(key);
             if (!tone) return;
