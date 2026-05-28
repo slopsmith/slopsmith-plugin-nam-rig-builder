@@ -5463,16 +5463,28 @@ function rbRenderCatalogCard(g) {
 
     // Action buttons (only rendered when expanded).
     const btnId = `rb-aud-${_rbCatalogSeq++}`;
-    // ▶ Listen shown only for VST assignments — NAMs and IRs already
-    // have richer audition rows (amp gain variants, cab mic positions)
-    // that cover the same use case with better labels, and standalone
-    // Listen on a NAM/IR was redundant clutter. VST audition has no
-    // equivalent inline row so the button stays for that one case.
+    // ▶ Listen visibility:
+    //   - VST → always (audition has no inline equivalent)
+    //   - Amp with curated gain_variants → no (the ▶ clean/crunch/dist
+    //     row covers it with better labels)
+    //   - Cab with mic_variants → no (the ▶ Dynamic Cone / Condenser
+    //     Edge / … row covers it)
+    //   - Pedal / rack / "other" / amp w/o variants → YES (those have
+    //     no inline audition row, so Listen is the only way to hear
+    //     the assigned gear in isolation from the catalog).
+    const hasInlineAudition = (
+        (Array.isArray(g.variants) && g.variants.length > 0)
+        || (Array.isArray(g.mic_variants) && g.mic_variants.length > 0)
+    );
     let listenBtn = '';
     if (isVst) {
         listenBtn = `<button id="${btnId}" onclick="event.stopPropagation(); rbAuditionVst('${rbEsc(g.vst_path).replace(/'/g,"\\'")}','${rbEsc(g.vst_format || 'VST3')}','${btnId}')"
                             title="Listen to this VST in isolation"
                             class="bg-purple-700/50 hover:bg-purple-600/60 text-purple-100 px-3 py-1.5 rounded text-xs">▶ Listen</button>`;
+    } else if (g.assigned && !hasInlineAudition) {
+        listenBtn = `<button id="${btnId}" onclick="event.stopPropagation(); rbAuditionFile('${rbEsc(g.file).replace(/'/g,"\\'")}', '${rbEsc(g.kind || 'nam')}', '${btnId}')"
+                            title="Listen to this gear in isolation"
+                            class="bg-dark-600 hover:bg-dark-500 text-gray-200 px-3 py-1.5 rounded text-xs">▶ Listen</button>`;
     }
     // tone3000 link → small icon in the card header, not a competing
     // button. Reduces the action-row noise.
