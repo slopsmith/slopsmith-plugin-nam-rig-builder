@@ -56,23 +56,42 @@ _GEAR_PHOTO_DIRS = (
 def _find_gear_photo(rs_gear: str) -> Path | None:
     """Locate the PNG for a Rocksmith gear if extract_gear_photos.py
     has been run. The script names files `<rs_gear> - <name>.png`, so
-    we search by prefix `<rs_gear> - ` across every known photo dir.
-    Returns the first match, or None when no photo exists (the UI then
-    falls back to a placeholder)."""
+    the primary lookup is a prefix match across every known photo dir.
+
+    Cab fallback: songs reference cabs by the BASE rs_gear (e.g.
+    `Bass_Cab_AT1150BC`) but extract_gear_photos.py emits one PNG per
+    mic-position variant (`Bass_Cab_AT1150BC_5c - ...png`, `_5e`, …).
+    All variants share the same texture, so when the exact prefix has
+    no hit, accept the first `<rs_gear>_<short>` variant we find. The
+    "short" guard (a ` - ` separator within 3 chars of the underscore)
+    keeps `Cab_TW40` from accidentally matching `Cab_TW400_5c`.
+
+    Returns None when no photo exists (UI falls back to a placeholder).
+    """
     if not rs_gear:
         return None
     prefix = f"{rs_gear} - "
+    variant_prefix = f"{rs_gear}_"
+    fallback: Path | None = None
     for sub in _GEAR_PHOTO_DIRS:
         d = _plugin_dir / sub
         if not d.is_dir():
             continue
         try:
             for p in d.iterdir():
-                if p.is_file() and p.name.startswith(prefix) and p.suffix.lower() == ".png":
+                if not p.is_file() or p.suffix.lower() != ".png":
+                    continue
+                name = p.name
+                if name.startswith(prefix):
                     return p
+                if fallback is None and name.startswith(variant_prefix):
+                    rest = name[len(variant_prefix):]
+                    sep = rest.find(" - ")
+                    if 0 < sep <= 3:
+                        fallback = p
         except OSError:
             continue
-    return None
+    return fallback
 
 
 # Module-level singletons populated by setup(). They start as None so
