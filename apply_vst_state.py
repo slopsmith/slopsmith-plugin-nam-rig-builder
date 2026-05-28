@@ -134,6 +134,14 @@ _VST_PARAM_RANGES: dict[str, dict[str, tuple[str, float, float]]] = {
         "Low Freq":    ("log",    20.0, 1000.0),
         "High Freq":   ("log",   1000.0, 20000.0),
     },
+    "khs chorus": {
+        # User-confirmed range: kHs Chorus Rate sweeps 0.05 .. 10 Hz.
+        # LFO rates are log by VST3 convention (perceptually a doubling
+        # step at 0.5→1 Hz feels equal to 5→10 Hz). Curator mapping for
+        # chorus Rate uses scale=1.0 so RS Rate is passed through as Hz
+        # direct, then this range normalizes Hz → [0,1] via log.
+        "Rate": ("log", 0.05, 10.0),
+    },
 }
 
 

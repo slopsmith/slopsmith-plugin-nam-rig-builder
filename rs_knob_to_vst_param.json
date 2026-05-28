@@ -42,7 +42,8 @@
     "khs chorus": {
       "Rate": {
         "param": "Rate",
-        "scale": 0.01
+        "scale": 1.0,
+        "_hint": "RS chorus Rate is in Hz direct (e.g. 0.5 Hz, 3 Hz). scale=1.0 + _VST_PARAM_RANGES['khs chorus']['Rate']=(log 0.05..10 Hz) handles the Hz\u2192[0,1] conversion at write time."
       },
       "Depth": {
         "param": "Depth",
@@ -58,7 +59,8 @@
     "khs chorus": {
       "Rate": {
         "param": "Rate",
-        "scale": 0.01
+        "scale": 1.0,
+        "_hint": "RS chorus Rate is in Hz direct (e.g. 0.5 Hz, 3 Hz). scale=1.0 + _VST_PARAM_RANGES['khs chorus']['Rate']=(log 0.05..10 Hz) handles the Hz\u2192[0,1] conversion at write time."
       },
       "Depth": {
         "param": "Depth",
@@ -74,7 +76,8 @@
     "khs chorus": {
       "Rate": {
         "param": "Rate",
-        "scale": 0.01
+        "scale": 1.0,
+        "_hint": "RS chorus Rate is in Hz direct (e.g. 0.5 Hz, 3 Hz). scale=1.0 + _VST_PARAM_RANGES['khs chorus']['Rate']=(log 0.05..10 Hz) handles the Hz\u2192[0,1] conversion at write time."
       },
       "Depth": {
         "param": "Depth",
@@ -90,7 +93,8 @@
     "khs chorus": {
       "Rate": {
         "param": "Rate",
-        "scale": 0.01
+        "scale": 1.0,
+        "_hint": "RS chorus Rate is in Hz direct (e.g. 0.5 Hz, 3 Hz). scale=1.0 + _VST_PARAM_RANGES['khs chorus']['Rate']=(log 0.05..10 Hz) handles the Hz\u2192[0,1] conversion at write time."
       },
       "Depth": {
         "param": "Depth",
@@ -106,7 +110,8 @@
     "khs chorus": {
       "Rate": {
         "param": "Rate",
-        "scale": 0.01
+        "scale": 1.0,
+        "_hint": "RS chorus Rate is in Hz direct (e.g. 0.5 Hz, 3 Hz). scale=1.0 + _VST_PARAM_RANGES['khs chorus']['Rate']=(log 0.05..10 Hz) handles the Hz\u2192[0,1] conversion at write time."
       },
       "Depth": {
         "param": "Depth",
@@ -1988,7 +1993,8 @@
     "khs chorus": {
       "Rate": {
         "param": "Rate",
-        "scale": 0.01
+        "scale": 1.0,
+        "_hint": "RS chorus Rate is in Hz direct (e.g. 0.5 Hz, 3 Hz). scale=1.0 + _VST_PARAM_RANGES['khs chorus']['Rate']=(log 0.05..10 Hz) handles the Hz\u2192[0,1] conversion at write time."
       },
       "Depth": {
         "param": "Depth",
