@@ -42,8 +42,9 @@
     "khs chorus": {
       "Rate": {
         "param": "Rate",
-        "scale": 1.0,
-        "_hint": "RS chorus Rate is in Hz direct (e.g. 0.5 Hz, 3 Hz). scale=1.0 + _VST_PARAM_RANGES['khs chorus']['Rate']=(log 0.05..10 Hz) handles the Hz\u2192[0,1] conversion at write time."
+        "scale": 0.1,
+        "_hint": "RS chorus Rate is a 0..100 percent-of-range value, NOT raw Hz. scale=0.1 + offset=0.05 maps it linearly to display 0.05..10.05 Hz, then _VST_PARAM_RANGES['khs chorus']['Rate']=(log 0.05..10) normalizes display\u2192[0,1] via the plugin's log curve. User-verified: RS=4 \u2192 display \u2248 0.45 Hz (slow chorus, as intended).",
+        "offset": 0.05
       },
       "Depth": {
         "param": "Depth",
@@ -59,8 +60,9 @@
     "khs chorus": {
       "Rate": {
         "param": "Rate",
-        "scale": 1.0,
-        "_hint": "RS chorus Rate is in Hz direct (e.g. 0.5 Hz, 3 Hz). scale=1.0 + _VST_PARAM_RANGES['khs chorus']['Rate']=(log 0.05..10 Hz) handles the Hz\u2192[0,1] conversion at write time."
+        "scale": 0.1,
+        "_hint": "RS chorus Rate is a 0..100 percent-of-range value, NOT raw Hz. scale=0.1 + offset=0.05 maps it linearly to display 0.05..10.05 Hz, then _VST_PARAM_RANGES['khs chorus']['Rate']=(log 0.05..10) normalizes display\u2192[0,1] via the plugin's log curve. User-verified: RS=4 \u2192 display \u2248 0.45 Hz (slow chorus, as intended).",
+        "offset": 0.05
       },
       "Depth": {
         "param": "Depth",
@@ -76,8 +78,9 @@
     "khs chorus": {
       "Rate": {
         "param": "Rate",
-        "scale": 1.0,
-        "_hint": "RS chorus Rate is in Hz direct (e.g. 0.5 Hz, 3 Hz). scale=1.0 + _VST_PARAM_RANGES['khs chorus']['Rate']=(log 0.05..10 Hz) handles the Hz\u2192[0,1] conversion at write time."
+        "scale": 0.1,
+        "_hint": "RS chorus Rate is a 0..100 percent-of-range value, NOT raw Hz. scale=0.1 + offset=0.05 maps it linearly to display 0.05..10.05 Hz, then _VST_PARAM_RANGES['khs chorus']['Rate']=(log 0.05..10) normalizes display\u2192[0,1] via the plugin's log curve. User-verified: RS=4 \u2192 display \u2248 0.45 Hz (slow chorus, as intended).",
+        "offset": 0.05
       },
       "Depth": {
         "param": "Depth",
@@ -93,8 +96,9 @@
     "khs chorus": {
       "Rate": {
         "param": "Rate",
-        "scale": 1.0,
-        "_hint": "RS chorus Rate is in Hz direct (e.g. 0.5 Hz, 3 Hz). scale=1.0 + _VST_PARAM_RANGES['khs chorus']['Rate']=(log 0.05..10 Hz) handles the Hz\u2192[0,1] conversion at write time."
+        "scale": 0.1,
+        "_hint": "RS chorus Rate is a 0..100 percent-of-range value, NOT raw Hz. scale=0.1 + offset=0.05 maps it linearly to display 0.05..10.05 Hz, then _VST_PARAM_RANGES['khs chorus']['Rate']=(log 0.05..10) normalizes display\u2192[0,1] via the plugin's log curve. User-verified: RS=4 \u2192 display \u2248 0.45 Hz (slow chorus, as intended).",
+        "offset": 0.05
       },
       "Depth": {
         "param": "Depth",
@@ -110,8 +114,9 @@
     "khs chorus": {
       "Rate": {
         "param": "Rate",
-        "scale": 1.0,
-        "_hint": "RS chorus Rate is in Hz direct (e.g. 0.5 Hz, 3 Hz). scale=1.0 + _VST_PARAM_RANGES['khs chorus']['Rate']=(log 0.05..10 Hz) handles the Hz\u2192[0,1] conversion at write time."
+        "scale": 0.1,
+        "_hint": "RS chorus Rate is a 0..100 percent-of-range value, NOT raw Hz. scale=0.1 + offset=0.05 maps it linearly to display 0.05..10.05 Hz, then _VST_PARAM_RANGES['khs chorus']['Rate']=(log 0.05..10) normalizes display\u2192[0,1] via the plugin's log curve. User-verified: RS=4 \u2192 display \u2248 0.45 Hz (slow chorus, as intended).",
+        "offset": 0.05
       },
       "Depth": {
         "param": "Depth",
@@ -1993,8 +1998,9 @@
     "khs chorus": {
       "Rate": {
         "param": "Rate",
-        "scale": 1.0,
-        "_hint": "RS chorus Rate is in Hz direct (e.g. 0.5 Hz, 3 Hz). scale=1.0 + _VST_PARAM_RANGES['khs chorus']['Rate']=(log 0.05..10 Hz) handles the Hz\u2192[0,1] conversion at write time."
+        "scale": 0.1,
+        "_hint": "RS chorus Rate is a 0..100 percent-of-range value, NOT raw Hz. scale=0.1 + offset=0.05 maps it linearly to display 0.05..10.05 Hz, then _VST_PARAM_RANGES['khs chorus']['Rate']=(log 0.05..10) normalizes display\u2192[0,1] via the plugin's log curve. User-verified: RS=4 \u2192 display \u2248 0.45 Hz (slow chorus, as intended).",
+        "offset": 0.05
       },
       "Depth": {
         "param": "Depth",
