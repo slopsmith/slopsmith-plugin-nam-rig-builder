@@ -6198,7 +6198,14 @@ def setup(app, context):
         """
         path = _find_gear_photo(rs_gear)
         if path is None:
-            return JSONResponse({"error": "no photo"}, 404)
+            # Don't let browsers cache the 404 — earlier lookup misses
+            # (e.g. branded cabs before the case-insensitive fix) would
+            # stick around forever and keep showing the placeholder
+            # even after we patched the backend. `no-store` forces a
+            # fresh hit every time the user opens the catalog/editor.
+            return JSONResponse(
+                {"error": "no photo"}, 404,
+                headers={"Cache-Control": "no-store"})
         try:
             data = path.read_bytes()
         except OSError as e:

@@ -400,6 +400,16 @@ let rbState = {
 };
 
 const RB_API = '/api/plugins/rig_builder';
+
+// Cache-bust query for gear-photo URLs. Set once per session so:
+//   - 200 responses still ETag-validate on each refresh (no extra
+//     network traffic — the param doesn't change between renders)
+//   - 404 responses cached by the browser from BEFORE a fix (e.g.
+//     the case-insensitive lookup landed) get a new URL on the next
+//     Slopsmith launch, busting the stale cache miss
+// The current epoch is plenty unique; we only need it to differ
+// across plugin restarts.
+const _RB_GEAR_PHOTO_CB = `?cb=${Date.now()}`;
 const NAM_API = '/api/plugins/nam_tone';
 
 // ── RbMegaChain: pre-loaded whole-song chain with bypass-flip switching
@@ -2021,7 +2031,7 @@ function rbRenderPieceCard(p, toneIdx, pIdx, isSelected, total) {
     // this rs_gear. The onerror swaps the broken <img> for the sibling
     // placeholder via plain DOM properties — avoids HTML-in-attribute
     // escaping bugs.
-    const imgUrl = `${RB_API}/gear_photo/${encodeURIComponent(p.type)}`;
+    const imgUrl = `${RB_API}/gear_photo/${encodeURIComponent(p.type)}${_RB_GEAR_PHOTO_CB}`;
     const onerr = "this.style.display='none'; var n=this.nextElementSibling; if(n) n.classList.remove('hidden');";
     return `
         <button onclick="rbSelectPiece(${toneIdx}, ${pIdx})"
@@ -2195,7 +2205,7 @@ function rbRenderPieceEditor(p, toneIdx, pIdx, filename) {
     // Big photo for the editor (same source as the chain cards).
     // Same sibling-swap pattern as rbRenderPieceCard — see comment there
     // for why we avoid the `JSON.stringify` inside an attribute approach.
-    const imgUrl = `${RB_API}/gear_photo/${encodeURIComponent(p.type)}`;
+    const imgUrl = `${RB_API}/gear_photo/${encodeURIComponent(p.type)}${_RB_GEAR_PHOTO_CB}`;
     const onerrBig = "this.style.display='none'; var n=this.nextElementSibling; if(n) n.classList.remove('hidden');";
 
     return `
@@ -5407,7 +5417,7 @@ function rbRenderCatalogCard(g) {
     // trick avoids the HTML-in-attribute escaping issue we hit in the
     // song editor — onerror just hides this img and reveals the next
     // sibling, which is the next photo source down the chain.
-    const rsArt = `${RB_API}/gear_photo/${encodeURIComponent(g.rs_gear)}`;
+    const rsArt = `${RB_API}/gear_photo/${encodeURIComponent(g.rs_gear)}${_RB_GEAR_PHOTO_CB}`;
     const onerrChain = "this.style.display='none'; var n=this.nextElementSibling; if(n){ if(n.tagName==='IMG'){n.style.display=''} else {n.classList.remove('hidden')} }";
     const t3kImgTag = g.image
         ? `<img src="${rbEsc(g.image)}" alt="" loading="lazy" style="display:none"
