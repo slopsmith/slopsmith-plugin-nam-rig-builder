@@ -5598,36 +5598,79 @@ function rbRenderAmpVariantsPanel(rsGear, data) {
     const variants = data.variants || {};
     const defaults = data.default_levels || {};
     const levels = ['clean', 'crunch', 'dist'];
+
+    // Quick mode header: paste ONE tone3000 link, "Load captures", and
+    // every level row gets the same dropdown populated below — for the
+    // common case where you want all three variants from the same
+    // capturer's page. Per-level rows still let you override with a
+    // different link if needed (collapsed by default to keep the panel
+    // calm).
+    const quickHeader = `
+        <div class="bg-emerald-900/15 border border-emerald-800/30 rounded p-2.5 mb-3">
+            <div class="text-[11px] text-emerald-300 font-medium mb-1">⚡ Quick — one link for all 3 levels</div>
+            <div class="text-[10px] text-gray-500 mb-2">
+                Paste a tone3000 amp page (URL or ID). After loading, pick
+                one capture per level from the dropdowns below — no need
+                to know what a model_id is.
+            </div>
+            <div class="flex items-center gap-2">
+                <input id="rb-amp-quick-tone-${safeId}" type="text"
+                       placeholder="https://tone3000.com/tones/37987   or just   37987"
+                       class="flex-1 bg-dark-900 border border-gray-800 rounded text-[11px] text-gray-200 px-2 py-1 font-mono">
+                <button onclick="rbAmpVariantsQuickLoad('${rbEsc(rsGear)}')"
+                        class="bg-emerald-700 hover:bg-emerald-600 text-white text-[11px] px-3 py-1 rounded whitespace-nowrap">⬇ Load captures</button>
+            </div>
+            <div id="rb-amp-quick-status-${safeId}" class="text-[10px] text-gray-500 mt-1.5"></div>
+        </div>`;
+
     const rows = levels.map(level => {
         const v = variants[level] || {};
         const def = defaults[level] || { rs_gain_range: [0, 100] };
         const range = v.rs_gain_range || def.rs_gain_range;
         const tone3000Id = v.tone3000_id || '';
-        const modelId = v.model_id || '';
         const isSaved = !!v.tone3000_id;
+        const captureName = (v.notes || '').trim();
         const slotPrefix = `rb-amp-variants-${safeId}-${level}`;
+        // Saved-state header line: prefer the human capture name
+        // (notes) over the generic "✓ saved". Truncate to keep the row
+        // compact — full text on hover.
+        let savedBadge;
+        if (isSaved) {
+            const shown = captureName ? captureName : `tone3000 #${tone3000Id}`;
+            savedBadge = `<span class="text-[10px] text-emerald-400 truncate max-w-[24rem]"
+                                title="${rbEsc(captureName || ('tone3000 #' + tone3000Id))}">✓ ${rbEsc(shown)}</span>`;
+        } else {
+            savedBadge = '<span class="text-[10px] text-gray-600">empty</span>';
+        }
         return `
             <div class="bg-dark-800/60 border border-gray-800/40 rounded p-2 mb-2" id="${slotPrefix}">
-                <div class="flex items-center justify-between mb-1.5">
-                    <div class="flex items-center gap-2">
+                <div class="flex items-center justify-between gap-2 mb-1.5">
+                    <div class="flex items-center gap-2 min-w-0">
                         <span class="font-semibold text-emerald-300 capitalize">${level}</span>
-                        <span class="text-[10px] text-gray-500">Gain ${range[0]}-${range[1]}</span>
-                        ${isSaved ? '<span class="text-[10px] text-emerald-400">✓ saved</span>' : '<span class="text-[10px] text-gray-600">empty</span>'}
+                        <span class="text-[10px] text-gray-500 whitespace-nowrap">Gain ${range[0]}-${range[1]}</span>
+                        ${savedBadge}
                     </div>
                     ${isSaved ? `<button onclick="rbDeleteAmpVariant('${rbEsc(rsGear)}', '${level}')"
-                                        class="text-[10px] text-red-400 hover:text-red-300 px-1.5 py-0.5">Remove</button>` : ''}
+                                        class="text-[10px] text-red-400 hover:text-red-300 px-1.5 py-0.5 flex-shrink-0">Remove</button>` : ''}
                 </div>
                 <div class="flex items-center gap-2 mb-1.5">
-                    <input id="${slotPrefix}-tone" type="text" placeholder="tone3000 URL or ID (e.g. 37987)"
-                           value="${rbEsc(tone3000Id)}"
-                           class="flex-1 bg-dark-900 border border-gray-800 rounded text-[11px] text-gray-200 px-2 py-1 font-mono">
-                    <button onclick="rbInspectAmpVariant('${rbEsc(rsGear)}', '${level}')"
-                            class="bg-dark-600 hover:bg-dark-500 text-gray-200 text-[10px] px-2 py-1 rounded whitespace-nowrap">↓ Captures</button>
+                    <span class="text-[10px] text-gray-500 whitespace-nowrap">Capture:</span>
+                    <select id="${slotPrefix}-model"
+                            class="flex-1 bg-dark-900 border border-gray-800 rounded text-[10px] text-gray-200 px-1 py-1"
+                            disabled>
+                        <option value="">(load captures via ⚡ Quick or 🔗 Use a different link)</option>
+                    </select>
                 </div>
-                <div id="${slotPrefix}-captures" class="hidden flex items-center gap-2 mb-1.5">
-                    <span class="text-[10px] text-gray-500">capture:</span>
-                    <select id="${slotPrefix}-model" class="flex-1 bg-dark-900 border border-gray-800 rounded text-[10px] text-gray-200 px-1 py-1"></select>
-                </div>
+                <details class="text-[10px] text-gray-500 mb-1">
+                    <summary class="cursor-pointer hover:text-gray-300 select-none">🔗 Use a different tone3000 link for ${level}</summary>
+                    <div class="flex items-center gap-2 mt-1.5">
+                        <input id="${slotPrefix}-tone" type="text" placeholder="tone3000 URL or ID"
+                               value="${rbEsc(tone3000Id)}"
+                               class="flex-1 bg-dark-900 border border-gray-800 rounded text-[11px] text-gray-200 px-2 py-1 font-mono">
+                        <button onclick="rbInspectAmpVariant('${rbEsc(rsGear)}', '${level}')"
+                                class="bg-dark-600 hover:bg-dark-500 text-gray-200 text-[10px] px-2 py-1 rounded whitespace-nowrap">⬇ Load</button>
+                    </div>
+                </details>
                 <div class="flex items-center gap-2">
                     <button onclick="rbSaveAmpVariant('${rbEsc(rsGear)}', '${level}')"
                             class="bg-emerald-700 hover:bg-emerald-600 text-white text-[11px] px-2.5 py-1 rounded">💾 Save ${level}</button>
@@ -5637,24 +5680,85 @@ function rbRenderAmpVariantsPanel(rsGear, data) {
     }).join('');
     return `
         <div class="text-xs text-gray-400 mb-2">
-            Each level downloads a separate capture; the song's Gain knob
-            picks which one plays. Leave a level empty to skip it (the
-            closest other variant covers that range).
+            Map a capture to each gain range. The song's Gain knob picks
+            which one plays. Leave a level empty to skip it (the closest
+            variant covers that range).
         </div>
+        ${quickHeader}
         ${rows}`;
 }
 
+// Quick mode: paste one tone3000 link, fetch captures once, populate
+// the dropdown for every level. The user then picks one capture per
+// level and saves. The per-level "Use a different link" override
+// still works on top of this — its own dropdown wins for that level.
+async function rbAmpVariantsQuickLoad(rsGear) {
+    const safeId = rsGear.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const input = document.getElementById(`rb-amp-quick-tone-${safeId}`);
+    const statusEl = document.getElementById(`rb-amp-quick-status-${safeId}`);
+    if (!input || !statusEl) return;
+    const raw = (input.value || '').trim();
+    const m = raw.match(/(\d+)\s*$/);
+    if (!m) {
+        statusEl.textContent = 'enter a tone3000 URL or numeric ID';
+        statusEl.className = 'text-[10px] text-amber-300 mt-1.5';
+        return;
+    }
+    const toneId = parseInt(m[1], 10);
+    statusEl.textContent = 'fetching captures…';
+    statusEl.className = 'text-[10px] text-gray-500 mt-1.5';
+    try {
+        const r = await fetch(`${RB_API}/tone3000/captures/${toneId}`);
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || r.status);
+        const caps = data.captures || [];
+        if (!caps.length) {
+            statusEl.textContent = 'no captures in this tone';
+            statusEl.className = 'text-[10px] text-amber-300 mt-1.5';
+            return;
+        }
+        // Populate every level's dropdown with the same list. The
+        // model_id is hidden inside the option's value — the user only
+        // sees the capture name + size + license. Each level also
+        // gets a `data-tone-id` so Save knows which tone3000 page this
+        // capture came from (quick mode = shared id; per-level mode
+        // overrides per row).
+        const optsHtml = '<option value="">(pick a capture for this level)</option>' +
+            caps.map(c => {
+                const meta = [c.size || '?', c.license || ''].filter(Boolean).join(' · ');
+                return `<option value="${c.model_id}">${rbEsc(c.name)}${meta ? ` — ${rbEsc(meta)}` : ''}</option>`;
+            }).join('');
+        for (const level of ['clean', 'crunch', 'dist']) {
+            const sel = document.getElementById(`rb-amp-variants-${safeId}-${level}-model`);
+            if (sel) {
+                sel.innerHTML = optsHtml;
+                sel.dataset.toneId = String(toneId);
+                sel.dataset.source = 'quick';
+                sel.disabled = false;
+                // Stash the capture names so Save can record `notes`
+                // (human-readable label) without re-querying the API.
+                sel._rbCaptures = caps;
+            }
+        }
+        statusEl.innerHTML = `<span class="text-emerald-400">✓ ${caps.length} captures loaded — pick one per level and Save</span>`;
+        statusEl.className = 'text-[10px] mt-1.5';
+    } catch (e) {
+        statusEl.textContent = `failed: ${e.message || e}`;
+        statusEl.className = 'text-[10px] text-red-400 mt-1.5';
+    }
+}
+
 // Inspect the captures inside a tone3000 page (GET /tone3000/captures/{id})
-// and populate the per-row dropdown. The "tone3000 URL or ID" input
-// accepts either format — we extract the trailing number from URLs.
+// and populate this LEVEL's dropdown only. Used by the per-level
+// "Use a different link" override; the Quick mode populates all 3
+// dropdowns in one go via rbAmpVariantsQuickLoad.
 async function rbInspectAmpVariant(rsGear, level) {
     const safeId = rsGear.replace(/[^a-zA-Z0-9_-]/g, '_');
     const slotPrefix = `rb-amp-variants-${safeId}-${level}`;
     const input = document.getElementById(`${slotPrefix}-tone`);
     const statusEl = document.getElementById(`${slotPrefix}-status`);
-    const capsRow = document.getElementById(`${slotPrefix}-captures`);
     const select  = document.getElementById(`${slotPrefix}-model`);
-    if (!input || !statusEl || !capsRow || !select) return;
+    if (!input || !statusEl || !select) return;
     const raw = (input.value || '').trim();
     const m = raw.match(/(\d+)\s*$/);
     if (!m) {
@@ -5673,22 +5777,21 @@ async function rbInspectAmpVariant(rsGear, level) {
         if (!caps.length) {
             statusEl.textContent = 'no captures in this tone';
             statusEl.className = 'text-[10px] text-amber-300';
-            capsRow.classList.add('hidden');
             return;
         }
-        // Build options. Add a sentinel "(auto: best by size)" at top
-        // so the user can explicitly let pick_best_model decide.
-        //
-        // Order matters here: the capture's title (which encodes knob
+        // Order matters: the capture's title (which encodes knob
         // settings like "G7 B5 M5 T5 P5 V5") is what the user reads to
         // match a Rocksmith gain level — put it first. Size/license
-        // are secondary metadata tail-tagged at the end.
-        select.innerHTML = `<option value="">(auto: best by size)</option>` +
+        // are secondary metadata tail-tagged.
+        select.innerHTML = `<option value="">(pick a capture for this level)</option>` +
             caps.map(c => {
                 const meta = [c.size || '?', c.license || ''].filter(Boolean).join(' · ');
-                return `<option value="${c.model_id}">${rbEsc(c.name)} — ${rbEsc(meta)}</option>`;
+                return `<option value="${c.model_id}">${rbEsc(c.name)}${meta ? ` — ${rbEsc(meta)}` : ''}</option>`;
             }).join('');
-        capsRow.classList.remove('hidden');
+        select.dataset.toneId = String(toneId);
+        select.dataset.source = 'custom';
+        select.disabled = false;
+        select._rbCaptures = caps;
         statusEl.textContent = `${caps.length} capture${caps.length === 1 ? '' : 's'} loaded — pick one and Save`;
         statusEl.className = 'text-[10px] text-emerald-400';
     } catch (e) {
@@ -5698,29 +5801,48 @@ async function rbInspectAmpVariant(rsGear, level) {
 }
 
 // Persist a single variant. POSTs to /amp_variants/{rs_gear}/{level}.
+// Picks tone3000_id from the SELECT's dataset (Quick mode + per-level
+// both stash it there) so we don't depend on the per-level URL input
+// being filled — Quick mode users never touched that field.
 async function rbSaveAmpVariant(rsGear, level) {
     const safeId = rsGear.replace(/[^a-zA-Z0-9_-]/g, '_');
     const slotPrefix = `rb-amp-variants-${safeId}-${level}`;
-    const input = document.getElementById(`${slotPrefix}-tone`);
     const select = document.getElementById(`${slotPrefix}-model`);
     const statusEl = document.getElementById(`${slotPrefix}-status`);
-    if (!input || !statusEl) return;
-    const raw = (input.value || '').trim();
-    const m = raw.match(/(\d+)\s*$/);
-    if (!m) {
-        statusEl.textContent = 'enter a tone3000 URL or numeric ID first';
+    if (!select || !statusEl) return;
+    const toneIdStr = (select.dataset && select.dataset.toneId) || '';
+    if (!toneIdStr) {
+        statusEl.textContent = 'load captures first (⚡ Quick or 🔗 different link)';
         statusEl.className = 'text-[10px] text-amber-300';
         return;
     }
-    const tone3000Id = parseInt(m[1], 10);
-    const modelId = (select && select.value) ? parseInt(select.value, 10) : null;
+    const tone3000Id = parseInt(toneIdStr, 10);
+    const modelId = (select.value) ? parseInt(select.value, 10) : null;
+    if (!modelId) {
+        statusEl.textContent = 'pick a capture from the dropdown first';
+        statusEl.className = 'text-[10px] text-amber-300';
+        return;
+    }
+    // Find the chosen capture's human name and pass it as `notes` so
+    // the saved-row badge shows "✓ G3 B5 M5 T5 P5 V5" instead of just
+    // "✓ saved". Falls back gracefully if the capture metadata isn't
+    // attached to the SELECT for any reason.
+    let notes = '';
+    const caps = select._rbCaptures || [];
+    const match = caps.find(c => String(c.model_id) === String(modelId));
+    if (match && match.name) notes = match.name;
+
     statusEl.textContent = 'saving…';
     statusEl.className = 'text-[10px] text-gray-500';
     try {
         const r = await fetch(`${RB_API}/amp_variants/${encodeURIComponent(rsGear)}/${encodeURIComponent(level)}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tone3000_id: tone3000Id, model_id: modelId }),
+            body: JSON.stringify({
+                tone3000_id: tone3000Id,
+                model_id: modelId,
+                notes: notes,
+            }),
         });
         const data = await r.json();
         if (!r.ok) throw new Error(data.error || r.status);
