@@ -5427,6 +5427,29 @@ function rbRenderCatalogCard(g) {
         </div>`;
     }
 
+    // Audition row for cabs: one ▶ per mic position resolved from the
+    // Wwise HIRC. Sky-blue tone to distinguish from amp variants. The
+    // labels come from the gear manifest's Category field (e.g.
+    // "Dynamic Cone") so the user reads "Dynamic close" / "Condenser
+    // edge" instead of generic "IR 0/1/2/…". Each variant is a
+    // standalone IR — auditioning loads only that .wav, no chain.
+    let micVariantAuditionRow = '';
+    if (Array.isArray(g.mic_variants) && g.mic_variants.length) {
+        const btns = g.mic_variants.map(v => {
+            const vId = `rb-aud-${_rbCatalogSeq++}`;
+            if (!v.available || !v.ir_file) {
+                return `<button disabled title="IR not extracted — re-run Setup → Extract everything"
+                                class="text-[10px] px-2 py-0.5 rounded bg-dark-800/50 text-gray-600 cursor-not-allowed">▶ ${rbEsc(v.label || v.suffix)}</button>`;
+            }
+            return `<button id="${vId}" onclick="event.stopPropagation(); rbAuditionFile('${rbEsc(v.ir_file).replace(/'/g,"\\'")}','ir','${vId}')"
+                            title="${rbEsc(v.mic_type || '')} · ${rbEsc(v.position || '')} (suffix ${rbEsc(v.suffix)})"
+                            class="text-[10px] px-2 py-0.5 rounded bg-sky-900/30 hover:bg-sky-900/60 text-sky-300 border border-sky-800/40">▶ ${rbEsc(v.label || v.suffix)}</button>`;
+        }).join(' ');
+        micVariantAuditionRow = `<div class="flex items-center gap-1 flex-wrap">
+            <span class="text-[10px] text-gray-500">Mic positions:</span>${btns}
+        </div>`;
+    }
+
     // The action panel only renders into the DOM when the card is
     // expanded. Keeping the existing rb-cat-lib-* / rb-cat-variants-*
     // panel IDs even when collapsed means hiding+collapsing don't fight
@@ -5442,6 +5465,7 @@ function rbRenderCatalogCard(g) {
                 ${t3kLink}
             </div>
             ${variantAuditionRow}
+            ${micVariantAuditionRow}
             <div id="rb-cat-lib-${safeId}" class="hidden bg-indigo-900/10 border border-indigo-800/30 rounded p-2"></div>
             <div id="rb-cat-variants-${safeId}" class="hidden bg-emerald-900/10 border border-emerald-800/30 rounded p-2"></div>
         </div>` : '';

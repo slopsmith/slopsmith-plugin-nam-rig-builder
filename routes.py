@@ -106,6 +106,7 @@ _lock = threading.Lock()
 
 _rs_to_real: dict | None = None
 _rs_cab_to_ir: dict | None = None
+_rs_cab_mic_map: dict | None = None
 _default_captures: dict | None = None  # gear -> {tone3000_id, kind, model_id}
 _settings: dict | None = None  # tone3000_api_key, min_downloads, aggressive
 
@@ -868,8 +869,42 @@ def _load_rs_cab_to_ir() -> dict:
 
 
 def _invalidate_rs_cab_to_ir() -> None:
-    global _rs_cab_to_ir
+    global _rs_cab_to_ir, _rs_cab_mic_map
     _rs_cab_to_ir = None
+    _rs_cab_mic_map = None
+
+
+def _load_rs_cab_mic_map() -> dict:
+    """Load (and cache) `rs_cab_mic_map.json` — the Wwise-HIRC-derived
+    table that maps each cab's mic-position suffix (`5c`, `cc`, `te`, …)
+    to the actual extracted IR file plus a friendly label
+    ("Dynamic Cone", "Condenser Edge", …). Produced by extract_irs.py.
+
+    Schema:
+      {
+        "Bass_Cab_AT1150BC": {
+          "5c": {ir_index, ir_file, mic_type, position, label, effect_name},
+          ...
+        },
+        ...
+      }
+
+    Returns {} if the user hasn't re-run extraction since the script
+    started emitting this file — in that case callers fall back to the
+    numbered IR list from rs_cab_to_ir.json (legacy behaviour).
+    """
+    global _rs_cab_mic_map
+    if _rs_cab_mic_map is None:
+        path = _plugin_dir / "rs_cab_mic_map.json"
+        if path.exists():
+            try:
+                _rs_cab_mic_map = json.loads(path.read_text())
+            except json.JSONDecodeError:
+                log.error("rs_cab_mic_map.json is corrupt", exc_info=True)
+                _rs_cab_mic_map = {}
+        else:
+            _rs_cab_mic_map = {}
+    return _rs_cab_mic_map
 
 
 # ── NAM/IR storage layout — category subdirs ─────────────────────────
@@ -5559,6 +5594,38 @@ def setup(app, context):
                 })
             return out
 
+        # Cab mic-variants enrichment: for every cab in the user's
+        # catalog, look up the rs_cab_mic_map entry (built from the
+        # Wwise HIRC ↔ DIDX cross-reference). Each entry returns the
+        # extracted IR file + a friendly label so the UI can render
+        # one ▶ per mic position instead of generic "IR 0/1/2/…".
+        # Filtering by `(irs_root / file).exists()` keeps the picker
+        # honest: if the user hasn't re-extracted, only the variants
+        # whose .wav landed on disk show as auditionable.
+        mic_map = _load_rs_cab_mic_map()
+        irs_root = _config_dir / "nam_irs" if _config_dir else None
+
+        def _mic_variants_for(rs_gear: str) -> list[dict]:
+            spec = mic_map.get(rs_gear) or {}
+            out = []
+            for suffix, entry in sorted(spec.items(),
+                                          key=lambda kv: kv[1].get("ir_index", 99)):
+                f = entry.get("ir_file")
+                available = (
+                    bool(f) and irs_root is not None
+                    and (irs_root / f).exists()
+                )
+                out.append({
+                    "suffix": suffix,
+                    "ir_index": entry.get("ir_index"),
+                    "ir_file": f,
+                    "label": entry.get("label") or suffix,
+                    "mic_type": entry.get("mic_type"),
+                    "position": entry.get("position"),
+                    "available": available,
+                })
+            return out
+
         cats: dict[str, list] = {}
         for gear, b in best.items():
             info = rs_map.get(gear) or {}
@@ -5566,6 +5633,7 @@ def setup(app, context):
             t3kid = b["tone3000_id"]
             meta = img_idx.get(t3kid) if t3kid else None
             variants = _variants_for(gear, info) if category == "amp" else []
+            mic_variants = _mic_variants_for(gear) if category == "cab" else []
             cats.setdefault(category, []).append({
                 "rs_gear": gear,
                 "real_name": info.get("name") or gear,
@@ -5590,6 +5658,11 @@ def setup(app, context):
                 # Per-variant audition buttons in the Gear card. Empty
                 # list when the amp has no `gain_variants` curation.
                 "variants": variants,
+                # Per-mic-position audition buttons for cabs (similar
+                # shape: {label, ir_file, available}). Empty for non-cab
+                # categories and for cabs without an entry in
+                # rs_cab_mic_map.json (e.g. the user hasn't re-extracted).
+                "mic_variants": mic_variants,
             })
         for lst in cats.values():
             # Primary sort: Rocksmith's psarc order (same order as the
