@@ -852,6 +852,27 @@ def _load_vst_seed_catalog() -> dict:
     return _vst_seed_catalog
 
 
+class _CaseInsensitiveDict(dict):
+    """A dict whose `.get(key)` falls back to a case-insensitive lookup
+    when the exact key isn't present. Used for the rs_cab_to_ir and
+    rs_cab_mic_map loaders because the DB stores some cab codenames
+    fully uppercased (`Cab_MARSHALL1960A`) while the source JSON uses
+    proper case (`Cab_Marshall1960A`). Pure dict otherwise — iteration
+    and len behave normally.
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._lower_index = {k.lower(): k for k in self.keys()}
+
+    def get(self, key, default=None):
+        if key in self:
+            return super().get(key)
+        real_key = self._lower_index.get(str(key).lower())
+        if real_key is None:
+            return default
+        return super().get(real_key, default)
+
+
 def _load_rs_cab_to_ir() -> dict:
     """Load (and cache) the rs_cab_to_ir.json map produced by
     extract_irs.py. Each key is a Rocksmith gear entity (e.g.
@@ -868,19 +889,20 @@ def _load_rs_cab_to_ir() -> dict:
         path = _plugin_dir / "rs_cab_to_ir.json"
         if path.exists():
             try:
-                _rs_cab_to_ir = json.loads(path.read_text())
+                _rs_cab_to_ir = _CaseInsensitiveDict(json.loads(path.read_text()))
             except json.JSONDecodeError:
                 log.error("rs_cab_to_ir.json is corrupt", exc_info=True)
-                _rs_cab_to_ir = {}
+                _rs_cab_to_ir = _CaseInsensitiveDict()
         else:
-            _rs_cab_to_ir = {}
+            _rs_cab_to_ir = _CaseInsensitiveDict()
     return _rs_cab_to_ir
 
 
 def _invalidate_rs_cab_to_ir() -> None:
-    global _rs_cab_to_ir, _rs_cab_mic_map
+    global _rs_cab_to_ir, _rs_cab_mic_map, _effect_to_mic_cache
     _rs_cab_to_ir = None
     _rs_cab_mic_map = None
+    _effect_to_mic_cache = None
 
 
 def _load_rs_cab_mic_map() -> dict:
@@ -907,12 +929,12 @@ def _load_rs_cab_mic_map() -> dict:
         path = _plugin_dir / "rs_cab_mic_map.json"
         if path.exists():
             try:
-                _rs_cab_mic_map = json.loads(path.read_text())
+                _rs_cab_mic_map = _CaseInsensitiveDict(json.loads(path.read_text()))
             except json.JSONDecodeError:
                 log.error("rs_cab_mic_map.json is corrupt", exc_info=True)
-                _rs_cab_mic_map = {}
+                _rs_cab_mic_map = _CaseInsensitiveDict()
         else:
-            _rs_cab_mic_map = {}
+            _rs_cab_mic_map = _CaseInsensitiveDict()
     return _rs_cab_mic_map
 
 
@@ -1139,12 +1161,81 @@ def _parse_gear(gear: dict, slot_type: str) -> dict:
         clean_name = parts[-1] if len(parts) > 1 else k
         clean_knobs[clean_name] = round(v, 1) if isinstance(v, float) else v
 
-    return {
+    out = {
         "type": model_key,
         "slot": slot_type,
         "category": category,
         "knobs": clean_knobs,
     }
+
+    # Cabinet mic-position: Rocksmith encodes the specific cab + mic
+    # in `Cabinet.Key` (e.g. "Bass_Cab_AT810BC_Tube_Cone"), while
+    # `Cabinet.Type` is the literal string "Cabinets" for every cab.
+    # The .Key value is the Wwise Effect name — the same string our
+    # extract_irs mapping uses to resolve mic-position → IR.
+    #
+    # Surface it as a separate field so:
+    #   1. `_enrich_chain_piece` can promote it into rs_gear_type
+    #      (Bass_Cab_AT810BC) so the cab tab works against the base
+    #      cab in rs_cab_mic_map.
+    #   2. The auto-assign / chain build flow can pick the matching
+    #      IR file via rs_cab_mic_map.
+    if slot_type == "cabinet":
+        key = gear.get("Key") or ""
+        if key:
+            out["cabinet_key"] = key
+            # Promote `model_key` from generic "Cabinets" to the cab's
+            # base rs_gear (e.g. "Bass_Cab_AT810BC") so downstream lookups
+            # against rs_cab_to_ir / rs_cab_mic_map / photos all work.
+            # The mic suffix is NOT in `model_key` — it stays purely in
+            # `cabinet_key` so the per-piece variant override sees it.
+            base = _cab_base_from_effect_name(key)
+            if base:
+                out["type"] = base
+    return out
+
+
+# Cache for the inverse `Effect name → mic suffix` lookup so cab parsing
+# doesn't re-walk the whole mic map every time we see a Cabinet piece.
+_effect_to_mic_cache: dict[str, tuple[str, str]] | None = None
+
+
+def _build_effect_to_mic_index() -> dict[str, tuple[str, str]]:
+    """Walk rs_cab_mic_map once and build `{effect_name: (base_rs_gear,
+    suffix)}` keyed by lowercased effect name — case-insensitive so
+    Rocksmith's mixed-case Cabinet.Key values match cleanly."""
+    global _effect_to_mic_cache
+    if _effect_to_mic_cache is None:
+        idx: dict[str, tuple[str, str]] = {}
+        for base, mics in (_load_rs_cab_mic_map() or {}).items():
+            for suffix, info in (mics or {}).items():
+                ename = (info or {}).get("effect_name") or ""
+                if ename:
+                    idx[ename.lower()] = (base, suffix)
+        _effect_to_mic_cache = idx
+    return _effect_to_mic_cache
+
+
+def _cab_base_from_effect_name(effect_name: str) -> str | None:
+    """Resolve a PSARC Cabinet.Key (e.g. "Bass_Cab_AT810BC_Tube_Cone")
+    back to its base rs_gear ("Bass_Cab_AT810BC"). Uses the mic-map
+    inverse index so the base form matches what rs_cab_to_ir +
+    rs_cab_mic_map are keyed by. Returns None when the effect name
+    isn't in the index (e.g. cab not extracted or mic map outdated).
+    """
+    if not effect_name:
+        return None
+    base_suffix = _build_effect_to_mic_index().get(effect_name.lower())
+    return base_suffix[0] if base_suffix else None
+
+
+def _cab_suffix_from_effect_name(effect_name: str) -> str | None:
+    """Resolve a PSARC Cabinet.Key to the mic-position suffix ('5c',
+    'cc', 'tc', …). Returns None when not found."""
+    if not effect_name:
+        return None
+    base_suffix = _build_effect_to_mic_index().get(effect_name.lower())
+    return base_suffix[1] if base_suffix else None
 
 
 def _parse_tone(tone_data: dict) -> dict:
@@ -3397,17 +3488,32 @@ def _auto_download_for_song(filename: str, path: Path) -> dict:
                     continue
 
                 # Cab fast-path: prefer the Rocksmith IR when on disk.
+                # Use the song's `Cabinet.Key` (the Wwise Effect name —
+                # e.g. "Bass_Cab_AT810BC_Tube_Cone") to pick the CORRECT
+                # mic position via rs_cab_mic_map. Falls back to the
+                # first IR in the list when the cab has no mic-map
+                # entry (older cabs, novelty cabs, etc.) so the legacy
+                # "always _00" behaviour stays as a safety net.
                 rs_ir_entry = rs_irs_map.get(rs_type) or {}
                 available = [
                     f for f in (rs_ir_entry.get("irs") or [])
                     if (irs_root / f).exists()
                 ]
                 if category == "cab" and available:
+                    chosen_file = available[0]
+                    cabinet_key = piece.get("cabinet_key") or ""
+                    if cabinet_key:
+                        suffix = _cab_suffix_from_effect_name(cabinet_key)
+                        if suffix:
+                            spec = (_load_rs_cab_mic_map().get(rs_type) or {}).get(suffix)
+                            cand = (spec or {}).get("ir_file")
+                            if cand and (irs_root / cand).exists():
+                                chosen_file = cand
                     pieces.append({
                         "slot": piece["slot"],
                         "rs_gear_type": rs_type,
                         "kind": "rs_ir",
-                        "file": available[0],
+                        "file": chosen_file,
                         "params": piece["knobs"],
                         "tone3000_id": None,
                         "assigned_mode": "auto",
@@ -3891,6 +3997,109 @@ def setup(app, context):
             )
         _invalidate_rs_to_real()
         return {"ok": True, "stdout": result.stdout, "count": len(_load_rs_to_real())}
+
+    @app.post("/api/plugins/rig_builder/remap_cab_mics")
+    def remap_cab_mics(data: dict = Body(...)):
+        """Re-pick the correct cab IR for every cab `preset_piece` based
+        on the song's original `Cabinet.Key` field (the Wwise Effect
+        name like "Bass_Cab_AT810BC_Tube_Cone").
+
+        WHY: until commit 0xb0xb the cab auto-assign always picked the
+        first IR in the rs_cab_to_ir list (typically Condenser Cone /
+        SM57 Close — depends on cab). So every song in the user's DB
+        plays with the same `_00.wav` regardless of what mic position
+        Rocksmith's tone designer actually specified. After the
+        Cabinet.Key parsing fix, NEW song opens auto-pick correctly —
+        this endpoint backfills existing rows.
+
+        Body:
+          - `only_auto`: bool, default True. Skip rows whose
+            assigned_mode != 'auto' so manual mic picks stay put.
+
+        Returns: counts per status (updated / same / no_psarc / no_key /
+        no_mic_map / no_assigned_mode_match).
+        """
+        only_auto = bool(data.get("only_auto", True))
+        conn = _get_conn()
+        # Walk every cab preset_piece (with the matching tone_mappings
+        # row so we know which PSARC to re-read).
+        rows = conn.execute(
+            "SELECT pp.id, pp.preset_id, pp.rs_gear_type, pp.file,"
+            "       pp.assigned_mode, tm.filename, tm.tone_key "
+            "FROM preset_pieces pp "
+            "JOIN tone_mappings tm ON tm.preset_id = pp.preset_id "
+            "WHERE pp.kind IN ('rs_ir', 'ir') "
+            "  AND pp.rs_gear_type LIKE '%Cab%'"
+        ).fetchall()
+        # Group by filename to avoid re-parsing the same PSARC N times.
+        by_song: dict[str, list[tuple]] = {}
+        for r in rows:
+            by_song.setdefault(r[5], []).append(r)
+        counts = {"updated": 0, "same": 0, "no_psarc": 0,
+                  "no_key": 0, "no_mic_map": 0, "skipped_manual": 0,
+                  "missing_ir": 0}
+        irs_root = _config_dir / "nam_irs"
+        affected_presets: set[int] = set()
+        with _lock:
+            for filename, group in by_song.items():
+                path = _resolve_song_file(filename)
+                if path is None or not path.exists() or path.stat().st_size == 0:
+                    counts["no_psarc"] += len(group)
+                    continue
+                # Parse the PSARC once. Build a tone_key → Cabinet.Key map.
+                try:
+                    if path.suffix.lower() == ".sloppak":
+                        raw_tones = _read_tones_from_sloppak(filename, _get_dlc_dir())
+                    else:
+                        raw_tones = _read_tones_from_psarc(path)
+                except Exception as e:
+                    log.warning("remap_cab_mics: parse %s failed: %s", filename, e)
+                    counts["no_psarc"] += len(group)
+                    continue
+                tone_to_cab_key: dict[str, str] = {}
+                for tone in raw_tones:
+                    key = (tone.get("Key") or tone.get("Name") or "")
+                    cab = (tone.get("GearList") or {}).get("Cabinet") or {}
+                    if isinstance(cab, dict):
+                        ck = cab.get("Key") or ""
+                        if ck:
+                            tone_to_cab_key[key] = ck
+                # Now process each piece in this song.
+                for pid_row, preset_id, rs_gear, cur_file, mode, _fn, tone_key in group:
+                    if only_auto and mode and mode != "auto":
+                        counts["skipped_manual"] += 1
+                        continue
+                    cabinet_key = tone_to_cab_key.get(tone_key)
+                    if not cabinet_key:
+                        counts["no_key"] += 1
+                        continue
+                    suffix = _cab_suffix_from_effect_name(cabinet_key)
+                    if not suffix:
+                        counts["no_mic_map"] += 1
+                        continue
+                    spec = (_load_rs_cab_mic_map().get(rs_gear) or {}).get(suffix)
+                    new_file = (spec or {}).get("ir_file")
+                    if not new_file or not (irs_root / new_file).exists():
+                        counts["missing_ir"] += 1
+                        continue
+                    if new_file == cur_file:
+                        counts["same"] += 1
+                        continue
+                    conn.execute(
+                        "UPDATE preset_pieces SET file = ?, kind = 'rs_ir' "
+                        "WHERE id = ?",
+                        (new_file, pid_row),
+                    )
+                    counts["updated"] += 1
+                    affected_presets.add(preset_id)
+            for pid in affected_presets:
+                _recompute_preset_primaries(conn, pid)
+            conn.commit()
+        return {
+            "ok": True,
+            "counts": counts,
+            "presets_affected": len(affected_presets),
+        }
 
     @app.post("/api/plugins/rig_builder/extract_gear_photos")
     def extract_gear_photos(data: dict = Body(...)):
