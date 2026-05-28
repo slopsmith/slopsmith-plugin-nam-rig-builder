@@ -6258,24 +6258,32 @@ def setup(app, context):
     #   POST /gear/replace_with          swap one gear's file across all songs
 
     def _resolve_gear_file(rs_gear: str, level: str | None,
-                            rs_gain: float | None) -> tuple[str | None, int | None, str | None]:
-        """Resolve a gear's NAM/IR file path given an optional variant
-        level OR an rs_gain to auto-pick from gain_variants.
+                            rs_gain: float | None) -> dict | None:
+        """Resolve what to play for `rs_gear` — could be a NAM file,
+        an extracted Rocksmith IR, or a VST plugin path.
 
-        Returns (relative_file, tone3000_id, kind) where:
-          - kind = 'nam' for amp/pedal/rack files (or for cabs that ship
-            a tone3000 cab capture as a NAM — uncommon)
-          - kind = 'rs_ir' for cabs resolved from rs_cab_mic_map / rs_cab_to_ir
-          - file in the engine-relative form (`<subdir>/<name>` for NAMs,
-            `rocksmith/<name>` for RS IRs)
-          - (None, None, None) when nothing's on disk
+        Returns a dict shaped like a preset_piece update payload, or
+        None when nothing's available:
+
+          {
+            "kind": "nam" | "rs_ir" | "vst",
+            "file": "<subdir>/<name>" | "rocksmith/<name>" | None,
+            "tone3000_id": int | None,
+            "vst_path": "<abs path>" | None,
+            "vst_format": "VST3" | "AU" | None,
+            "vst_state": "<base64 blob>" | None,
+          }
 
         Cab branch picks the IR by `level` (a mic-position suffix like
         `5c` / `cc`) when supplied, else the first available IR from the
         mic map, else the first available IR from rs_cab_to_ir.
+
+        Amp / pedal / rack branch tries: gain_variants first (amps),
+        then the most-used NAM/VST already assigned to this gear in
+        preset_pieces (the library's choice), then default_captures.
         """
         if _config_dir is None:
-            return None, None, None
+            return None
         rs_map = _load_rs_to_real() or {}
         info = rs_map.get(rs_gear) or {}
         category = (info.get("category") or "").lower()
@@ -6308,8 +6316,10 @@ def setup(app, context):
                         chosen_file = cand
                         break
             if chosen_file:
-                return chosen_file, None, "rs_ir"
-            return None, None, None
+                return {"kind": "rs_ir", "file": chosen_file,
+                        "tone3000_id": None,
+                        "vst_path": None, "vst_format": None, "vst_state": None}
+            return None
 
         # ── Amp / pedal / rack branch: NAMs ────────────────────────
         # Step 1 — curated gain_variants (amps with clean/crunch/dist
@@ -6330,37 +6340,66 @@ def setup(app, context):
             if title:
                 cand = amp_dir / f"{_safe_filename_human(title)}.nam"
                 if cand.exists():
-                    return f"{subdir}/{cand.name}", tone3000_id, "nam"
+                    return {"kind": "nam",
+                            "file": f"{subdir}/{cand.name}",
+                            "tone3000_id": tone3000_id,
+                            "vst_path": None, "vst_format": None,
+                            "vst_state": None}
             if model_id and tone3000_id:
                 legacy = (f"tone3000_{tone3000_id}_m{model_id}_"
                           f"{_safe_filename(rs_gear)}.nam")
                 if (amp_dir / legacy).exists():
-                    return f"{subdir}/{legacy}", tone3000_id, "nam"
+                    return {"kind": "nam",
+                            "file": f"{subdir}/{legacy}",
+                            "tone3000_id": tone3000_id,
+                            "vst_path": None, "vst_format": None,
+                            "vst_state": None}
             # Variant resolved but file is missing — keep tone3000_id
             # around for the response, fall through to general lookup.
             fallback_tid = tone3000_id
         else:
             fallback_tid = None
 
-        # Step 2 — most-used NAM file already on disk for this rs_gear.
-        # Lets users swap to pedals/racks that have no curated variants:
-        # the picker would otherwise refuse them. We pick the file the
-        # rest of the DB has been using for this gear (highest row
-        # count) — that's the representative NAM the auto-download
-        # landed on. Skip if no rows have a file yet.
+        # Step 2 — most-used existing assignment for this rs_gear in
+        # preset_pieces. Covers two cases the picker would otherwise
+        # refuse:
+        #   (a) Pedals/racks that ship without gain_variants but DO
+        #       have a NAM file the auto-download chose.
+        #   (b) Gears the user has assigned a VST plugin to (kind='vst'
+        #       + vst_path), which is the common case for pedals
+        #       (Kilohearts, Valhalla, etc.). When the most-used row
+        #       is a VST we return that VST instead.
         conn = _get_conn()
         row = conn.execute(
-            "SELECT file, COUNT(*) FROM preset_pieces "
-            "WHERE rs_gear_type = ? AND file IS NOT NULL AND file != '' "
-            "  AND kind = 'nam' "
-            "GROUP BY file ORDER BY COUNT(*) DESC LIMIT 1",
+            "SELECT kind, file, vst_path, vst_format, vst_state, "
+            "       tone3000_id, COUNT(*) "
+            "FROM preset_pieces "
+            "WHERE rs_gear_type = ? "
+            "  AND ((kind = 'nam' AND file IS NOT NULL AND file != '') "
+            "       OR (kind = 'vst' AND vst_path IS NOT NULL AND vst_path != '')) "
+            "GROUP BY kind, file, vst_path "
+            "ORDER BY COUNT(*) DESC LIMIT 1",
             (rs_gear,),
         ).fetchone()
-        if row and row[0]:
-            # Sanity-check it's still on disk before returning.
-            cand_path = _safe_child(_config_dir / "nam_models", row[0])
-            if cand_path and cand_path.exists():
-                return row[0], fallback_tid, "nam"
+        if row:
+            kind, file_v, vst_path, vst_format, vst_state, tid, _n = row
+            if kind == "vst" and vst_path:
+                # Verify the VST bundle is still on disk.
+                if Path(vst_path).exists():
+                    return {"kind": "vst",
+                            "file": None,
+                            "tone3000_id": None,
+                            "vst_path": vst_path,
+                            "vst_format": vst_format or "VST3",
+                            "vst_state": vst_state}
+            elif kind == "nam" and file_v:
+                cand_path = _safe_child(_config_dir / "nam_models", file_v)
+                if cand_path and cand_path.exists():
+                    return {"kind": "nam",
+                            "file": file_v,
+                            "tone3000_id": tid or fallback_tid,
+                            "vst_path": None, "vst_format": None,
+                            "vst_state": None}
 
         # Step 3 — default_captures.json pinned tone3000_id + an
         # existing download with that id. Last-ditch for gears whose
@@ -6378,9 +6417,13 @@ def setup(app, context):
             if row and row[0]:
                 cand_path = _safe_child(_config_dir / "nam_models", row[0])
                 if cand_path and cand_path.exists():
-                    return row[0], dflt_tid, "nam"
+                    return {"kind": "nam",
+                            "file": row[0],
+                            "tone3000_id": dflt_tid,
+                            "vst_path": None, "vst_format": None,
+                            "vst_state": None}
 
-        return None, fallback_tid, None
+        return None
 
     @app.get("/api/plugins/rig_builder/gears_in_category/{category}")
     def gears_in_category(category: str):
@@ -6534,22 +6577,36 @@ def setup(app, context):
             rs_gain = float(rs_gain) if rs_gain is not None else None
         except (ValueError, TypeError):
             rs_gain = None
-        file, tone3000_id, kind = _resolve_gear_file(
+        res = _resolve_gear_file(
             rs_gear, None if level == "auto" else level, rs_gain)
-        if not file:
+        if res is None or (not res.get("file") and not res.get("vst_path")):
             return JSONResponse({"error": f"variant '{level}' has no file on disk for {rs_gear}"}, 404)
         mode = "auto" if level == "auto" else "manual"
         with _lock:
-            conn.execute(
-                "UPDATE preset_pieces "
-                "SET file = ?, kind = ?, tone3000_id = ?, assigned_mode = ? "
-                "WHERE preset_id = ? AND rs_gear_type = ?",
-                (file, kind or "nam", tone3000_id, mode, preset_id, rs_gear),
-            )
+            if res["kind"] == "vst":
+                conn.execute(
+                    "UPDATE preset_pieces "
+                    "SET kind = 'vst', file = NULL, tone3000_id = NULL, "
+                    "    vst_path = ?, vst_format = ?, vst_state = ?, "
+                    "    assigned_mode = ? "
+                    "WHERE preset_id = ? AND rs_gear_type = ?",
+                    (res["vst_path"], res.get("vst_format") or "VST3",
+                     res.get("vst_state"), mode, preset_id, rs_gear),
+                )
+            else:
+                conn.execute(
+                    "UPDATE preset_pieces "
+                    "SET file = ?, kind = ?, tone3000_id = ?, "
+                    "    vst_path = NULL, vst_format = NULL, vst_state = NULL, "
+                    "    assigned_mode = ? "
+                    "WHERE preset_id = ? AND rs_gear_type = ?",
+                    (res["file"], res["kind"] or "nam",
+                     res.get("tone3000_id"), mode, preset_id, rs_gear),
+                )
             _recompute_preset_primaries(conn, preset_id)
             conn.commit()
-        return {"ok": True, "file": file, "tone3000_id": tone3000_id,
-                "kind": kind, "variant": level, "assigned_mode": mode}
+        return {"ok": True, **res,
+                "variant": level, "assigned_mode": mode}
 
     @app.post("/api/plugins/rig_builder/gear/replace_with")
     def gear_replace_with(data: dict = Body(...)):
@@ -6620,27 +6677,38 @@ def setup(app, context):
                     rs_gain = float(rs_gain) if rs_gain is not None else None
                 except (ValueError, TypeError):
                     rs_gain = None
-                file, tone3000_id, kind = _resolve_gear_file(to_gear, None, rs_gain)
-                if not file:
+                res = _resolve_gear_file(to_gear, None, rs_gain)
+                if res is None or (not res.get("file") and not res.get("vst_path")):
                     skipped += 1
                     continue
-                # Promote rs_gear_type to the TARGET gear too. Original
-                # design kept the FROM gear as the identifier so
-                # Rocksmith's PSARC still labels it as "Plexi" while it
-                # sounded like JCM800 — but users found that confusing
-                # (the chain card still said "Cabinets" / "Plexi" after a
-                # swap). Replacing the gear in full is the intuitive
-                # behaviour: the chain now shows PA600C with its photo
-                # and mic positions; the actual sound matches. The link
-                # back to the PSARC's tone is via tone_mappings, not
-                # rs_gear_type, so this doesn't break anything else.
-                conn.execute(
-                    "UPDATE preset_pieces "
-                    "SET rs_gear_type = ?, file = ?, kind = ?, "
-                    "    tone3000_id = ?, assigned_mode = 'manual' "
-                    "WHERE id = ?",
-                    (to_gear, file, kind or "nam", tone3000_id, pid_row),
-                )
+                # Promote rs_gear_type to the TARGET gear too — the
+                # chain card now shows the new gear's name + photo +
+                # variants. The link to the PSARC tone is via
+                # tone_mappings (filename + tone_key + preset_id),
+                # NOT rs_gear_type, so nothing else breaks.
+                if res["kind"] == "vst":
+                    conn.execute(
+                        "UPDATE preset_pieces "
+                        "SET rs_gear_type = ?, kind = 'vst', "
+                        "    file = NULL, tone3000_id = NULL, "
+                        "    vst_path = ?, vst_format = ?, vst_state = ?, "
+                        "    assigned_mode = 'manual' "
+                        "WHERE id = ?",
+                        (to_gear, res["vst_path"],
+                         res.get("vst_format") or "VST3",
+                         res.get("vst_state"), pid_row),
+                    )
+                else:
+                    conn.execute(
+                        "UPDATE preset_pieces "
+                        "SET rs_gear_type = ?, file = ?, kind = ?, "
+                        "    tone3000_id = ?, "
+                        "    vst_path = NULL, vst_format = NULL, vst_state = NULL, "
+                        "    assigned_mode = 'manual' "
+                        "WHERE id = ?",
+                        (to_gear, res["file"], res["kind"] or "nam",
+                         res.get("tone3000_id"), pid_row),
+                    )
                 updated += 1
                 affected_presets.add(preset_id)
             for pid in affected_presets:
