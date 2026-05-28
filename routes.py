@@ -41,6 +41,40 @@ log = logging.getLogger("slopsmith.plugin.rig_builder")
 
 _plugin_dir = Path(__file__).parent
 
+# Rocksmith gear photos extracted by extract_gear_photos.py live in
+# per-category subdirs of the plugin folder. We accept several naming
+# conventions because the script's default has changed over time —
+# `amp_photos/` (current), `guitar_amp_photos/` (when guitar + bass amps
+# are kept separate), plus an optional `bass_amp_photos/`. The lookup
+# falls through to whichever exists.
+_GEAR_PHOTO_DIRS = (
+    "amp_photos", "guitar_amp_photos", "bass_amp_photos",
+    "pedal_photos", "rack_photos", "cab_photos",
+)
+
+
+def _find_gear_photo(rs_gear: str) -> Path | None:
+    """Locate the PNG for a Rocksmith gear if extract_gear_photos.py
+    has been run. The script names files `<rs_gear> - <name>.png`, so
+    we search by prefix `<rs_gear> - ` across every known photo dir.
+    Returns the first match, or None when no photo exists (the UI then
+    falls back to a placeholder)."""
+    if not rs_gear:
+        return None
+    prefix = f"{rs_gear} - "
+    for sub in _GEAR_PHOTO_DIRS:
+        d = _plugin_dir / sub
+        if not d.is_dir():
+            continue
+        try:
+            for p in d.iterdir():
+                if p.is_file() and p.name.startswith(prefix) and p.suffix.lower() == ".png":
+                    return p
+        except OSError:
+            continue
+    return None
+
+
 # Module-level singletons populated by setup(). They start as None so
 # tests / linting on import don't blow up; _require_*() helpers turn
 # accidental pre-setup access into clear errors instead of AttributeError.
@@ -1429,17 +1463,43 @@ def _enrich_chain_piece(piece: dict, img_idx: dict | None = None) -> dict:
         variants = info.get("gain_variants") or {}
         if variants:
             picked = _pick_amp_gain_variant(info, _gear_rs_gain(piece, info))
-            # Map the currently-assigned tone3000_id back to a level name
+            # Map the currently-assigned NAM back to a level name
             # ("clean"/"crunch"/"dist") so the UI can highlight the
-            # button the user is actually hearing — including manual
-            # variant overrides where it differs from auto-pick.
-            assigned_tid = (assigned or {}).get("tone3000_id")
+            # button the user is actually hearing.
+            #
+            # NOTE: tone3000_id can be IDENTICAL across all variants of
+            # an amp (when the curator picked multiple captures from the
+            # same tone3000 page — model_id differs, tone3000_id doesn't).
+            # If we matched by tone3000_id alone we'd always return the
+            # first variant in the dict ("clean"), which is the bug the
+            # UI was hitting. So match by the resolved file BASENAME —
+            # each variant has unique `notes` → unique filename.
+            assigned_file = (assigned or {}).get("file") or ""
+            assigned_basename = (
+                assigned_file.rsplit("/", 1)[-1] if assigned_file else ""
+            )
             current_level = None
-            if assigned_tid is not None:
+            if assigned_basename:
                 for lvl, spec in variants.items():
-                    if isinstance(spec, dict) and spec.get("tone3000_id") == assigned_tid:
-                        current_level = lvl
-                        break
+                    if not isinstance(spec, dict):
+                        continue
+                    notes = (spec.get("notes") or "").strip()
+                    if notes:
+                        expected = f"{_safe_filename_human(notes)}.nam"
+                        if expected == assigned_basename:
+                            current_level = lvl
+                            break
+                    # Legacy filename fallback: tone3000_<tid>_m<mid>_<gear>.nam.
+                    tid = spec.get("tone3000_id")
+                    mid = spec.get("model_id")
+                    if tid and mid:
+                        legacy = (
+                            f"tone3000_{tid}_m{mid}_"
+                            f"{_safe_filename(rs_type)}.nam"
+                        )
+                        if legacy == assigned_basename:
+                            current_level = lvl
+                            break
             amp_variant_info = {
                 "available": list(variants.keys()),
                 "picked": (picked or {}).get("_picked_level"),
@@ -5861,6 +5921,39 @@ def setup(app, context):
         out.sort(key=lambda g: (g["rs_order"] if g["rs_order"] is not None else 10**9,
                                  (g["name"] or "").lower()))
         return {"category": category, "gears": out}
+
+    @app.get("/api/plugins/rig_builder/gear_photo/{rs_gear}")
+    def gear_photo(rs_gear: str):
+        """Serve the Rocksmith-extracted photo for `rs_gear` (PNG).
+
+        Photos come from extract_gear_photos.py — the user runs that
+        once with their gears.psarc to populate amp_photos/, pedal_photos/,
+        rack_photos/, cab_photos/. The redesigned Songs editor uses
+        these for the per-piece thumbnail.
+
+        Returns 404 when no photo exists for this gear; the UI falls
+        back to a "no photo" placeholder. Strong-caches via ETag because
+        these files never change once extracted — the browser keeps the
+        thumbnails warm across full chain re-renders.
+        """
+        path = _find_gear_photo(rs_gear)
+        if path is None:
+            return JSONResponse({"error": "no photo"}, 404)
+        try:
+            data = path.read_bytes()
+        except OSError as e:
+            return JSONResponse({"error": str(e)}, 500)
+        # Cheap ETag — mtime + size. The file is immutable once written,
+        # so this lets the browser 304 every refresh.
+        try:
+            st = path.stat()
+            etag = f'W/"{int(st.st_mtime)}-{st.st_size}"'
+        except OSError:
+            etag = None
+        headers = {"Cache-Control": "public, max-age=86400"}
+        if etag:
+            headers["ETag"] = etag
+        return Response(content=data, media_type="image/png", headers=headers)
 
     @app.post("/api/plugins/rig_builder/piece_variant_override")
     def piece_variant_override(data: dict = Body(...)):

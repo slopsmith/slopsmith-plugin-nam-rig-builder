@@ -1681,8 +1681,10 @@ async function rbLoadSongTones(filename) {
     }
     rbState.songTones = data;
     rbSeedBypass(data);
+    // Fresh song = fresh selection (always start at tone 0, piece 0).
+    rbResetEditorState();
     try {
-        el.innerHTML = data.tones.map((t, idx) => rbRenderTone(t, idx, filename)).join('');
+        el.innerHTML = rbRenderSongEditor(data, filename);
     } catch (e) {
         // Never leave the panel stuck on "Loading…" if a render throws.
         console.error('[rig_builder] render of tones failed', e);
@@ -1739,11 +1741,11 @@ async function rbAutoDownloadSong(filename, unmappedCount, container) {
             const stillBanner = banner.cloneNode(true);
             container.innerHTML = '';
             container.appendChild(stillBanner);
-            refreshed.tones.forEach((t, idx) => {
-                const wrap = document.createElement('div');
-                wrap.innerHTML = rbRenderTone(t, idx, filename);
-                container.appendChild(wrap.firstElementChild);
-            });
+            const wrap = document.createElement('div');
+            wrap.innerHTML = rbRenderSongEditor(refreshed, filename);
+            // Append every top-level child the editor returned (it's a
+            // single root <div> for now, but be defensive).
+            while (wrap.firstChild) container.appendChild(wrap.firstChild);
         }
     } catch (e) {
         banner.innerHTML = `<p class="text-red-400">Auto-download error: ${rbEsc(e.message)}</p>`;
@@ -1785,98 +1787,214 @@ async function rbMaterializeFromCloud(filename, statusEl) {
     }
 }
 
-function rbRenderTone(tone, toneIdx, filename) {
-    const pieces = tone.chain.map((p, pIdx) => rbRenderPiece(p, toneIdx, pIdx)).join('');
-    // Badge that flags whether this chain has been edited (saved preset_pieces
-    // overriding PSARC) vs still the original PSARC default.
-    const sourceBadge = tone.chain_source === 'edited'
-        ? `<span class="text-[10px] text-purple-300/80 bg-purple-900/20 border border-purple-800/30 rounded px-1.5 py-0.5"
-                  title="This tone's chain has been edited from the PSARC default">✎ edited</span>`
-        : `<span class="text-[10px] text-gray-500" title="Untouched — pieces still match the PSARC's GearList">PSARC default</span>`;
+// ── Song editor v2: tone tabs + horizontal chain strip + detail panel ──
+//
+// The old layout stacked every tone vertically with each chain piece in
+// a 2-col grid. That was ~5 screens of scrolling for a song with 3
+// tones x 6 pieces, and every action button (Bypass, Swap, file upload,
+// VST edit, Suggest, etc.) lived ON the card → visual noise.
+//
+// v2 layout:
+//   ┌ Tone tabs (one per tone in the .psarc) ─────────────┐
+//   │ [Clean*] [Crunch ] [Lead]              ✎ edited     │
+//   ├ Chain strip (signal flow L→R, photo cards) ─────────┤
+//   │ ◀ [photo] [photo] [photo*] [photo] [photo] ▶       │
+//   ├ Detail editor (the SELECTED piece) ─────────────────┤
+//   │  big photo │ name • type                    [Bypass]│
+//   │            │ Gain: [clean][crunch][dist] ↺ auto     │
+//   │            │ 🔁 Swap…   ⬇ Replace file              │
+//   │            │ ⬅ position ➡   ✗ Remove                │
+//   │            │ Rocksmith knobs: Rate=50 …             │
+//   ├ Footer ─────────────────────────────────────────────┤
+//   │ ＋ Add piece                       ▶ Listen  💾 Save │
+//   └─────────────────────────────────────────────────────┘
+//
+// Photos come from RB_API/gear_photo/<rs_gear> served by routes.py
+// (Rocksmith art extracted via extract_gear_photos.py). Missing photos
+// fall back to a small text placeholder via onerror.
+//
+// Selection state lives on rbState.editor; it's cleared when a new
+// song is loaded so opening a different .psarc always starts on tone 0
+// piece 0.
+
+function rbEnsureEditorState() {
+    rbState.editor = rbState.editor || { selectedToneIdx: 0, selectedPIdx: 0 };
+    return rbState.editor;
+}
+
+function rbResetEditorState() {
+    rbState.editor = { selectedToneIdx: 0, selectedPIdx: 0 };
+}
+
+function rbRenderSongEditor(data, filename) {
+    const ed = rbEnsureEditorState();
+    if (!data || !Array.isArray(data.tones) || data.tones.length === 0) {
+        return '<p class="text-gray-500 text-sm">No tones in this song.</p>';
+    }
+    // Clamp selection so a chain shrink (remove piece) doesn't leave a
+    // dangling selected index that re-renders blank.
+    if (ed.selectedToneIdx >= data.tones.length) ed.selectedToneIdx = 0;
+    const tone = data.tones[ed.selectedToneIdx];
+    const chainLen = (tone.chain || []).length;
+    if (ed.selectedPIdx >= chainLen) ed.selectedPIdx = Math.max(0, chainLen - 1);
     return `
-        <div class="bg-dark-700/50 border border-gray-800/50 rounded-xl p-4">
-            <div class="flex items-baseline justify-between mb-3">
-                <h3 class="text-white font-semibold">${rbEsc(tone.name)}</h3>
-                <div class="flex items-center gap-2">
-                    ${sourceBadge}
-                    <span class="text-xs text-gray-500">${rbEsc(tone.key)}</span>
-                </div>
-            </div>
-            <div class="text-[10px] text-gray-500 mb-2">
-                Signal flow: ${tone.chain.length} stage${tone.chain.length === 1 ? '' : 's'} ·
-                drag through ▲ ▼ to reorder, ✗ to remove
-            </div>
-            <div id="rb-chain-${toneIdx}" class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">${pieces}</div>
-            <div class="flex justify-between items-center gap-2">
-                <button onclick="rbOpenAddPiecePicker(${toneIdx}, '${rbEsc(filename).replace(/'/g,"\\'")}')"
-                        title="Insert a new gear at the end of this tone's chain"
-                        class="bg-emerald-900/30 hover:bg-emerald-900/50 text-emerald-300 border border-emerald-800/40 px-3 py-1.5 rounded text-xs transition">
-                    ＋ Add piece to chain
-                </button>
-                <div class="flex gap-2">
-                    <button id="rb-listen-${toneIdx}"
-                            onclick="rbListenTone(${toneIdx}, '${rbEsc(filename).replace(/'/g,"\\'")}')"
-                            title="Saves the tone and plays it live through the NAM engine (monitors your guitar input)"
-                            class="bg-dark-600 hover:bg-dark-500 text-gray-200 px-4 py-2 rounded-lg text-xs transition">
-                        ▶ Listen
-                    </button>
-                    <button onclick="rbSaveTonePreset(${toneIdx}, '${rbEsc(filename).replace(/'/g,"\\'")}')"
-                            class="bg-accent hover:bg-accent/80 text-white px-4 py-2 rounded-lg text-xs transition">
-                        Save preset
-                    </button>
-                </div>
-            </div>
-            <div id="rb-addpiece-modal-${toneIdx}" class="hidden mt-3 bg-emerald-900/10 border border-emerald-800/30 rounded p-3"></div>
+        <div class="bg-dark-700/40 border border-gray-800/50 rounded-xl overflow-hidden">
+            ${rbRenderToneTabs(data.tones, ed.selectedToneIdx, filename)}
+            ${rbRenderToneHeader(tone, ed.selectedToneIdx, filename)}
+            ${rbRenderChainStrip(tone, ed.selectedToneIdx, ed.selectedPIdx)}
+            <div id="rb-detail-panel">${
+                chainLen > 0
+                    ? rbRenderPieceEditor(tone.chain[ed.selectedPIdx], ed.selectedToneIdx, ed.selectedPIdx, filename)
+                    : '<p class="text-gray-500 text-sm p-4">No pieces in this tone. Add one below.</p>'
+            }</div>
+            ${rbRenderEditorFooter(ed.selectedToneIdx, filename)}
+            <div id="rb-addpiece-modal-${ed.selectedToneIdx}" class="hidden m-3 bg-emerald-900/10 border border-emerald-800/30 rounded p-3"></div>
         </div>`;
 }
 
-// Re-render JUST the chain grid for one tone after a reorder / add / remove
-// (avoids a full song refetch). Position numbers, slot badges, and the
-// chain-length copy all come from the live tone.chain so it's enough to
-// rebuild the inner grid.
-function rbReRenderToneChain(toneIdx, filename) {
-    const tone = rbState.songTones.tones[toneIdx];
-    if (!tone) return;
-    const grid = document.getElementById(`rb-chain-${toneIdx}`);
-    if (grid) {
-        grid.innerHTML = tone.chain.map((p, pIdx) => rbRenderPiece(p, toneIdx, pIdx)).join('');
-    }
-    // Update the stages count copy too.
-    const headerCopy = grid?.previousElementSibling;
-    if (headerCopy) {
-        headerCopy.innerHTML = `Signal flow: ${tone.chain.length} stage${tone.chain.length === 1 ? '' : 's'} · drag through ▲ ▼ to reorder, ✗ to remove`;
-    }
+function rbRenderToneTabs(tones, selectedIdx, filename) {
+    const tabs = tones.map((t, idx) => {
+        const active = idx === selectedIdx;
+        const cls = active
+            ? 'bg-accent text-white border-accent'
+            : 'bg-dark-800 text-gray-400 border-gray-800 hover:bg-dark-700 hover:text-gray-200';
+        // Small visual signal for edited/PSARC-default and a piece count.
+        const pieces = (t.chain || []).length;
+        const editedMark = t.chain_source === 'edited' ? ' ✎' : '';
+        return `<button onclick="rbSelectTone(${idx}, '${rbEsc(filename).replace(/'/g,"\\'")}')"
+                        title="${rbEsc(t.key)} · ${pieces} piece${pieces === 1 ? '' : 's'}"
+                        class="flex-shrink-0 px-3 py-2 rounded-lg border text-xs transition ${cls}">
+                    ${rbEsc(t.name)}${editedMark}
+                    <span class="ml-1 text-[10px] opacity-70">${pieces}</span>
+                </button>`;
+    }).join('');
+    return `<div class="flex items-center gap-1 overflow-x-auto px-3 pt-3 pb-2 border-b border-gray-800/40"
+                 style="scrollbar-width: thin;">
+                ${tabs}
+            </div>`;
 }
 
-function rbRenderPiece(p, toneIdx, pIdx) {
+function rbRenderToneHeader(tone, toneIdx, filename) {
+    const editedBadge = tone.chain_source === 'edited'
+        ? `<span class="text-[10px] text-purple-300/80 bg-purple-900/20 border border-purple-800/30 rounded px-1.5 py-0.5"
+                title="This tone's chain has been edited from the PSARC default">✎ edited</span>`
+        : `<span class="text-[10px] text-gray-500" title="Untouched — matches the PSARC's original GearList">PSARC default</span>`;
+    return `
+        <div class="flex items-baseline justify-between px-4 py-3">
+            <div class="flex items-baseline gap-2 min-w-0">
+                <h3 class="text-white font-semibold truncate">${rbEsc(tone.name)}</h3>
+                <span class="text-xs text-gray-500 truncate">${rbEsc(tone.key)}</span>
+            </div>
+            ${editedBadge}
+        </div>`;
+}
+
+function rbRenderChainStrip(tone, toneIdx, selectedPIdx) {
+    const chain = tone.chain || [];
+    const total = chain.length;
+    const cards = chain.map((p, pIdx) => rbRenderPieceCard(p, toneIdx, pIdx, pIdx === selectedPIdx, total)).join(
+        '<div class="flex-shrink-0 flex items-center text-gray-700 text-lg select-none" aria-hidden="true">→</div>'
+    );
+    return `
+        <div class="px-3 pb-3">
+            <div class="text-[10px] text-gray-500 mb-1.5">
+                Signal flow (${total} stage${total === 1 ? '' : 's'}, L → R) — click a piece to edit it.
+            </div>
+            <div id="rb-chain-${toneIdx}"
+                 class="flex items-stretch gap-2 overflow-x-auto pb-2"
+                 style="scrollbar-width: thin;">
+                ${cards || '<div class="text-xs text-gray-600 italic">empty chain</div>'}
+            </div>
+        </div>`;
+}
+
+function rbRenderPieceCard(p, toneIdx, pIdx, isSelected, total) {
+    const bypassed = !!p._bypassed;
+    // Effective assignment for the badge color.
+    const hasVst = (p._vst_kind === 'vst' || (p.assigned && p.assigned.kind === 'vst' && p.assigned.vst_path));
+    const hasFile = !hasVst && !!(p._uploaded_file || (p.assigned && p.assigned.file));
+    let statusDot;
+    if (bypassed) {
+        statusDot = '<span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-400" title="Bypassed"></span>';
+    } else if (hasVst) {
+        statusDot = '<span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-purple-400" title="VST plugin loaded"></span>';
+    } else if (hasFile) {
+        statusDot = '<span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-green-400" title="NAM/IR assigned"></span>';
+    } else {
+        statusDot = '<span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-gray-600 ring-1 ring-gray-700" title="Unassigned"></span>';
+    }
+    const selCls = isSelected
+        ? 'border-accent ring-2 ring-accent/40 bg-dark-700'
+        : 'border-gray-800 hover:border-gray-600 bg-dark-800/70';
+    const bypassedOverlay = bypassed
+        ? '<div class="absolute inset-0 bg-dark-900/40 pointer-events-none"></div>'
+        : '';
+    // Picture URL: backend returns 404 → onerror swaps for placeholder.
+    const imgUrl = `${RB_API}/gear_photo/${encodeURIComponent(p.type)}`;
+    const placeholder =
+        `<div class='w-20 h-20 rounded bg-dark-900 flex items-center justify-center text-[9px] text-gray-600 text-center px-1 leading-tight'>${rbEsc(p.rs_category || 'gear')}</div>`;
+    return `
+        <button onclick="rbSelectPiece(${toneIdx}, ${pIdx})"
+                class="relative flex-shrink-0 w-28 rounded-lg border ${selCls} p-2 text-left transition focus:outline-none">
+            <div class="text-[9px] text-gray-500 mb-1 flex items-center justify-between">
+                <span class="font-mono">${pIdx + 1}/${total}</span>
+                <span class="uppercase tracking-wide">${rbEsc(p.rs_category || '')}</span>
+            </div>
+            <div class="flex justify-center mb-1.5">
+                <img src="${imgUrl}" alt="" loading="lazy"
+                     class="w-20 h-20 rounded object-contain bg-dark-900"
+                     onerror="this.outerHTML = ${JSON.stringify(placeholder)};">
+            </div>
+            <div class="text-[11px] text-gray-200 leading-tight line-clamp-2 min-h-[2.2em]" title="${rbEsc(p.real_name || p.type)}">
+                ${rbEsc(p.real_name || p.type)}
+            </div>
+            ${statusDot}
+            ${bypassedOverlay}
+        </button>`;
+}
+
+function rbRenderEditorFooter(toneIdx, filename) {
+    return `
+        <div class="flex flex-wrap justify-between items-center gap-2 px-4 py-3 border-t border-gray-800/40 bg-dark-800/30">
+            <button onclick="rbOpenAddPiecePicker(${toneIdx}, '${rbEsc(filename).replace(/'/g,"\\'")}')"
+                    title="Insert a new gear at the end of this tone's chain"
+                    class="bg-emerald-900/30 hover:bg-emerald-900/50 text-emerald-300 border border-emerald-800/40 px-3 py-1.5 rounded text-xs transition">
+                ＋ Add piece
+            </button>
+            <div class="flex gap-2">
+                <button id="rb-listen-${toneIdx}"
+                        onclick="rbListenTone(${toneIdx}, '${rbEsc(filename).replace(/'/g,"\\'")}')"
+                        title="Saves the tone and plays it live through the NAM engine"
+                        class="bg-dark-600 hover:bg-dark-500 text-gray-200 px-4 py-1.5 rounded-lg text-xs transition">
+                    ▶ Listen
+                </button>
+                <button onclick="rbSaveTonePreset(${toneIdx}, '${rbEsc(filename).replace(/'/g,"\\'")}')"
+                        class="bg-accent hover:bg-accent/80 text-white px-4 py-1.5 rounded-lg text-xs transition">
+                    💾 Save preset
+                </button>
+            </div>
+        </div>`;
+}
+
+function rbRenderPieceEditor(p, toneIdx, pIdx, filename) {
     const isCab = p.rs_category === 'cab';
     const acceptExt = isCab ? '.wav' : '.nam';
-    // Resolve the *effective* current assignment, preferring in-memory
-    // pending changes over what's persisted in the DB. A piece can be:
-    //   - VST   (kind=vst, vst_path set)
-    //   - NAM   (kind=nam, file set)
-    //   - IR    (kind=ir|rs_ir, file set)
-    //   - empty (unassigned)
     const pendingKind = p._uploaded_kind || p._vst_kind;
     const assignedKind = p.assigned && p.assigned.kind;
-    const effKind = pendingKind || assignedKind || (p.rs_category === 'cab' ? 'ir' : 'nam');
+    const effKind = pendingKind || assignedKind || (isCab ? 'ir' : 'nam');
     const effVstPath = p._vst_path || (p.assigned && p.assigned.vst_path) || '';
     const effVstFormat = p._vst_format || (p.assigned && p.assigned.vst_format) || 'VST3';
     const effFile = p._uploaded_file || (p.assigned && p.assigned.file) || null;
     const hasVst = effKind === 'vst' && !!effVstPath;
     const hasFile = !hasVst && !!effFile;
     const mode = (p.assigned && p.assigned.assigned_mode) || (p._uploaded_file ? 'manual' : '');
+    const bypassed = !!p._bypassed;
+
     let stageLabel, stageClass;
     if (hasVst) {
-        // Show just the filename of the VST bundle (e.g. "TAL-Chorus-LX.vst3"),
-        // not the absolute path.
-        const vstName = effVstPath.split('/').pop();
-        stageLabel = `✓ VST: ${vstName}`;
+        stageLabel = `✓ VST: ${effVstPath.split('/').pop()}`;
         stageClass = 'text-purple-300';
     } else if (hasFile) {
-        // Prefer the human tone3000 title over the technical
-        // tone3000_<id>_m<model>_<rs_gear> filename, but only when we're
-        // showing the assigned capture (a manual upload keeps its filename).
         const a = p.assigned;
         const title = (!p._uploaded_file && a && a.file === effFile && a.tone3000_title) ? a.tone3000_title : '';
         stageLabel = `✓ ${title || rbLibShortName(effFile)}`;
@@ -1885,17 +2003,14 @@ function rbRenderPiece(p, toneIdx, pIdx) {
         stageLabel = '(unassigned)';
         stageClass = 'text-gray-500';
     }
-    const bypassed = !!p._bypassed;
 
-    // For cab pieces we may have one or more Rocksmith-extracted IRs
-    // available locally (no download needed). When present, surface a
-    // one-click select with a dropdown for the mic-position variants.
+    // Rocksmith IR dropdown — cab-only.
     const rsIrs = p.rs_irs || [];
     let rsIrControl = '';
     if (rsIrs.length > 0) {
-        const options = rsIrs.map((f, i) => `<option value="${rbEsc(f)}">${rbEsc(f.split('/').pop())}</option>`).join('');
+        const options = rsIrs.map(f => `<option value="${rbEsc(f)}">${rbEsc(f.split('/').pop())}</option>`).join('');
         rsIrControl = `
-            <div class="flex items-center gap-2 mt-2 bg-green-900/15 border border-green-800/30 rounded px-2 py-1.5">
+            <div class="flex items-center gap-2 bg-green-900/15 border border-green-800/30 rounded px-2 py-1.5 mt-2">
                 <span class="text-xs text-green-400 whitespace-nowrap">Rocksmith IR (${rsIrs.length}):</span>
                 <select onchange="rbPickRsIr(this, ${toneIdx}, ${pIdx})"
                         class="flex-1 bg-dark-800 border border-gray-800 rounded text-xs text-gray-300 px-1 py-0.5">${options}</select>
@@ -1904,19 +2019,10 @@ function rbRenderPiece(p, toneIdx, pIdx) {
             </div>`;
     }
 
-    // Amp gain variant picker: clickable buttons for each curated level
-    // (clean / crunch / dist / whatever the curator named them). The
-    // active level (the one whose NAM is actually loaded) is highlighted;
-    // click any level to force it for THIS song. "↺ auto" returns to
-    // the gain-driven pick. The override survives Remap all
-    // (sets assigned_mode='manual').
+    // Amp gain variant picker — clickable buttons, active level highlighted.
     let ampVariantBadge = '';
     if (p.amp_variant && Array.isArray(p.amp_variant.available) && p.amp_variant.available.length) {
         const av = p.amp_variant;
-        // `current_level` = the variant whose NAM is currently loaded
-        // (auto OR manual). `picked` = what auto would choose right now.
-        // Override is "active" when those disagree OR when the row's
-        // assigned_mode is 'manual'.
         const activeLevel = av.current_level || av.picked;
         const manualMode = (p.assigned && p.assigned.assigned_mode === 'manual');
         const overrideActive = manualMode && av.current_level && av.current_level !== av.picked;
@@ -1927,24 +2033,22 @@ function rbRenderPiece(p, toneIdx, pIdx) {
                 : 'bg-dark-800 text-gray-300 border-gray-700 hover:bg-emerald-900/40 hover:text-emerald-200 hover:border-emerald-700/40';
             return `<button onclick="rbPickVariant(${toneIdx}, ${pIdx}, '${rbEsc(level)}')"
                             title="Force this gain variant for this song"
-                            class="px-2 py-0.5 rounded border text-[11px] transition ${cls}">${rbEsc(level)}</button>`;
+                            class="px-3 py-1 rounded border text-xs transition ${cls}">${rbEsc(level)}</button>`;
         }).join(' ');
         const autoBtn = `<button onclick="rbPickVariant(${toneIdx}, ${pIdx}, 'auto')"
                                  title="Restore the auto-pick based on the song's Gain knob"
-                                 class="px-2 py-0.5 rounded border text-[11px] transition ${overrideActive ? 'bg-dark-800 text-gray-400 border-gray-700 hover:bg-emerald-900/30' : 'bg-emerald-700/40 text-emerald-200 border-emerald-600/40'}">↺ auto</button>`;
+                                 class="px-3 py-1 rounded border text-xs transition ${overrideActive ? 'bg-dark-800 text-gray-400 border-gray-700 hover:bg-emerald-900/30' : 'bg-emerald-700/40 text-emerald-200 border-emerald-600/40'}">↺ auto</button>`;
         ampVariantBadge = `
-            <div class="mt-2 bg-emerald-900/15 border border-emerald-800/30 rounded px-2 py-1.5 text-[11px] leading-snug flex items-center gap-2 flex-wrap"
-                 title="Multi-NAM amp: pick a gain variant for this song. Auto = system chooses by the Gain knob value (=${rbEsc(av.rs_gain)}).">
-                <span class="text-emerald-400">🎛 Gain:</span>
-                ${btns} ${autoBtn}
-                <span class="text-gray-500 ml-1">${overrideActive ? '· manual (auto would be ' + rbEsc(av.picked || '?') + ')' : '· auto from Gain=' + rbEsc(av.rs_gain)}</span>
+            <div class="bg-emerald-900/15 border border-emerald-800/30 rounded p-2.5 mt-2">
+                <div class="flex items-center gap-2 mb-1.5">
+                    <span class="text-xs text-emerald-400">🎛 Gain variant</span>
+                    <span class="text-[10px] text-gray-500">${overrideActive ? `manual override (auto would be ${rbEsc(av.picked || '?')})` : `auto from RS Gain knob = ${rbEsc(av.rs_gain)}`}</span>
+                </div>
+                <div class="flex items-center gap-1.5 flex-wrap">${btns} ${autoBtn}</div>
             </div>`;
     }
 
-    // Rocksmith knob configuration for this piece — the values the in-game
-    // tone uses for this gear (e.g. Pedal_Chorus20 with Rate=50 Depth=30 Mix=70).
-    // Shown read-only so the user can either replicate manually in the VST
-    // editor or click "Apply RS settings" when a translation table exists.
+    // RS knob badges — read-only summary of Rocksmith's per-piece values.
     const rsKnobs = p.knobs || {};
     const knobNames = Object.keys(rsKnobs);
     let rsKnobsBlock = '';
@@ -1955,77 +2059,142 @@ function rbRenderPiece(p, toneIdx, pIdx) {
             return `<span class="inline-block bg-dark-900/60 border border-gray-800/50 rounded px-1.5 py-0.5 text-[10px] text-gray-300 mr-1 mb-1"><span class="text-gray-500">${rbEsc(k)}</span> <span class="text-amber-300">${rbEsc(display)}</span></span>`;
         }).join('');
         rsKnobsBlock = `
-            <div class="mt-2 pt-2 border-t border-gray-800/40">
-                <div class="text-[10px] text-gray-500 mb-1">Rocksmith settings:</div>
+            <div class="bg-dark-900/30 border border-gray-800/40 rounded p-2.5 mt-2">
+                <div class="text-[10px] text-gray-500 mb-1.5">Rocksmith knob values (read-only)</div>
                 <div class="flex flex-wrap">${pairs}</div>
             </div>`;
     }
 
-    // Chain editor controls (auto-save on click): position number + ▲ ▼ ✗
     const total = (rbState.songTones && rbState.songTones.tones[toneIdx] && rbState.songTones.tones[toneIdx].chain.length) || 1;
     const isFirst = pIdx === 0;
     const isLast  = pIdx === total - 1;
+
+    // Bypass button — same toggle as before, styled larger for the editor.
+    const bypassCls = bypassed
+        ? 'bg-amber-700/40 text-amber-300 border-amber-600/40'
+        : 'bg-dark-700 hover:bg-dark-600 text-gray-300 border-gray-700';
+    const bypassLabel = bypassed ? '⤳ Bypassed (signal passes through)' : 'Bypass this stage';
+
+    // Big photo for the editor (same source as the chain cards).
+    const imgUrl = `${RB_API}/gear_photo/${encodeURIComponent(p.type)}`;
+    const placeholderBig =
+        `<div class='w-32 h-32 rounded bg-dark-900 flex items-center justify-center text-xs text-gray-600 text-center px-2'>${rbEsc(p.rs_category || 'gear')}</div>`;
+
     return `
-        <div class="bg-dark-800 border border-gray-800/50 rounded-lg p-3" data-tone="${toneIdx}" data-piece="${pIdx}">
-            <div class="flex items-center justify-between mb-2">
-                <div class="flex items-center gap-2 min-w-0">
-                    <span class="flex-shrink-0 w-6 h-6 rounded-full bg-dark-900 border border-gray-700 text-[11px] text-gray-300 flex items-center justify-center font-mono"
-                          title="Position in the signal flow (1 = first, N = last before output)">${pIdx + 1}</span>
-                    <div class="min-w-0">
-                        <div class="text-sm text-gray-200 truncate">${rbEsc(p.real_name || p.type)}</div>
-                        <div class="text-xs text-gray-500 truncate">
-                            ${rbEsc(p.slot)} · ${rbEsc(p.rs_category)} · ${rbEsc(p.type)}
+        <div class="bg-dark-800/40 border-y border-gray-800/40 p-4 space-y-3" data-tone="${toneIdx}" data-piece="${pIdx}">
+            <div class="flex items-start gap-4">
+                <img src="${imgUrl}" alt="" loading="lazy"
+                     class="flex-shrink-0 w-32 h-32 rounded object-contain bg-dark-900"
+                     onerror="this.outerHTML = ${JSON.stringify(placeholderBig)};">
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-baseline justify-between gap-2 mb-1">
+                        <div class="min-w-0">
+                            <div class="text-base text-gray-100 font-medium truncate">${rbEsc(p.real_name || p.type)}</div>
+                            <div class="text-xs text-gray-500 truncate">
+                                #${pIdx + 1} · ${rbEsc(p.slot)} · ${rbEsc(p.rs_category)}
+                                <span class="text-gray-600">·</span>
+                                <code class="text-gray-500">${rbEsc(p.type)}</code>
+                            </div>
                         </div>
+                        <button id="rb-bypass-${toneIdx}-${pIdx}"
+                                onclick="rbToggleBypass(${toneIdx}, ${pIdx}, this)"
+                                title="Bypass skips this stage in the preview (signal passes through unprocessed)"
+                                class="flex-shrink-0 px-3 py-1.5 rounded border text-xs transition ${bypassCls}">
+                            ${rbEsc(bypassLabel)}
+                        </button>
+                    </div>
+                    <div class="text-xs ${stageClass} truncate" title="${rbEsc(hasVst ? effVstPath : (hasFile ? effFile : ''))}">${rbEsc(stageLabel)}
+                        ${(hasFile || hasVst) && mode ? `<span class="text-[10px] text-gray-600 ml-1">(${rbEsc(mode)})</span>` : ''}
                     </div>
                 </div>
-                <div class="flex items-center gap-1 flex-shrink-0">
-                    <button onclick="rbMovePiece(${toneIdx}, ${pIdx}, -1)"
-                            title="Move earlier in the signal flow"
-                            ${isFirst ? 'disabled' : ''}
-                            class="px-1.5 py-1 rounded text-xs transition ${isFirst ? 'bg-dark-700/40 text-gray-700 cursor-not-allowed' : 'bg-dark-600 hover:bg-dark-500 text-gray-300'}">▲</button>
-                    <button onclick="rbMovePiece(${toneIdx}, ${pIdx}, 1)"
-                            title="Move later in the signal flow"
-                            ${isLast ? 'disabled' : ''}
-                            class="px-1.5 py-1 rounded text-xs transition ${isLast ? 'bg-dark-700/40 text-gray-700 cursor-not-allowed' : 'bg-dark-600 hover:bg-dark-500 text-gray-300'}">▼</button>
-                    <button onclick="rbRemovePiece(${toneIdx}, ${pIdx})"
-                            title="Remove this piece from the chain (the rs_to_real entry stays — you can re-add later)"
-                            class="px-1.5 py-1 rounded text-xs bg-red-900/40 hover:bg-red-900/60 text-red-300 border border-red-800/40 transition">✗</button>
-                    <button id="rb-bypass-${toneIdx}-${pIdx}" onclick="rbToggleBypass(${toneIdx}, ${pIdx}, this)"
-                            title="Bypass: skips this stage in the preview (signal passes through unprocessed — it isn't muted, the chain keeps working)"
-                            class="px-2 py-1 rounded text-xs transition ${bypassed ? 'bg-amber-700/40 text-amber-300 border border-amber-600/40' : 'bg-dark-600 hover:bg-dark-500 text-gray-300'}">
-                        ${bypassed ? '⤳ Bypassed' : 'Bypass'}
-                    </button>
-                    <button onclick="rbOpenSuggest('${rbEsc(p.type)}')"
-                            class="bg-dark-600 hover:bg-dark-500 text-gray-200 px-2 py-1 rounded text-xs transition">
-                        Suggest
-                    </button>
-                </div>
             </div>
-            <div class="flex items-center gap-2">
-                <input type="file" accept="${acceptExt}"
-                       onchange="rbUploadFile(this, ${toneIdx}, ${pIdx})"
-                       class="text-xs text-gray-500 file:bg-dark-700 file:border-0 file:text-gray-300 file:px-2 file:py-1 file:rounded file:text-xs file:cursor-pointer">
+
+            ${ampVariantBadge}
+
+            <div class="flex flex-wrap items-center gap-2">
                 ${!isCab ? `
                 <button onclick="rbToggleGearSwap(${toneIdx}, ${pIdx})"
                         title="Swap this ${rbEsc(p.rs_category)} for a different one — just for this song"
-                        class="bg-amber-900/25 hover:bg-amber-900/45 text-amber-300 border border-amber-800/40 px-2 py-1 rounded text-xs">
+                        class="bg-amber-900/25 hover:bg-amber-900/45 text-amber-300 border border-amber-800/40 px-3 py-1.5 rounded text-xs">
                     🔁 Swap…
                 </button>` : ''}
                 ${hasVst ? `
                 <button onclick="rbToneEditVst(${toneIdx}, ${pIdx})"
                         title="Load this VST in the engine and edit its parameters with inline sliders"
-                        class="bg-purple-900/30 hover:bg-purple-900/50 text-purple-300 border border-purple-800/40 px-2 py-1 rounded text-xs">
+                        class="bg-purple-900/30 hover:bg-purple-900/50 text-purple-300 border border-purple-800/40 px-3 py-1.5 rounded text-xs">
                     🎛 Edit VST
                 </button>` : ''}
-                <span class="rb-piece-file text-xs ${stageClass} truncate" title="${rbEsc(hasVst ? effVstPath : (hasFile ? effFile : ''))}">${rbEsc(stageLabel)}</span>
-                ${(hasFile || hasVst) && mode ? `<span class="text-[10px] text-gray-600 whitespace-nowrap">(${rbEsc(mode)})</span>` : ''}
+                <label class="text-xs text-gray-500 flex items-center gap-1 cursor-pointer hover:text-gray-300">
+                    <span>⬆ Upload ${isCab ? 'IR' : 'NAM'}</span>
+                    <input type="file" accept="${acceptExt}"
+                           onchange="rbUploadFile(this, ${toneIdx}, ${pIdx})"
+                           class="hidden">
+                </label>
+                <div class="flex-1"></div>
+                <button onclick="rbMovePiece(${toneIdx}, ${pIdx}, -1)"
+                        title="Move earlier in the signal flow"
+                        ${isFirst ? 'disabled' : ''}
+                        class="px-2 py-1 rounded text-xs transition ${isFirst ? 'bg-dark-700/40 text-gray-700 cursor-not-allowed' : 'bg-dark-700 hover:bg-dark-600 text-gray-300'}">◀</button>
+                <button onclick="rbMovePiece(${toneIdx}, ${pIdx}, 1)"
+                        title="Move later in the signal flow"
+                        ${isLast ? 'disabled' : ''}
+                        class="px-2 py-1 rounded text-xs transition ${isLast ? 'bg-dark-700/40 text-gray-700 cursor-not-allowed' : 'bg-dark-700 hover:bg-dark-600 text-gray-300'}">▶</button>
+                <button onclick="rbRemovePiece(${toneIdx}, ${pIdx})"
+                        title="Remove this piece from the chain"
+                        class="px-2 py-1 rounded text-xs bg-red-900/30 hover:bg-red-900/50 text-red-300 border border-red-800/40 transition">✗ Remove</button>
             </div>
-            <div id="rb-swap-${toneIdx}-${pIdx}" class="hidden mt-2 bg-amber-900/10 border border-amber-800/30 rounded p-2"></div>
-            <div id="rb-tone-vst-editor-${toneIdx}-${pIdx}" class="hidden mt-2 bg-purple-900/10 border border-purple-800/30 rounded p-2 space-y-2"></div>
-            ${ampVariantBadge}
+
+            <div id="rb-swap-${toneIdx}-${pIdx}" class="hidden bg-amber-900/10 border border-amber-800/30 rounded p-2"></div>
+            <div id="rb-tone-vst-editor-${toneIdx}-${pIdx}" class="hidden bg-purple-900/10 border border-purple-800/30 rounded p-2 space-y-2"></div>
+
             ${rsKnobsBlock}
             ${rsIrControl}
         </div>`;
+}
+
+// Click handler for tone tabs at the top. Resets the piece selection to
+// 0 so the user always lands on the first stage of the new tone (which
+// is usually the most-recently-swapped — the amp is rarely at index 0).
+function rbSelectTone(toneIdx, filename) {
+    const ed = rbEnsureEditorState();
+    ed.selectedToneIdx = toneIdx;
+    ed.selectedPIdx = 0;
+    rbReRenderSongEditor(filename);
+}
+
+function rbSelectPiece(toneIdx, pIdx) {
+    const ed = rbEnsureEditorState();
+    ed.selectedToneIdx = toneIdx;
+    ed.selectedPIdx = pIdx;
+    rbReRenderSongEditor();
+}
+
+// Full redraw of the song editor without re-fetching from the backend.
+// Used after in-memory mutations (reorder, bypass toggle) — server-side
+// edits use rbRefreshSongAfterEdit which does an extra /song fetch.
+function rbReRenderSongEditor(filename) {
+    if (!rbState.songTones) return;
+    const el = document.getElementById('rb-song-tones');
+    if (!el) return;
+    const f = filename || rbState.currentSongFile;
+    el.innerHTML = rbRenderSongEditor(rbState.songTones, f);
+}
+
+// Backwards-compat shim so the old call sites (rbAutoDownloadSong,
+// rbRefreshSongAfterEdit) still trigger a redraw of the active tone.
+// The arg list stays the same but we re-render the whole editor — the
+// chain strip + detail panel both need to refresh after any chain
+// change (variant override, gear swap, add/remove piece).
+function rbReRenderToneChain(toneIdx, filename) {
+    rbReRenderSongEditor(filename);
+}
+
+// rbRenderPiece kept as a thin shim — the v2 editor renders pieces via
+// rbRenderPieceCard (chain strip) + rbRenderPieceEditor (detail panel)
+// instead. Anyone still calling rbRenderPiece by mistake gets the
+// detail-panel form so they don't render an empty box.
+function rbRenderPiece(p, toneIdx, pIdx) {
+    return rbRenderPieceEditor(p, toneIdx, pIdx, rbState.currentSongFile || '');
 }
 
 // Quick "🎛 Edit VST" shortcut for per-tone pieces that already have a VST
@@ -4669,10 +4838,16 @@ async function rbStopPreview() {
 // ── Per-stage bypass (audition each piece in/out of the chain) ─────────
 function rbUpdateBypassBtn(btn, on) {
     if (!btn) return;
-    btn.textContent = on ? '⤳ Bypassed' : 'Bypass';
-    btn.className = 'px-2 py-1 rounded text-xs transition ' + (on
-        ? 'bg-amber-700/40 text-amber-300 border border-amber-600/40'
-        : 'bg-dark-600 hover:bg-dark-500 text-gray-300');
+    // The new song editor uses long descriptive labels on the bypass
+    // button; the legacy compact label is kept as a fallback for any
+    // surviving short-form usage (e.g. master chain).
+    const wantsLong = (btn.textContent || '').includes('signal');
+    btn.textContent = on
+        ? (wantsLong ? '⤳ Bypassed (signal passes through)' : '⤳ Bypassed')
+        : (wantsLong ? 'Bypass this stage' : 'Bypass');
+    btn.className = 'px-3 py-1.5 rounded border text-xs transition ' + (on
+        ? 'bg-amber-700/40 text-amber-300 border-amber-600/40'
+        : 'bg-dark-700 hover:bg-dark-600 text-gray-300 border-gray-700');
 }
 
 function rbToggleBypass(toneIdx, pIdx, btn) {
@@ -4771,13 +4946,13 @@ async function rbReloadPreview(refetchPresetId) {
     } catch (e) { console.warn('[rig_builder] reload preview failed', e); }
 }
 
-// Re-render the open song's tone cards from current in-memory state (keeps
-// _uploaded_file + _bypassed), restoring the active preview button label.
+// Re-render the open song's editor from current in-memory state (keeps
+// _uploaded_file + _bypassed + the selected tone/piece in rbState.editor),
+// restoring the active preview button label.
 function rbRerenderSong() {
     const el = document.getElementById('rb-song-tones');
     if (!el || !rbState.songTones || !rbState.currentSongFile) return;
-    el.innerHTML = rbState.songTones.tones
-        .map((t, idx) => rbRenderTone(t, idx, rbState.currentSongFile)).join('');
+    el.innerHTML = rbRenderSongEditor(rbState.songTones, rbState.currentSongFile);
     if (rbState.listeningTone !== null) {
         const b = document.getElementById(`rb-listen-${rbState.listeningTone}`);
         if (b) b.textContent = '⏸ Stop';
