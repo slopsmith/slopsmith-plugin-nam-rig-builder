@@ -3383,6 +3383,70 @@ def _batch_worker(mode: str = "all"):
                     _batch_state["assigned"] += 1
 
         _batch_log(f"Done. Unique gear seen: {len(seen_gears)}")
+
+        # Tail step: download every curated amp variant from rs_to_real.json
+        # whose .nam is missing on disk, regardless of whether any song uses
+        # the amp. User request: 'puedes hacer que si o si se asignen a esos
+        # amps cuando se descargen, independiente si se usan en una cancion
+        # o no?' — so songs added later (and the catalog's variant
+        # auditioner) find their NAMs ready.
+        #
+        # Re-uses the existing _preload_worker so the same skip-if-on-disk
+        # check + rate gate + parallel download + wire-to-presets phase
+        # apply. Only kicks in if tone3000 is reachable; otherwise we log
+        # a hint and return without touching state.
+        try:
+            client = _get_t3k_client()
+            if client and client.has_api_access:
+                rs_map_for_preload = _load_rs_to_real() or {}
+                preload_jobs = []
+                for rs_gear, info in rs_map_for_preload.items():
+                    if (info or {}).get("category") != "amp":
+                        continue
+                    for level, spec in (info.get("gain_variants") or {}).items():
+                        if spec and spec.get("tone3000_id"):
+                            preload_jobs.append((rs_gear, level, spec))
+                if preload_jobs:
+                    _batch_log(
+                        f"Phase 2: ensuring all {len(preload_jobs)} curated "
+                        f"amp variants are downloaded (skips files already on disk)…"
+                    )
+                    with _preload_lock:
+                        # Only start if no one else already kicked it.
+                        if not _preload_state.get("running"):
+                            _preload_state.update({
+                                "running": True, "total": len(preload_jobs),
+                                "done": 0, "current": "",
+                                "downloaded": 0, "already_present": 0,
+                                "failed": [], "errors": [],
+                                "started_at": time.time(),
+                                "finished_at": None,
+                            })
+                            _launch_now = True
+                        else:
+                            _launch_now = False
+                    if _launch_now:
+                        _preload_worker(preload_jobs)
+                        with _preload_lock:
+                            dl = _preload_state.get("downloaded", 0)
+                            existed = _preload_state.get("already_present", 0)
+                            failed = len(_preload_state.get("failed") or [])
+                        _batch_log(
+                            f"Curated variants: {dl} downloaded · {existed} "
+                            f"already on disk · {failed} failed"
+                        )
+                    else:
+                        _batch_log(
+                            "Curated-variants preload already running; "
+                            "skipping (see /preload_status)"
+                        )
+            else:
+                _batch_log(
+                    "Curated-variants tail skipped — tone3000 not connected"
+                )
+        except Exception:
+            log.exception("curated-variants tail step crashed")
+            _batch_log("Curated-variants tail step crashed — see server log")
     except Exception:
         log.exception("batch worker crashed")
         _batch_log("ERROR — see server log")
