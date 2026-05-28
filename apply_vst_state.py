@@ -1,0 +1,275 @@
+#!/usr/bin/env python3
+"""Bulk-populate `preset_pieces.vst_state` from each piece's RS knob values.
+
+After `apply_vst_suggestions.py` migrates `kind` to `vst`, every piece has
+its target plugin assigned but `vst_state` is NULL — so the plugin plays
+with its DEFAULTS (chorus at default rate/depth, EQ flat, etc). The user
+has to either click ⇶ Apply RS settings on every slot, or open every
+editor by hand.
+
+This script walks every `kind='vst'` row, reads its `params_json` (the
+parsed Rocksmith knob values for that gear instance), looks the gear up
+in `rs_knob_to_vst_param.json` for the loaded VST's stem, translates each
+RS knob → VST param using `scale` + `offset` + `invert`, and writes back
+into `vst_state` as the JSON envelope `{"params": {paramId: value, ...}}`.
+
+Why this works for real song playback (not just preview):
+  `screen.js::rbReapplyVstParamsAfterLoad` is called inside the fetch
+  interceptor that handles every chain load — including the bundle's
+  song-load path. After the chain is in the engine, it walks every VST
+  stage and calls `api.setParameter(slotId, paramId, value)` for each
+  entry in our `{"params": ...}` dict. So a populated `vst_state` IS the
+  source of truth for both preview AND real song playback.
+
+Slopsmith does NOT need to be running; UPDATEs are plain SQLite. Restart
+Slopsmith (or reload affected songs) to see the change.
+
+Usage:
+    # Dry-run: show what would be written and skipped
+    python3 apply_vst_state.py
+
+    # Apply (per-category scoping mirrors apply_vst_suggestions.py)
+    python3 apply_vst_state.py --category pedal --apply
+    python3 apply_vst_state.py --category rack --apply
+    python3 apply_vst_state.py --apply        # all categories
+
+    # Re-write even rows that already have a vst_state (default skips them)
+    python3 apply_vst_state.py --overwrite --apply
+
+    # Scope to one rs_gear_type (handy for testing a single VST mapping)
+    python3 apply_vst_state.py --rs-gear Pedal_EQ8 --apply
+
+What this script does NOT do:
+  - Generate the `opaque` blob (only `savePreset()` in the live engine
+    can). That's needed if your build of Slopsmith disables the fetch
+    interceptor or the post-load setParameter walk. Default rig_builder
+    builds include the walk, so `{"params": ...}` is enough.
+  - Touch `kind != 'vst'` rows. NAM/IR pieces aren't VSTs.
+  - Override a piece whose vst_state already has an `opaque` blob — that
+    came from an explicit user 📸 Capture state click and is sacred.
+"""
+
+import argparse
+import json
+import os
+import platform
+import sqlite3
+import sys
+from pathlib import Path
+
+
+_PLUGIN_DIR = Path(__file__).parent
+
+
+def _default_db_path() -> Path | None:
+    system = platform.system()
+    if system == "Darwin":
+        return Path.home() / "Library/Application Support/slopsmith-desktop/slopsmith-config/nam_tone.db"
+    if system == "Windows":
+        appdata = os.environ.get("APPDATA")
+        if appdata:
+            return Path(appdata) / "slopsmith-desktop/slopsmith-config/nam_tone.db"
+        return None
+    xdg = os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
+    return Path(xdg) / "slopsmith-desktop/slopsmith-config/nam_tone.db"
+
+
+def _vst_stem(vst_path: str) -> str:
+    """Mirror the case-insensitive stem the runtime uses for table lookup.
+
+    `/Library/.../MTremolo.vst3` → `mtremolo`
+    `/Library/.../kHs Chorus.vst3` → `khs chorus`
+    """
+    name = Path(vst_path).name
+    for ext in (".vst3", ".component"):
+        if name.lower().endswith(ext):
+            name = name[:-len(ext)]
+            break
+    return name.lower()
+
+
+def _translate_one_knob(rs_value, mapping: dict) -> tuple[str, float] | None:
+    """Apply one mapping entry (param/scale/offset/invert) to an RS value.
+
+    Returns (param_name, value_float) or None if the entry is malformed.
+    The `param` field in the mapping is the human-readable VST param NAME
+    (e.g. "Rate"). The runtime's setParameter walker
+    (`rbReapplyVstParamsToChain` in screen.js) resolves NAME → numeric
+    paramId via `getParameters()` per-slot at apply time — so storing
+    the name (durable across plugin versions) is the right pivot.
+    """
+    try:
+        v = float(rs_value)
+    except (ValueError, TypeError):
+        return None
+    scale = float(mapping.get("scale", 1.0))
+    offset = float(mapping.get("offset", 0.0))
+    out = v * scale + offset
+    if mapping.get("invert"):
+        out = 1.0 - out
+    # Clamp to a sane VST normalized range; opaque/dB params will get
+    # plausible values but the engine will quantize on setParameter.
+    if -10_000.0 <= out <= 10_000.0:
+        return (mapping.get("param"), out)
+    return None
+
+
+def _build_params_for_piece(
+    rs_gear: str, vst_path: str, params_json: str,
+    knob_table: dict,
+) -> tuple[dict, list] | None:
+    """Return ({param_name: value, ...}, [skipped_rs_knobs])
+    for one preset_piece, using the curated translation table.
+    """
+    stem = _vst_stem(vst_path)
+    gear_block = knob_table.get(rs_gear) or {}
+    vst_block = gear_block.get(stem) or {}
+    if not vst_block:
+        return None  # no translation for this (rs_gear × vst) pair
+    try:
+        knobs = json.loads(params_json) if params_json else {}
+    except (ValueError, TypeError):
+        return None
+    if not isinstance(knobs, dict):
+        return None
+    out: dict = {}
+    skipped: list = []
+    for rs_knob, rs_value in knobs.items():
+        m = vst_block.get(rs_knob)
+        if not isinstance(m, dict) or "param" not in m:
+            skipped.append(rs_knob)
+            continue
+        translated = _translate_one_knob(rs_value, m)
+        if translated is None:
+            skipped.append(rs_knob)
+            continue
+        param_name, value = translated
+        out[param_name] = value
+    return (out, skipped)
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    ap.add_argument("--db", type=Path, default=None,
+                    help="Path to nam_tone.db (default: auto-detect)")
+    ap.add_argument("--category", default=None,
+                    help="Filter by rs_to_real.json category ('pedal' / 'rack' / 'amp'); "
+                         "default = all VST pieces regardless of category")
+    ap.add_argument("--rs-gear", default=None,
+                    help="Scope to one specific rs_gear_type (for testing)")
+    ap.add_argument("--overwrite", action="store_true",
+                    help="Re-write rows that already have a vst_state. Skipped by default "
+                         "(an existing state likely came from 📸 Capture or a prior run).")
+    ap.add_argument("--apply", action="store_true",
+                    help="Actually write the changes (otherwise dry-run only)")
+    args = ap.parse_args()
+
+    db_path = args.db or _default_db_path()
+    if not db_path or not db_path.exists():
+        print(f"nam_tone.db not found at {db_path}.", file=sys.stderr)
+        return 1
+
+    knob_table = json.loads((_PLUGIN_DIR / "rs_knob_to_vst_param.json").read_text())
+    knob_table = {k: v for k, v in knob_table.items() if not k.startswith("_")}
+    rs_map = json.loads((_PLUGIN_DIR / "rs_to_real.json").read_text())
+
+    # Filter to gears matching --category (or --rs-gear)
+    if args.rs_gear:
+        scope_gears = {args.rs_gear}
+    elif args.category:
+        scope_gears = {
+            k for k, v in rs_map.items()
+            if isinstance(v, dict) and v.get("category", "").lower() == args.category.lower()
+        }
+    else:
+        scope_gears = None  # all
+
+    conn = sqlite3.connect(f"file:{db_path}?{'' if args.apply else 'mode=ro'}", uri=True)
+    rows = conn.execute(
+        "SELECT id, rs_gear_type, vst_path, params_json, vst_state "
+        "FROM preset_pieces "
+        "WHERE kind = 'vst' AND vst_path IS NOT NULL AND vst_path != ''"
+    ).fetchall()
+
+    by_gear_vst: dict = {}      # (rs_gear, vst_stem) -> {written, skipped_no_knobs, skipped_no_mapping, skipped_has_state}
+    plan: list = []              # (row_id, rs_gear, vst_path, new_vst_state)
+    no_mapping: dict = {}        # (rs_gear, vst_stem) -> count
+
+    for row_id, rs_gear, vst_path, params_json, existing_state in rows:
+        if scope_gears is not None and rs_gear not in scope_gears:
+            continue
+        stem = _vst_stem(vst_path or "")
+        key = (rs_gear, stem)
+        bucket = by_gear_vst.setdefault(
+            key, {"written": 0, "no_knobs": 0, "no_mapping": 0, "has_state": 0, "no_params": 0},
+        )
+
+        # Skip rows that already have an `opaque` capture (user clicked
+        # 📸 Capture or this script already ran) unless --overwrite.
+        if existing_state and not args.overwrite:
+            try:
+                ex = json.loads(existing_state)
+                if isinstance(ex, dict) and (ex.get("opaque") or ex.get("params")):
+                    bucket["has_state"] += 1
+                    continue
+            except (ValueError, TypeError):
+                pass
+
+        result = _build_params_for_piece(rs_gear, vst_path or "", params_json or "", knob_table)
+        if result is None:
+            no_mapping[key] = no_mapping.get(key, 0) + 1
+            bucket["no_mapping"] += 1
+            continue
+        params_by_name, skipped = result
+        if not params_by_name:
+            bucket["no_params"] += 1
+            continue
+        new_state = json.dumps({"params": params_by_name})
+        plan.append((row_id, rs_gear, vst_path, new_state))
+        bucket["written"] += 1
+
+    # ── Report ──
+    print(f"\n{'rs_gear_type':30s}  {'vst_stem':24s}  written  has_state  no_mapping  no_params")
+    print("-" * 102)
+    total_w = total_h = total_nm = total_np = 0
+    for (rs_gear, stem), b in sorted(by_gear_vst.items()):
+        if not (b["written"] or b["has_state"] or b["no_mapping"] or b["no_params"]):
+            continue
+        print(f"{rs_gear:30s}  {stem:24s}  {b['written']:7d}  {b['has_state']:9d}  {b['no_mapping']:10d}  {b['no_params']:9d}")
+        total_w += b["written"]; total_h += b["has_state"]
+        total_nm += b["no_mapping"]; total_np += b["no_params"]
+    print("-" * 102)
+    print(f"{'TOTAL':30s}  {'':24s}  {total_w:7d}  {total_h:9d}  {total_nm:10d}  {total_np:9d}")
+    print()
+    print("Legend:")
+    print("  written     — would write a {\"params\": ...} state")
+    print("  has_state   — already has a state, preserved (use --overwrite to replace)")
+    print("  no_mapping  — no entry in rs_knob_to_vst_param.json for this (gear, vst) pair")
+    print("  no_params   — gear/vst mapping exists but the piece's params_json has no matching knobs")
+
+    if not args.apply:
+        print("\n(dry-run; pass --apply to actually write the changes)")
+        return 0
+
+    if not plan:
+        print("\nNothing to apply.")
+        return 0
+
+    print("\nApplying…")
+    with conn:
+        for row_id, _rs_gear, _vst_path, new_state in plan:
+            conn.execute(
+                "UPDATE preset_pieces SET vst_state = ? WHERE id = ?",
+                (new_state, row_id),
+            )
+    print(f"Done: {len(plan)} preset_pieces row(s) updated.")
+    print("Reload the affected songs in Slopsmith to see the change (the post-load")
+    print("setParameter walk runs each time the chain is built).")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

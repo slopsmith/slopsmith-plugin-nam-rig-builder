@@ -4226,11 +4226,43 @@ async function rbReapplyVstParamsToChain(api, chainSpec) {
         }
         if (!params || Object.keys(params).length === 0) continue;
         const slotId = slot.id ?? slot.slotId ?? i;
-        for (const [pid, v] of Object.entries(params)) {
+
+        // Resolve param NAMES (string keys) to IDs via getParameters(),
+        // same pattern as the manual ⇶ Apply RS settings flow. Keys that
+        // are already numeric strings (or numbers) skip the lookup.
+        // This makes bulk-populated vst_states (apply_vst_state.py writes
+        // {paramName: value}) restore correctly on real song playback.
+        let nameToId = null;
+        const needsResolve = Object.keys(params).some(
+            k => isNaN(parseInt(k, 10)) || String(parseInt(k, 10)) !== String(k).trim()
+        );
+        if (needsResolve && typeof api.getParameters === 'function') {
             try {
-                await api.setParameter(slotId, parseInt(pid, 10), parseFloat(v));
+                const paramList = await api.getParameters(slotId);
+                if (Array.isArray(paramList)) {
+                    nameToId = {};
+                    paramList.forEach((p, idx) => {
+                        const pid = p.id ?? p.paramId ?? p.index ?? idx;
+                        const pname = (p.name ?? p.label ?? '').toLowerCase();
+                        if (pname) nameToId[pname] = pid;
+                    });
+                }
+            } catch (_) { /* fall through; numeric-only keys still work */ }
+        }
+
+        for (const [pid, v] of Object.entries(params)) {
+            let targetId = parseInt(pid, 10);
+            if ((isNaN(targetId) || String(targetId) !== String(pid).trim()) && nameToId) {
+                targetId = nameToId[String(pid).toLowerCase()];
+            }
+            if (targetId == null || isNaN(targetId)) {
+                console.warn(`[rig_builder] couldn't resolve VST param '${pid}' for slot ${slotId} — ignoring`);
+                continue;
+            }
+            try {
+                await api.setParameter(slotId, targetId, parseFloat(v));
             } catch (e) {
-                console.warn(`[rig_builder] setParameter slot=${slotId} param=${pid}:`, e);
+                console.warn(`[rig_builder] setParameter slot=${slotId} param=${pid}(${targetId}):`, e);
             }
         }
     }
@@ -5739,16 +5771,22 @@ async function rbAuditionVst(vstPath, vstFormat, btnId) {
     }
     try {
         if (btn) { btn.disabled = true; btn.textContent = '…'; }
-        // Close any open VST editor window BEFORE clearing the chain — an
-        // orphaned editor window pointing at a slot we're about to wipe is
-        // the known crash trigger on consecutive ▶ Audition clicks.
+        // Close any open VST editor window BEFORE touching the chain — an
+        // orphaned editor pointing at the slot we're about to wipe is the
+        // known crash trigger on consecutive ▶ Audition clicks.
         await rbCloseActiveVstEditor();
-        const url = `${RB_API}/native_preset_one?kind=vst&vst_path=${encodeURIComponent(vstPath)}&vst_format=${encodeURIComponent(vstFormat || 'VST3')}`;
-        const payload = await (await fetch(url)).json();
-        if (!payload || !payload.native_preset) throw new Error('no preset returned');
         if (api.clearChain) await api.clearChain().catch(() => {});
-        const res = await api.loadPreset(JSON.stringify(payload.native_preset));
-        if (!res || res.success === false) throw new Error((res && res.error) || 'loadPreset failed');
+        // Use api.loadVST directly (same path as rbCatalogEditVst) instead of
+        // /native_preset_one + loadPreset. The loadPreset path was crashing
+        // on rapid sequential ▶ clicks between two VST pedals (the engine
+        // appears to mishandle the residual VST stage when the new chain is
+        // pushed before the old one fully unloads). loadVST is a one-shot
+        // single-stage path that doesn't have that race.
+        if (typeof api.loadVST !== 'function') {
+            throw new Error('engine has no loadVST API (WASM-only build?)');
+        }
+        const slotId = await api.loadVST(vstPath);
+        if (slotId == null || slotId < 0) throw new Error('engine refused this plugin');
         if (api.setMonitorMute) await api.setMonitorMute(false).catch(() => {});
         const wasRunning = api.isAudioRunning ? await api.isAudioRunning().catch(() => true) : true;
         await api.startAudio();

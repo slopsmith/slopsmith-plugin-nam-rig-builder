@@ -419,6 +419,9 @@
   "Bass_Pedal_MBComp": {
     "khs compressor": {
       "Compress": {"param": "Threshold", "scale": -1.0, "offset": 0, "_hint": "Single-band fallback — full multiband needs paid kHs Multipass"}
+    },
+    "mcompressor": {
+      "Compress": {"param": "Threshold", "scale": -1.0, "offset": 0, "_hint": "Single-band fallback — RS MBComp's multiband info is lost (Melda free has no MDynamicsMB)"}
     }
   },
   "Pedal_USWah": {
