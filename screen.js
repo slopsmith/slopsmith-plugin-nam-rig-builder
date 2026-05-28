@@ -774,6 +774,24 @@ const RbMegaChain = (function () {
         // Recheck schedule: front-loaded so we catch the highway tone-base
         // publication as soon as it lands (most of the time inside the
         // first second), without giving up too early if the WS feed lags.
+        // Helper: have we received ANY tone metadata from the highway?
+        // True iff either a non-empty base or at least one tone change
+        // has been published. Used by the early "no-schedule" detector
+        // below to distinguish 'song genuinely has no tone-switching'
+        // (PSARC didn't pack any) from 'highway still publishing'.
+        const _highwayHasAnyToneData = () => {
+            try {
+                const hw = window.highway;
+                if (!hw) return false;
+                const base = hw.getToneBase ? hw.getToneBase() : '';
+                const changes = hw.getToneChanges ? hw.getToneChanges() : [];
+                return !!(
+                    (base && String(base).trim())
+                    || (Array.isArray(changes) && changes.length > 0)
+                );
+            } catch (_) { return false; }
+        };
+
         // Schedule extended to 10 s (was 6 s) — gives slow highway WS
         // publishes time to arrive before we commit to the heuristic
         // fallback. Each tick first tries the strict resolver, then
@@ -803,6 +821,49 @@ const RbMegaChain = (function () {
                 }).catch(() => {});
             }, delay);
         });
+        // Helper: pick the song's default tone using the same heuristic
+        // as both the early no-schedule branch and the 10 s fallback.
+        // Prefer GUITAR over BASS (avoids the "Reptilia tones[0] is bass"
+        // bug — see the 10 s fallback comment below for the full story).
+        // Caller decides what log message to emit; this just resolves
+        // which tone to apply.
+        const _pickDefaultTone = () => {
+            const all = (mega.tones || []);
+            if (!all.length) return null;
+            const isBassFlavored = t =>
+                /(^|_)bass(_|\b)/i.test(t.tone_key || '')
+                || (Array.isArray(t.chain) && t.chain.some(p => /^Bass_/i.test(p.rs_gear || '')));
+            return all.find(t => !isBassFlavored(t)) || all[0];
+        };
+
+        // Early no-schedule detector: most songs that hit the old
+        // "FALLBACK after 10s" warning DON'T have late-arriving tone
+        // metadata — they have NONE AT ALL. The PSARC was packed without
+        // a section→tone schedule, so the bundle's audio-engine logs
+        // 'Song has no rebuildable tone-switching — keeping current
+        // chain' and the highway never publishes either base or
+        // changes. Waiting the full 10 s for nothing is just dead air +
+        // a misleading warning. At t+1500 ms we check: if the highway
+        // STILL has zero data, treat it as a no-schedule song, pick the
+        // default tone immediately, and log an INFO line (not a
+        // warning) explaining the situation. Genuine slow-WS cases
+        // (rare) will have published *something* by 1.5 s — even an
+        // empty toneChanges array gets populated as soon as the parser
+        // runs.
+        setTimeout(() => {
+            if (!_active || !_mega) return;
+            if (_activeToneKey) return;     // a recheck already landed
+            if (_highwayHasAnyToneData()) return;  // schedule en route
+            const tone = _pickDefaultTone();
+            if (!tone) return;
+            _applyActiveTone(tone.tone_key).then(() => {
+                console.log(
+                    `[rig_builder mega-chain] no schedule in PSARC for this song — `
+                    + `applying default tone "${tone.tone_key}". `
+                    + `Single-tone behaviour (no mid-song switching) is by design.`);
+            }).catch(() => {});
+        }, 1500);
+
         // Last-chance fallback: if after 10 s the highway still hasn't
         // given us a tone (broken WS, unmapped song, truly exotic
         // arrangement with no schedule at all), pick a guitar tone
@@ -831,17 +892,15 @@ const RbMegaChain = (function () {
                     return;
                 }
             }
-            const all = (mega.tones || []);
-            if (!all.length) return;
-            const isBassFlavored = t =>
-                /(^|_)bass(_|\b)/i.test(t.tone_key || '')
-                || (Array.isArray(t.chain) && t.chain.some(p => /^Bass_/i.test(p.rs_gear || '')));
-            // Prefer a guitar tone, fall back to first available if all
-            // are bass-flavoured (rare — bass-only songs).
-            const fallback = all.find(t => !isBassFlavored(t)) || all[0];
+            const fallback = _pickDefaultTone();
+            if (!fallback) return;
             _applyActiveTone(fallback.tone_key).then(() => {
-                const flavour = isBassFlavored(fallback) ? 'BASS (no guitar tones in this song)' : 'guitar';
-                console.warn(`[rig_builder mega-chain] FALLBACK after 10s: applying "${fallback.tone_key}" [${flavour}] — highway never published a tone base OR a tone change schedule for this song`);
+                console.warn(
+                    `[rig_builder mega-chain] FALLBACK after 10s: applying `
+                    + `"${fallback.tone_key}" — highway never published a tone `
+                    + `base OR a tone change schedule, AND the early `
+                    + `no-schedule detector at t+1500ms didn't fire (so highway `
+                    + `looked like it might still be loading). Edge case.`);
             }).catch(() => {});
         }, 10000);
 
