@@ -98,7 +98,14 @@ Key paths:
 
 ---
 
-## Current feature state (as of 2026-05-26)
+## Current feature state (as of 2026-05-27)
+
+> **v1.2.0 (2026-05-27):** amp **gain variants** (clean/crunch/dist captures per
+> amp via `gain_variants` in `rs_to_real.json`), library **Manage** tab + storage
+> subdirs + classify-by-content, **chain preloader** promoted to default (instant
+> tone switching via bypass-flip), and loudness/saturation fixes (per-NAM
+> normalization, input-gain drive into amp NAMs, L2-normalized Rocksmith IRs).
+> Closed issues #12/#13/#14/#15. See `WHATS_NEW.md` (top) for the user summary.
 
 > **v1.1.0 (2026-05-26):** tone3000 auth is now **OAuth 2.0 + PKCE** ("Connect
 > with tone3000" — no pasted secret key; secret-key UI removed but backend

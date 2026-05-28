@@ -2292,13 +2292,11 @@
     "gain_variants": {
       "clean": {
         "tone3000_id": 48296,
-        "model_id": 265508,
         "rs_gain_range": [
-          0.0,
-          35.0
+          0,
+          35
         ],
-        "notes": "Hartke HA 3500 Tube 0 Solid State 5 All Flat",
-        "curator": "Nacho"
+        "model_id": 265504
       },
       "crunch": {
         "tone3000_id": 48296,

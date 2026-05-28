@@ -1,5 +1,11 @@
 # Rig Builder — handoff doc
 
+> **Released: v1.2.0 (2026-05-27)** — amp gain variants, library Manage tab,
+> chain preloader (instant tone switching, now default), and loudness/audio
+> fixes. Closed issues #12 (tone-change spike), #13 (master chain not applying),
+> #14 (mac IR extraction), #15 (quiet NAMs). See `WHATS_NEW.md` for the
+> user-facing summary.
+
 A Slopsmith plugin that maps **Rocksmith 2014 tones** (amp + cab + pedals + racks)
 to **NAM captures and IRs from tone3000.com**, persisting per-song mappings in
 `nam_tone.db` so the existing NAM runtime plays them back automatically.
