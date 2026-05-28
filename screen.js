@@ -2878,7 +2878,7 @@ async function rbConfirmGearSwap(toneIdx, pIdx, toRsGear) {
         }
         const data = await r.json();
         if (data.pieces_updated === 0) {
-            alert('No piece was updated — target gear has no NAM available on disk for this song\'s Gain knob. Download its variants first.');
+            alert('Swap failed — this gear has no NAM or VST associated yet. Open the All Gear tab and assign one to this gear first, then try the swap again.');
             return;
         }
         // Collapse the swap panel and refresh.
