@@ -135,14 +135,28 @@ def extract_category(category: str, psarc_path: Path, rs_map: dict,
     if variant != 0:
         variant_fallbacks.append(0)
 
+    # Cabs in Rocksmith are 1 base manifest × ~12 mic-position variants
+    # (`_5c`, `_5e`, `_co`, `_rc`, …). All variants of one cab share the
+    # SAME texture — the mic position is an audio-only thing. The art
+    # ships once under the base manifest, so for cabs we strip the
+    # suffix when building candidate paths. Example:
+    #   gear_bass_cab_at1150bc_5c → also try gear_bass_cab_at1150bc
+    mic_suffix_re = re.compile(r"_(?:[0-9]?[a-z]{1,2})$") if category == "cab" else None
+
     target_paths: list[tuple[str, dict, list[str]]] = []
     for k, v, manifest in targets:
+        manifests_to_try = [manifest]
+        if mic_suffix_re is not None:
+            base = mic_suffix_re.sub("", manifest)
+            if base and base != manifest and base not in manifests_to_try:
+                manifests_to_try.append(base)
         candidates = []
-        for sd in subdirs:
-            for var in variant_fallbacks:
-                for sz in size_fallbacks:
-                    candidates.append(
-                        f"gfxassets/tone_designer/{sd}/{manifest}_{var}_{sz}.dds")
+        for m in manifests_to_try:
+            for sd in subdirs:
+                for var in variant_fallbacks:
+                    for sz in size_fallbacks:
+                        candidates.append(
+                            f"gfxassets/tone_designer/{sd}/{m}_{var}_{sz}.dds")
         target_paths.append((k, v, candidates))
 
     # One psarc read per category × subdir. The file is ~400 MB so we
