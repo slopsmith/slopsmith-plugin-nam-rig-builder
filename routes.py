@@ -1429,10 +1429,22 @@ def _enrich_chain_piece(piece: dict, img_idx: dict | None = None) -> dict:
         variants = info.get("gain_variants") or {}
         if variants:
             picked = _pick_amp_gain_variant(info, _gear_rs_gain(piece, info))
+            # Map the currently-assigned tone3000_id back to a level name
+            # ("clean"/"crunch"/"dist") so the UI can highlight the
+            # button the user is actually hearing — including manual
+            # variant overrides where it differs from auto-pick.
+            assigned_tid = (assigned or {}).get("tone3000_id")
+            current_level = None
+            if assigned_tid is not None:
+                for lvl, spec in variants.items():
+                    if isinstance(spec, dict) and spec.get("tone3000_id") == assigned_tid:
+                        current_level = lvl
+                        break
             amp_variant_info = {
                 "available": list(variants.keys()),
                 "picked": (picked or {}).get("_picked_level"),
                 "picked_id": (picked or {}).get("tone3000_id"),
+                "current_level": current_level,
                 "rs_gain": _gear_rs_gain(piece, info),
             }
 
@@ -5137,15 +5149,21 @@ def setup(app, context):
         return {"ok": True, "pieces_updated": cur.rowcount}
 
     @app.get("/api/plugins/rig_builder/local_files")
-    def local_files(kind: str = "nam"):
+    def local_files(kind: str = "nam", category: str = ""):
         """List all locally-available NAM models or IR WAVs that the user
         could pick for a piece, with usage stats so the UI can sort by
         most-used first.
 
         Query:
-          - kind: "nam" → lists nam_models/*.nam
-                  "ir"  → lists nam_irs/**/*.wav (recursive, includes the
-                          extract_irs.py output under nam_irs/rocksmith/)
+          - kind:     "nam" → lists nam_models/**/*.nam (recursive, post-v1.2
+                              files live in amps/ pedals/ racks/ other/)
+                      "ir"  → lists nam_irs/**/*.wav (recursive, includes the
+                              extract_irs.py output under nam_irs/rocksmith/)
+          - category: optional. "amp"|"pedal"|"rack"|"cab" — restricts the
+                      walk to the matching subdir (amps/pedals/racks/cabs)
+                      so the per-piece Library picker doesn't dump every
+                      NAM in the user's library on an amp slot. Falls back
+                      to listing everything if the subdir doesn't exist.
 
         Returns:
           {"files": [
@@ -5165,19 +5183,31 @@ def setup(app, context):
         if kind == "nam":
             root = _config_dir / "nam_models"
             ext = ".nam"
-            recursive = False
         elif kind in ("ir", "wav"):
             root = _config_dir / "nam_irs"
             ext = ".wav"
-            recursive = True
         else:
             return JSONResponse({"error": f"unknown kind: {kind}"}, 400)
         if not root.exists():
             return {"files": []}
-        # Walk filesystem.
+        # Optional category narrowing — map external category → subdir.
+        # Falls through to the full root walk if the subdir is missing,
+        # which keeps the picker working for users still on pre-v1.2
+        # flat storage.
+        scoped_root = root
+        if category:
+            cat = (category or "").lower()
+            subdir = None
+            if kind == "nam":
+                subdir = {"amp": "amps", "pedal": "pedals",
+                          "rack": "racks", "other": "other"}.get(cat)
+            else:
+                subdir = {"cab": "cabs", "other": "other"}.get(cat)
+            if subdir and (root / subdir).exists():
+                scoped_root = root / subdir
+        # Walk filesystem (always recursive now to support subdir layout).
         paths: list = []
-        iterator = root.rglob(f"*{ext}") if recursive else root.glob(f"*{ext}")
-        for p in iterator:
+        for p in scoped_root.rglob(f"*{ext}"):
             if p.is_file():
                 paths.append(p)
         # Build a single SQL query to fetch usage stats for ALL files at once
@@ -5737,6 +5767,243 @@ def setup(app, context):
         )
         _preload_thread.start()
         return {"started": True, "total": len(jobs)}
+
+    # ── Gear-centric replace + per-song variant override ────────────────
+    # Three endpoints powering the new song/gear editor UX:
+    #   GET  /gears_in_category/{cat}    list candidate replacements
+    #   POST /piece_variant_override     force a variant for one preset
+    #   POST /gear/replace_with          swap one gear's file across all songs
+
+    def _resolve_gear_file(rs_gear: str, level: str | None,
+                            rs_gain: float | None) -> tuple[str | None, int | None]:
+        """Resolve a gear's NAM/IR file path given an optional variant
+        level OR an rs_gain to auto-pick from gain_variants.
+
+        Returns (relative_file, tone3000_id) — file in the "<subdir>/<name>"
+        form that the engine resolves via _safe_child, or (None, None) if
+        the gear has no variants and no fallback file. Used by both the
+        per-song variant override (level given) and the gear-replace
+        bulk-update (uses rs_gain to pick the matching variant).
+        """
+        if _config_dir is None:
+            return None, None
+        rs_map = _load_rs_to_real() or {}
+        info = rs_map.get(rs_gear) or {}
+        variants = info.get("gain_variants") or {}
+        # Decide which variant we're after.
+        spec = None
+        if level and level != "auto" and variants:
+            spec = variants.get(level)
+        if spec is None and variants:
+            # Auto-pick by rs_gain (or 50.0 fallback in the helper).
+            spec = _pick_amp_gain_variant(info, rs_gain if rs_gain is not None else 50.0)
+        if not spec or not isinstance(spec, dict):
+            return None, None
+        # Find the file on disk — same dual-naming lookup the wire-up
+        # sweep uses (readable-from-notes first, legacy second).
+        subdir = _category_subdir_for_gear(rs_gear)
+        amp_dir = _config_dir / "nam_models" / subdir
+        title = (spec.get("notes") or "").strip()
+        tone3000_id = spec.get("tone3000_id")
+        model_id = spec.get("model_id")
+        if title:
+            cand = amp_dir / f"{_safe_filename_human(title)}.nam"
+            if cand.exists():
+                return f"{subdir}/{cand.name}", tone3000_id
+        if model_id and tone3000_id:
+            legacy = (f"tone3000_{tone3000_id}_m{model_id}_"
+                      f"{_safe_filename(rs_gear)}.nam")
+            if (amp_dir / legacy).exists():
+                return f"{subdir}/{legacy}", tone3000_id
+        return None, tone3000_id
+
+    @app.get("/api/plugins/rig_builder/gears_in_category/{category}")
+    def gears_in_category(category: str):
+        """List curated gears in `category` (amp/pedal/rack/cab) along
+        with whatever's already assigned, so the front-end can render a
+        gear-centric replacement picker — instead of dumping every NAM
+        file in the bucket, the user sees one card per amp/pedal with
+        its photo + variant count.
+
+        Used by the new "Replace amp with…" / "Replace pedal with…"
+        modal in the Gear and Song views. Sorted by rs_order so the
+        picker mirrors the in-game tone designer's order.
+        """
+        rs_map = _load_rs_to_real() or {}
+        img_idx = _tone_image_index() if category == "amp" else {}
+        out = []
+        for k, info in rs_map.items():
+            if not isinstance(info, dict):
+                continue
+            cat = (info.get("category") or "").lower()
+            if cat != category.lower():
+                continue
+            variants = info.get("gain_variants") or {}
+            # Photo: pick the first variant's tone3000_id and look up the
+            # cached image. For non-variant gears (most cabs/pedals)
+            # there's no photo — UI shows a placeholder.
+            t3kid = None
+            for spec in variants.values():
+                if isinstance(spec, dict) and spec.get("tone3000_id"):
+                    t3kid = spec["tone3000_id"]
+                    break
+            meta = img_idx.get(t3kid) if t3kid else None
+            out.append({
+                "rs_gear": k,
+                "name": info.get("name") or k,
+                "make": info.get("make", ""),
+                "model": info.get("model", ""),
+                "variant_count": len(variants),
+                "variant_levels": list(variants.keys()),
+                "rs_order": info.get("rs_order"),
+                "image": (meta or {}).get("image"),
+            })
+        out.sort(key=lambda g: (g["rs_order"] if g["rs_order"] is not None else 10**9,
+                                 (g["name"] or "").lower()))
+        return {"category": category, "gears": out}
+
+    @app.post("/api/plugins/rig_builder/piece_variant_override")
+    def piece_variant_override(data: dict = Body(...)):
+        """Force a specific variant on ONE preset's gear piece.
+
+        Body:
+          - `preset_id`: int
+          - `rs_gear`:   the gear's rs_gear_type
+          - `variant`:   "auto" to clear the override, or a level name
+                         ("clean"/"crunch"/"dist"/etc.)
+
+        Updates the matching preset_pieces row's file + assigned_mode.
+        Setting variant="auto" returns to the gain-driven pick (mode
+        flips back to "auto"). Any other value pins manually (mode
+        "manual" — survives Remap all).
+        """
+        try:
+            preset_id = int(data["preset_id"])
+            rs_gear = str(data["rs_gear"])
+            level = str(data.get("variant") or "auto").lower().strip()
+        except (KeyError, TypeError, ValueError):
+            return JSONResponse({"error": "preset_id, rs_gear, variant required"}, 400)
+        conn = _get_conn()
+        row = conn.execute(
+            "SELECT params_json FROM preset_pieces "
+            "WHERE preset_id = ? AND rs_gear_type = ? LIMIT 1",
+            (preset_id, rs_gear),
+        ).fetchone()
+        if not row:
+            return JSONResponse({"error": "no matching piece"}, 404)
+        # Pull the row's Gain knob value so "auto" can use it for picking,
+        # and so explicit levels still record a sensible tone3000_id.
+        try:
+            knobs = json.loads(row[0] or "{}") or {}
+        except (ValueError, TypeError):
+            knobs = {}
+        rs_gain = knobs.get("Gain")
+        try:
+            rs_gain = float(rs_gain) if rs_gain is not None else None
+        except (ValueError, TypeError):
+            rs_gain = None
+        file, tone3000_id = _resolve_gear_file(
+            rs_gear, None if level == "auto" else level, rs_gain)
+        if not file:
+            return JSONResponse({"error": f"variant '{level}' has no NAM on disk for {rs_gear}"}, 404)
+        mode = "auto" if level == "auto" else "manual"
+        with _lock:
+            conn.execute(
+                "UPDATE preset_pieces "
+                "SET file = ?, kind = 'nam', tone3000_id = ?, assigned_mode = ? "
+                "WHERE preset_id = ? AND rs_gear_type = ?",
+                (file, tone3000_id, mode, preset_id, rs_gear),
+            )
+            _recompute_preset_primaries(conn, preset_id)
+            conn.commit()
+        return {"ok": True, "file": file, "tone3000_id": tone3000_id,
+                "variant": level, "assigned_mode": mode}
+
+    @app.post("/api/plugins/rig_builder/gear/replace_with")
+    def gear_replace_with(data: dict = Body(...)):
+        """Swap one gear's assignment for another.
+
+        Body:
+          - `from_rs_gear`: e.g. "Amp_MarshallJCM800" — the gear whose
+                             rows we're rewriting
+          - `to_rs_gear`:   e.g. "Amp_MarshallPlexi" — the gear whose
+                             curated variants we'll use
+          - `preset_id`:    optional. If given, scope to a single song's
+                             preset. Omit to bulk-swap across every song.
+
+        Effect: every matching preset_pieces row with rs_gear_type=from
+        gets a new file/tone3000_id drawn from to's gain_variants, with
+        the matching variant picked per-row by that row's Gain knob (so
+        songs with high Gain inherit to's dist variant, low Gain →
+        clean, etc.). The row's rs_gear_type stays the same — Rocksmith
+        still identifies the song as using `from` — but it now SOUNDS
+        like `to`. Marked `assigned_mode='manual'` so a Remap all
+        doesn't undo it.
+        """
+        try:
+            from_gear = str(data["from_rs_gear"])
+            to_gear = str(data["to_rs_gear"])
+        except (KeyError, TypeError):
+            return JSONResponse({"error": "from_rs_gear, to_rs_gear required"}, 400)
+        preset_id_filter = data.get("preset_id")
+        try:
+            preset_id_filter = int(preset_id_filter) if preset_id_filter is not None else None
+        except (ValueError, TypeError):
+            preset_id_filter = None
+        if from_gear == to_gear:
+            return {"ok": True, "noop": True}
+        rs_map = _load_rs_to_real() or {}
+        to_info = rs_map.get(to_gear)
+        if not to_info or not to_info.get("gain_variants"):
+            return JSONResponse({"error": f"{to_gear} has no gain_variants curated"}, 400)
+        conn = _get_conn()
+        # Walk every row of the source gear, resolve the replacement's
+        # variant for each row's Gain, then update.
+        if preset_id_filter is not None:
+            rows = conn.execute(
+                "SELECT id, preset_id, params_json FROM preset_pieces "
+                "WHERE rs_gear_type = ? AND preset_id = ?",
+                (from_gear, preset_id_filter),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT id, preset_id, params_json FROM preset_pieces "
+                "WHERE rs_gear_type = ?",
+                (from_gear,),
+            ).fetchall()
+        updated = 0
+        skipped = 0
+        affected_presets = set()
+        with _lock:
+            for pid_row, preset_id, params_json in rows:
+                try:
+                    knobs = json.loads(params_json or "{}") or {}
+                except (ValueError, TypeError):
+                    knobs = {}
+                rs_gain = knobs.get("Gain")
+                try:
+                    rs_gain = float(rs_gain) if rs_gain is not None else None
+                except (ValueError, TypeError):
+                    rs_gain = None
+                file, tone3000_id = _resolve_gear_file(to_gear, None, rs_gain)
+                if not file:
+                    skipped += 1
+                    continue
+                conn.execute(
+                    "UPDATE preset_pieces "
+                    "SET file = ?, kind = 'nam', tone3000_id = ?, "
+                    "    assigned_mode = 'manual' "
+                    "WHERE id = ?",
+                    (file, tone3000_id, pid_row),
+                )
+                updated += 1
+                affected_presets.add(preset_id)
+            for pid in affected_presets:
+                _recompute_preset_primaries(conn, pid)
+            conn.commit()
+        return {"ok": True, "from": from_gear, "to": to_gear,
+                "pieces_updated": updated, "skipped": skipped,
+                "presets_affected": len(affected_presets)}
 
     @app.post("/api/plugins/rig_builder/nam_purge")
     def purge_nam(data: dict = Body(...)):

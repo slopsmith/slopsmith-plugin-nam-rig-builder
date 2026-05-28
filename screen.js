@@ -1904,27 +1904,40 @@ function rbRenderPiece(p, toneIdx, pIdx) {
             </div>`;
     }
 
-    // Amp gain variant badge: only present when the curator has shipped
-    // `gain_variants` for this amp in rs_to_real.json. Shows which level
-    // (clean / crunch / dist / whatever the curator named it) the system
-    // auto-picked based on the song's Gain knob value. Read-only: to
-    // switch to another variant the user picks a different NAM file via
-    // 📚 Library or the file input — the existing manual flow already
-    // covers the override case without us needing a separate UI.
+    // Amp gain variant picker: clickable buttons for each curated level
+    // (clean / crunch / dist / whatever the curator named them). The
+    // active level (the one whose NAM is actually loaded) is highlighted;
+    // click any level to force it for THIS song. "↺ auto" returns to
+    // the gain-driven pick. The override survives Remap all
+    // (sets assigned_mode='manual').
     let ampVariantBadge = '';
-    if (p.amp_variant && p.amp_variant.picked) {
+    if (p.amp_variant && Array.isArray(p.amp_variant.available) && p.amp_variant.available.length) {
         const av = p.amp_variant;
-        const availList = (av.available || []).map(level =>
-            level === av.picked
-                ? `<span class="text-emerald-300 font-semibold">${rbEsc(level)}</span>`
-                : `<span class="text-gray-500">${rbEsc(level)}</span>`
-        ).join(' · ');
+        // `current_level` = the variant whose NAM is currently loaded
+        // (auto OR manual). `picked` = what auto would choose right now.
+        // Override is "active" when those disagree OR when the row's
+        // assigned_mode is 'manual'.
+        const activeLevel = av.current_level || av.picked;
+        const manualMode = (p.assigned && p.assigned.assigned_mode === 'manual');
+        const overrideActive = manualMode && av.current_level && av.current_level !== av.picked;
+        const btns = (av.available || []).map(level => {
+            const active = level === activeLevel;
+            const cls = active
+                ? 'bg-emerald-700/60 text-emerald-100 border-emerald-500/60 font-semibold'
+                : 'bg-dark-800 text-gray-300 border-gray-700 hover:bg-emerald-900/40 hover:text-emerald-200 hover:border-emerald-700/40';
+            return `<button onclick="rbPickVariant(${toneIdx}, ${pIdx}, '${rbEsc(level)}')"
+                            title="Force this gain variant for this song"
+                            class="px-2 py-0.5 rounded border text-[11px] transition ${cls}">${rbEsc(level)}</button>`;
+        }).join(' ');
+        const autoBtn = `<button onclick="rbPickVariant(${toneIdx}, ${pIdx}, 'auto')"
+                                 title="Restore the auto-pick based on the song's Gain knob"
+                                 class="px-2 py-0.5 rounded border text-[11px] transition ${overrideActive ? 'bg-dark-800 text-gray-400 border-gray-700 hover:bg-emerald-900/30' : 'bg-emerald-700/40 text-emerald-200 border-emerald-600/40'}">↺ auto</button>`;
         ampVariantBadge = `
-            <div class="mt-2 bg-emerald-900/15 border border-emerald-800/30 rounded px-2 py-1.5 text-[11px] leading-snug"
-                 title="Multi-NAM amp: the system auto-picks the variant whose gain range matches this tone's Gain knob (=${rbEsc(av.rs_gain)}). To use a different variant, swap the NAM file via 📚 Library below.">
-                <span class="text-emerald-400">🎛 Amp gain variant:</span>
-                <span class="text-emerald-200">${availList}</span>
-                <span class="text-gray-500 ml-1">· auto from Gain=${rbEsc(av.rs_gain)}</span>
+            <div class="mt-2 bg-emerald-900/15 border border-emerald-800/30 rounded px-2 py-1.5 text-[11px] leading-snug flex items-center gap-2 flex-wrap"
+                 title="Multi-NAM amp: pick a gain variant for this song. Auto = system chooses by the Gain knob value (=${rbEsc(av.rs_gain)}).">
+                <span class="text-emerald-400">🎛 Gain:</span>
+                ${btns} ${autoBtn}
+                <span class="text-gray-500 ml-1">${overrideActive ? '· manual (auto would be ' + rbEsc(av.picked || '?') + ')' : '· auto from Gain=' + rbEsc(av.rs_gain)}</span>
             </div>`;
     }
 
@@ -1997,6 +2010,12 @@ function rbRenderPiece(p, toneIdx, pIdx) {
                         class="bg-indigo-900/30 hover:bg-indigo-900/50 text-indigo-300 border border-indigo-800/40 px-2 py-1 rounded text-xs">
                     📚 Library
                 </button>
+                ${!isCab ? `
+                <button onclick="rbToggleGearSwap(${toneIdx}, ${pIdx})"
+                        title="Swap this ${rbEsc(p.rs_category)} for a different one — just for this song"
+                        class="bg-amber-900/25 hover:bg-amber-900/45 text-amber-300 border border-amber-800/40 px-2 py-1 rounded text-xs">
+                    🔁 Swap…
+                </button>` : ''}
                 ${hasVst ? `
                 <button onclick="rbToneEditVst(${toneIdx}, ${pIdx})"
                         title="Load this VST in the engine and edit its parameters with inline sliders"
@@ -2007,6 +2026,7 @@ function rbRenderPiece(p, toneIdx, pIdx) {
                 ${(hasFile || hasVst) && mode ? `<span class="text-[10px] text-gray-600 whitespace-nowrap">(${rbEsc(mode)})</span>` : ''}
             </div>
             <div id="rb-lib-${toneIdx}-${pIdx}" class="hidden mt-2 bg-indigo-900/10 border border-indigo-800/30 rounded p-2"></div>
+            <div id="rb-swap-${toneIdx}-${pIdx}" class="hidden mt-2 bg-amber-900/10 border border-amber-800/30 rounded p-2"></div>
             <div id="rb-tone-vst-editor-${toneIdx}-${pIdx}" class="hidden mt-2 bg-purple-900/10 border border-purple-800/30 rounded p-2 space-y-2"></div>
             ${ampVariantBadge}
             ${rsKnobsBlock}
@@ -2413,7 +2433,11 @@ async function rbLibTab(toneIdx, pIdx, tab) {
     if (el.dataset.filesLoaded !== '1') {
         content.innerHTML = `<div class="text-xs text-gray-500">loading library…</div>`;
         try {
-            const r = await fetch(`${RB_API}/local_files?kind=${kind}`);
+            // Pass the piece's category so the picker only shows relevant
+            // NAMs (an amp slot doesn't get pedal NAMs cluttering the list).
+            // Backend falls back to the full root if the subdir is missing.
+            const cat = piece.rs_category ? `&category=${encodeURIComponent(piece.rs_category)}` : '';
+            const r = await fetch(`${RB_API}/local_files?kind=${kind}${cat}`);
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
             const data = await r.json();
             el._rbAllFiles = data.files || [];
@@ -2530,6 +2554,225 @@ function rbPickFromLibrary(toneIdx, pIdx, fileName, kind) {
     const lib = document.getElementById(`rb-lib-${toneIdx}-${pIdx}`);
     if (lib) lib.classList.add('hidden');
     rbAfterGearChange(toneIdx);
+}
+
+// ── Per-song variant override + per-song gear swap ──────────────────────
+//
+// Two related editor flows scoped to a single preset (one song's tone):
+//
+//   rbPickVariant    — force a curated gain variant (clean/crunch/dist)
+//                      for an amp with multi-NAM gain_variants. Backed
+//                      by POST /piece_variant_override.
+//
+//   rbToggleGearSwap — open a category-filtered picker showing curated
+//                      gears with photos. Picking one swaps THIS song's
+//                      piece to that gear's NAM (variant auto-picked
+//                      by the row's Gain knob). Backed by POST
+//                      /gear/replace_with with `preset_id`.
+//
+// Both operations mark `assigned_mode='manual'` on the row so a Remap
+// All sweep won't undo the user's choice. Both refresh the song view
+// from the server so all derived state (amp_variant badge, primaries,
+// stage labels) re-renders consistently.
+
+async function rbPickVariant(toneIdx, pIdx, level) {
+    const tone = rbState.songTones && rbState.songTones.tones && rbState.songTones.tones[toneIdx];
+    const piece = tone && tone.chain && tone.chain[pIdx];
+    if (!tone || !piece) return;
+    // Save first if this tone has never been persisted (no preset_id) —
+    // the override endpoint needs an existing row to UPDATE.
+    let presetId = tone.preset_id;
+    if (presetId == null) {
+        presetId = await rbPersistTone(toneIdx);
+        if (presetId == null) {
+            alert('Could not persist the tone before overriding the variant.');
+            return;
+        }
+    }
+    try {
+        const r = await fetch(`${RB_API}/piece_variant_override`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                preset_id: presetId,
+                rs_gear: piece.type,
+                variant: level || 'auto',
+            }),
+        });
+        if (!r.ok) {
+            const err = await r.json().catch(() => ({}));
+            alert(`Variant override failed: ${err.error || r.status}`);
+            return;
+        }
+        await rbRefreshSongAfterEdit(toneIdx);
+    } catch (e) {
+        alert(`Variant override failed: ${e.message || e}`);
+    }
+}
+
+async function rbToggleGearSwap(toneIdx, pIdx) {
+    const panel = document.getElementById(`rb-swap-${toneIdx}-${pIdx}`);
+    if (!panel) return;
+    if (!panel.classList.contains('hidden')) {
+        panel.classList.add('hidden');
+        return;
+    }
+    panel.classList.remove('hidden');
+    const piece = rbState.songTones.tones[toneIdx].chain[pIdx];
+    const category = piece.rs_category || 'amp';
+    panel.innerHTML = `<div class="text-xs text-gray-500">Loading ${rbEsc(category)}s…</div>`;
+    try {
+        const gears = await rbLoadGearsInCategory(category);
+        rbRenderGearSwapPanel(panel, gears, piece, toneIdx, pIdx);
+    } catch (e) {
+        panel.innerHTML = `<div class="text-xs text-red-400">Failed to load gears: ${rbEsc(e.message || e)}</div>`;
+    }
+}
+
+// Cached fetch of /gears_in_category so opening the picker on a second
+// piece in the same session is instant. Cached at the module level —
+// invalidated by an explicit window.__rbGearCatCache = null if needed.
+async function rbLoadGearsInCategory(category) {
+    window.__rbGearCatCache = window.__rbGearCatCache || {};
+    if (window.__rbGearCatCache[category]) return window.__rbGearCatCache[category];
+    const r = await fetch(`${RB_API}/gears_in_category/${encodeURIComponent(category)}`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+    window.__rbGearCatCache[category] = data.gears || [];
+    return window.__rbGearCatCache[category];
+}
+
+function rbRenderGearSwapPanel(panel, gears, piece, toneIdx, pIdx) {
+    const fromGear = piece.type;
+    const cards = gears.map(g => {
+        const dim = g.rs_gear === fromGear ? 'opacity-40 cursor-not-allowed' : 'hover:bg-amber-900/30 cursor-pointer';
+        const img = g.image
+            ? `<img src="${rbEsc(g.image)}" alt="" loading="lazy" class="w-9 h-9 rounded object-cover bg-dark-900 flex-shrink-0">`
+            : `<div class="w-9 h-9 rounded bg-dark-900 flex items-center justify-center text-gray-700 text-[9px] flex-shrink-0">no photo</div>`;
+        const variantBadge = g.variant_count > 0
+            ? `<span class="text-[9px] text-emerald-400 bg-emerald-900/30 border border-emerald-800/40 rounded px-1">${g.variant_count}×</span>`
+            : `<span class="text-[9px] text-gray-600">no variants</span>`;
+        const onclick = g.rs_gear === fromGear ? '' :
+            `onclick="rbConfirmGearSwap(${toneIdx}, ${pIdx}, '${rbEsc(g.rs_gear)}')"`;
+        return `
+            <div ${onclick} class="flex items-center gap-2 p-1.5 rounded ${dim}">
+                ${img}
+                <div class="min-w-0 flex-1">
+                    <div class="text-xs text-gray-200 truncate">${rbEsc(g.name)}</div>
+                    <div class="text-[10px] text-gray-500 truncate">${rbEsc(g.rs_gear)}</div>
+                </div>
+                ${variantBadge}
+            </div>`;
+    }).join('');
+    const inputId = `rb-swap-search-${toneIdx}-${pIdx}`;
+    panel.innerHTML = `
+        <div class="flex items-center gap-2 mb-2">
+            <span class="text-[11px] text-amber-300">🔁 Swap with…</span>
+            <input id="${inputId}" type="text" placeholder="🔍 Filter gears…"
+                   oninput="rbFilterGearSwap(${toneIdx}, ${pIdx})"
+                   class="flex-1 bg-dark-800 border border-gray-800 rounded text-[11px] text-gray-200 px-2 py-0.5">
+            <span class="text-[10px] text-gray-500">${gears.length} gears</span>
+        </div>
+        <div id="rb-swap-rows-${toneIdx}-${pIdx}" class="max-h-72 overflow-y-auto grid grid-cols-2 gap-1">${cards}</div>
+        <div class="text-[10px] text-gray-500 italic mt-2">Gears with curated multi-NAM variants are recommended. Cabs are skipped — use the IR dropdown instead.</div>`;
+    panel._rbGearList = gears;
+    panel._rbToneIdx = toneIdx;
+    panel._rbPIdx = pIdx;
+    panel._rbFromGear = fromGear;
+}
+
+function rbFilterGearSwap(toneIdx, pIdx) {
+    const panel = document.getElementById(`rb-swap-${toneIdx}-${pIdx}`);
+    if (!panel || !panel._rbGearList) return;
+    const input = document.getElementById(`rb-swap-search-${toneIdx}-${pIdx}`);
+    const rows = document.getElementById(`rb-swap-rows-${toneIdx}-${pIdx}`);
+    if (!input || !rows) return;
+    const q = (input.value || '').toLowerCase().trim();
+    const filtered = q
+        ? panel._rbGearList.filter(g => (g.name + ' ' + g.rs_gear).toLowerCase().includes(q))
+        : panel._rbGearList;
+    const fromGear = panel._rbFromGear;
+    rows.innerHTML = filtered.map(g => {
+        const dim = g.rs_gear === fromGear ? 'opacity-40 cursor-not-allowed' : 'hover:bg-amber-900/30 cursor-pointer';
+        const img = g.image
+            ? `<img src="${rbEsc(g.image)}" alt="" loading="lazy" class="w-9 h-9 rounded object-cover bg-dark-900 flex-shrink-0">`
+            : `<div class="w-9 h-9 rounded bg-dark-900 flex items-center justify-center text-gray-700 text-[9px] flex-shrink-0">no photo</div>`;
+        const variantBadge = g.variant_count > 0
+            ? `<span class="text-[9px] text-emerald-400 bg-emerald-900/30 border border-emerald-800/40 rounded px-1">${g.variant_count}×</span>`
+            : `<span class="text-[9px] text-gray-600">no variants</span>`;
+        const onclick = g.rs_gear === fromGear ? '' :
+            `onclick="rbConfirmGearSwap(${toneIdx}, ${pIdx}, '${rbEsc(g.rs_gear)}')"`;
+        return `
+            <div ${onclick} class="flex items-center gap-2 p-1.5 rounded ${dim}">
+                ${img}
+                <div class="min-w-0 flex-1">
+                    <div class="text-xs text-gray-200 truncate">${rbEsc(g.name)}</div>
+                    <div class="text-[10px] text-gray-500 truncate">${rbEsc(g.rs_gear)}</div>
+                </div>
+                ${variantBadge}
+            </div>`;
+    }).join('') || '<div class="text-xs text-gray-500 italic col-span-2">no matches</div>';
+}
+
+async function rbConfirmGearSwap(toneIdx, pIdx, toRsGear) {
+    const tone = rbState.songTones && rbState.songTones.tones && rbState.songTones.tones[toneIdx];
+    const piece = tone && tone.chain && tone.chain[pIdx];
+    if (!tone || !piece) return;
+    // Save first if no preset_id — replace_with needs an existing row.
+    let presetId = tone.preset_id;
+    if (presetId == null) {
+        presetId = await rbPersistTone(toneIdx);
+        if (presetId == null) {
+            alert('Could not persist the tone before swapping the gear.');
+            return;
+        }
+    }
+    try {
+        const r = await fetch(`${RB_API}/gear/replace_with`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                preset_id: presetId,
+                from_rs_gear: piece.type,
+                to_rs_gear: toRsGear,
+            }),
+        });
+        if (!r.ok) {
+            const err = await r.json().catch(() => ({}));
+            alert(`Gear swap failed: ${err.error || r.status}`);
+            return;
+        }
+        const data = await r.json();
+        if (data.pieces_updated === 0) {
+            alert('No piece was updated — target gear has no NAM available on disk for this song\'s Gain knob. Download its variants first.');
+            return;
+        }
+        // Collapse the swap panel and refresh.
+        const panel = document.getElementById(`rb-swap-${toneIdx}-${pIdx}`);
+        if (panel) panel.classList.add('hidden');
+        await rbRefreshSongAfterEdit(toneIdx);
+    } catch (e) {
+        alert(`Gear swap failed: ${e.message || e}`);
+    }
+}
+
+// Refresh the open song from the server after a server-side edit
+// (variant override / gear swap / etc.) so derived state shown in the
+// piece cards reflects what the next ▶ Listen will load. Falls back to
+// silently no-op if no song is open (shouldn't happen from these flows).
+async function rbRefreshSongAfterEdit(toneIdx) {
+    const filename = rbState.songTones && rbState.songTones.filename;
+    if (!filename) return;
+    try {
+        const r = await fetch(`${RB_API}/song/${encodeURIComponent(filename)}`);
+        if (!r.ok) return;
+        const fresh = await r.json();
+        // Seed bypass on the fresh data BEFORE replacing rbState so the
+        // re-rendered chain shows the right bypass state. rbSeedBypass
+        // walks data.tones[*].chain[*] and copies bypassed → _bypassed.
+        if (typeof rbSeedBypass === 'function') rbSeedBypass(fresh);
+        rbState.songTones = fresh;
+        // Re-render only the affected chain to keep scroll position.
+        rbReRenderToneChain(toneIdx, filename);
+    } catch (_) { /* ignore */ }
 }
 
 // ── Master chain (global pre/post FX) ──────────────────────────────────
@@ -5003,6 +5246,17 @@ function rbRenderCatalogCard(g) {
                 title="Set clean / crunch / dist captures so the song's Gain knob picks the right one"
                 class="bg-emerald-900/30 hover:bg-emerald-900/50 text-emerald-300 border border-emerald-800/40 px-2.5 py-1 rounded text-xs">🎚 Variants</button>` : '';
 
+    // Gear-centric Replace: opens a picker that lists OTHER curated
+    // gears in the same category and bulk-swaps THIS gear's NAM for
+    // theirs across every song. Per-song variants are auto-picked by
+    // each row's Gain knob. Only shown for categories that have a
+    // gear-centric replacement story (amps definitively; pedals + racks
+    // for parity); cabs use the IR dropdown instead.
+    const replaceBtn = (g.category === 'amp' || g.category === 'pedal' || g.category === 'rack') ? `
+        <button onclick="rbToggleCatalogReplace('${rbEsc(g.rs_gear)}','${rbEsc(g.category || '')}')"
+                title="Replace this gear's NAM with another gear's curated NAMs across every song"
+                class="bg-amber-900/25 hover:bg-amber-900/45 text-amber-300 border border-amber-800/40 px-2.5 py-1 rounded text-xs">🔁 Replace</button>` : '';
+
     // Audition row for amps with curated gain_variants — one mini ▶
     // per variant (clean/crunch/dist/whatever the curator named them).
     // Lets the user A/B the 3 captures without opening a song. The
@@ -5041,11 +5295,13 @@ function rbRenderCatalogCard(g) {
                     <button onclick="rbToggleCatalogLibrary('${rbEsc(g.rs_gear)}','${rbEsc(g.category || '')}','${rbEsc(g.vst_path || '')}','${rbEsc(g.vst_format || 'VST3')}')"
                             title="Pick a downloaded NAM/IR or an installed VST/AU and bulk-assign to every preset using this gear"
                             class="bg-indigo-900/30 hover:bg-indigo-900/50 text-indigo-300 border border-indigo-800/40 px-2.5 py-1 rounded text-xs">📚 Library</button>
+                    ${replaceBtn}
                     ${variantsBtn}
                 </div>
             </div>
             ${variantAuditionRow}
             <div id="rb-cat-lib-${safeId}" class="hidden bg-indigo-900/10 border border-indigo-800/30 rounded p-2"></div>
+            <div id="rb-cat-replace-${safeId}" class="hidden bg-amber-900/10 border border-amber-800/30 rounded p-2"></div>
             <div id="rb-cat-variants-${safeId}" class="hidden bg-emerald-900/10 border border-emerald-800/30 rounded p-2"></div>
         </div>`;
 }
@@ -5245,6 +5501,108 @@ function rbReopenAmpVariants(rsGear) {
     rbToggleAmpVariants(rsGear);
 }
 
+// ── Catalog-level gear Replace (bulk swap across every song) ────────────
+//
+// Opens a gear picker in the Gear catalog card. Picking a target gear
+// rewrites every preset_piece using THIS gear with that target's NAM,
+// auto-picking the variant by each row's Gain knob. Confirmation
+// dialog quotes the number of presets affected and that the rs_gear
+// type stays the same (so the Songs tab still labels it as the
+// original; only the SOUND changes).
+async function rbToggleCatalogReplace(rsGear, category) {
+    const safeId = rsGear.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const el = document.getElementById(`rb-cat-replace-${safeId}`);
+    if (!el) return;
+    if (!el.classList.contains('hidden')) {
+        el.classList.add('hidden');
+        return;
+    }
+    el.classList.remove('hidden');
+    el.innerHTML = `<div class="text-xs text-gray-500">Loading ${rbEsc(category)}s…</div>`;
+    try {
+        const gears = await rbLoadGearsInCategory(category);
+        const inputId = `rb-cat-replace-search-${safeId}`;
+        el.innerHTML = `
+            <div class="flex items-center gap-2 mb-2">
+                <span class="text-[11px] text-amber-300">🔁 Replace globally with…</span>
+                <input id="${inputId}" type="text" placeholder="🔍 Filter gears…"
+                       oninput="rbFilterCatalogReplace('${rbEsc(rsGear)}')"
+                       class="flex-1 bg-dark-800 border border-gray-800 rounded text-[11px] text-gray-200 px-2 py-0.5">
+                <span class="text-[10px] text-gray-500">${gears.length} gears</span>
+            </div>
+            <div id="rb-cat-replace-rows-${safeId}" class="max-h-72 overflow-y-auto grid grid-cols-2 gap-1"></div>
+            <div class="text-[10px] text-gray-500 italic mt-2">Bulk action — affects EVERY song using this gear. Sets each row's mode to "manual" so Remap All won't undo it.</div>`;
+        el._rbGearList = gears;
+        el._rbFromGear = rsGear;
+        rbRenderCatalogReplaceRows(rsGear, '');
+    } catch (e) {
+        el.innerHTML = `<div class="text-xs text-red-400">Failed to load gears: ${rbEsc(e.message || e)}</div>`;
+    }
+}
+
+function rbFilterCatalogReplace(rsGear) {
+    const safeId = rsGear.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const input = document.getElementById(`rb-cat-replace-search-${safeId}`);
+    rbRenderCatalogReplaceRows(rsGear, input ? input.value : '');
+}
+
+function rbRenderCatalogReplaceRows(rsGear, filter) {
+    const safeId = rsGear.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const panel = document.getElementById(`rb-cat-replace-${safeId}`);
+    const rows = document.getElementById(`rb-cat-replace-rows-${safeId}`);
+    if (!panel || !rows) return;
+    const list = panel._rbGearList || [];
+    const q = (filter || '').toLowerCase().trim();
+    const filtered = q ? list.filter(g => (g.name + ' ' + g.rs_gear).toLowerCase().includes(q)) : list;
+    rows.innerHTML = filtered.map(g => {
+        const dim = g.rs_gear === rsGear ? 'opacity-40 cursor-not-allowed' : 'hover:bg-amber-900/30 cursor-pointer';
+        const img = g.image
+            ? `<img src="${rbEsc(g.image)}" alt="" loading="lazy" class="w-9 h-9 rounded object-cover bg-dark-900 flex-shrink-0">`
+            : `<div class="w-9 h-9 rounded bg-dark-900 flex items-center justify-center text-gray-700 text-[9px] flex-shrink-0">no photo</div>`;
+        const variantBadge = g.variant_count > 0
+            ? `<span class="text-[9px] text-emerald-400 bg-emerald-900/30 border border-emerald-800/40 rounded px-1">${g.variant_count}×</span>`
+            : `<span class="text-[9px] text-gray-600">no variants</span>`;
+        const onclick = g.rs_gear === rsGear ? '' :
+            `onclick="rbConfirmCatalogReplace('${rbEsc(rsGear)}','${rbEsc(g.rs_gear)}','${rbEsc(g.name)}')"`;
+        return `
+            <div ${onclick} class="flex items-center gap-2 p-1.5 rounded ${dim}">
+                ${img}
+                <div class="min-w-0 flex-1">
+                    <div class="text-xs text-gray-200 truncate">${rbEsc(g.name)}</div>
+                    <div class="text-[10px] text-gray-500 truncate">${rbEsc(g.rs_gear)}</div>
+                </div>
+                ${variantBadge}
+            </div>`;
+    }).join('') || '<div class="text-xs text-gray-500 italic col-span-2">no matches</div>';
+}
+
+async function rbConfirmCatalogReplace(fromRsGear, toRsGear, toName) {
+    if (!confirm(`Replace EVERY song using ${fromRsGear} with the NAM from ${toName} (${toRsGear})?\n\nThe rs_gear stays the same (Rocksmith still calls it ${fromRsGear}) — only the SOUND changes. Per-song gain variant is auto-picked.\n\nUse "Remap All" to revert.`)) {
+        return;
+    }
+    try {
+        const r = await fetch(`${RB_API}/gear/replace_with`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                from_rs_gear: fromRsGear,
+                to_rs_gear: toRsGear,
+            }),
+        });
+        const data = await r.json();
+        if (!r.ok) {
+            alert(`Replace failed: ${data.error || r.status}`);
+            return;
+        }
+        alert(`Replaced ${data.pieces_updated} piece${data.pieces_updated === 1 ? '' : 's'} across ${data.presets_affected} song${data.presets_affected === 1 ? '' : 's'}.${data.skipped ? ' (' + data.skipped + ' rows skipped — NAM missing for that Gain.)' : ''}`);
+        // Reload the catalog so the card shows the new assignment.
+        if (typeof rbLoadCatalog === 'function') {
+            await rbLoadCatalog();
+        }
+    } catch (e) {
+        alert(`Replace failed: ${e.message || e}`);
+    }
+}
+
 // Open the catalog-card library picker (bulk-assigns to every preset using
 // this rs_gear_type). `category` tells us whether to list NAMs or IRs.
 async function rbToggleCatalogLibrary(rsGear, category, vstPath, vstFormat) {
@@ -5297,7 +5655,10 @@ async function rbCatLibTab(rsGear, tab) {
     if (el.dataset.filesLoaded !== '1') {
         content.innerHTML = `<div class="text-xs text-gray-500">loading library…</div>`;
         try {
-            const r = await fetch(`${RB_API}/local_files?kind=${kind}`);
+            // Pass category so the picker only shows relevant files
+            // (an amp slot doesn't get pedal NAMs cluttering the list).
+            const cat = el._rbCategory ? `&category=${encodeURIComponent(el._rbCategory)}` : '';
+            const r = await fetch(`${RB_API}/local_files?kind=${kind}${cat}`);
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
             const data = await r.json();
             el._rbAllFiles = data.files || [];
