@@ -3245,11 +3245,32 @@ def _batch_worker(mode: str = "all"):
                     available = [f for f in rs_ir_files if (irs_root / f).exists()]
                     if category == "cab" and available:
                         _prev = existing_by_gear.get(rs_type, {})
-                        # Keep the user's chosen mic-position variant if it's
-                        # still on disk; otherwise default to the first.
-                        _cab_file = (_prev.get("file")
-                                     if _prev.get("kind") == "rs_ir" and _prev.get("file") in available
-                                     else available[0])
+                        # IR pick order:
+                        #   1. Keep the user's saved variant if it's still
+                        #      on disk (their explicit mic-position choice).
+                        #   2. Use the song's Cabinet.Key to pick the
+                        #      mic-specific IR via rs_cab_mic_map — this is
+                        #      what Rocksmith's tone designer originally
+                        #      specified. Previously this branch defaulted
+                        #      to `available[0]` (always _00.wav) and
+                        #      ignored Cabinet.Key, so every cab played
+                        #      with the SM57-condenser-close mic regardless
+                        #      of the song's intent.
+                        #   3. Fall back to the first available IR.
+                        _cab_file = None
+                        if _prev.get("kind") == "rs_ir" and _prev.get("file") in available:
+                            _cab_file = _prev.get("file")
+                        if _cab_file is None:
+                            cabinet_key = piece.get("cabinet_key") or ""
+                            if cabinet_key:
+                                suffix = _cab_suffix_from_effect_name(cabinet_key)
+                                if suffix:
+                                    spec = (_load_rs_cab_mic_map().get(rs_type) or {}).get(suffix)
+                                    cand = (spec or {}).get("ir_file")
+                                    if cand and (irs_root / cand).exists():
+                                        _cab_file = cand
+                        if _cab_file is None:
+                            _cab_file = available[0]
                         pieces.append({
                             "slot": piece["slot"],
                             "rs_gear_type": rs_type,
