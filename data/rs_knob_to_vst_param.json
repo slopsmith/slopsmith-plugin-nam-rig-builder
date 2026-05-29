@@ -1196,9 +1196,9 @@
   "khs compressor": {
    "Comp": {
     "param": "Threshold",
-    "scale": -0.4,
-    "offset": 0,
-    "_hint": "RS 'Comp' 0-100 is a compression AMOUNT. scale -0.4 over Threshold range [-40,6] maps it proportionally: Comp 0→~0 dB (no comp), 40→~-16 dB, 100→-40 dB (max). Pedal maps Comp→Threshold only."
+    "scale": -0.46,
+    "offset": 6.0,
+    "_hint": "RS Compress amount 0-100 → Threshold full range: 0→+6dB (no comp), 100→-40dB (max)."
    }
   },
   "mcompressor": {
@@ -1255,9 +1255,9 @@
   "khs compressor": {
    "Compress": {
     "param": "Threshold",
-    "scale": -0.4,
-    "offset": 0,
-    "_hint": "RS 'Compress' 0-100 is a compression AMOUNT, not a dB threshold. scale -0.4 over Threshold range [-40,6] maps it proportionally: Compress 0→~0 dB (no comp), 40→~-16 dB, 100→-40 dB (max). Single-band fallback — full multiband needs paid kHs Multipass."
+    "scale": -0.46,
+    "offset": 6.0,
+    "_hint": "RS Compress amount 0-100 → Threshold full range: 0→+6dB (no comp), 100→-40dB (max)."
    }
   },
   "mcompressor": {
