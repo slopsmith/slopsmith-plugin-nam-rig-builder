@@ -1340,12 +1340,13 @@
   "khs filter": {
    "FilterType": {
     "param": "Cutoff",
-    "scale": 0.01
+    "scale": 0.01,
+    "_hint": "RS FilterType sweeps the low-pass cutoff (low=darker/lo-fi)"
    },
    "Mix": {
-    "param": "Resonance",
+    "param": "Q",
     "scale": 0.01,
-    "_hint": "RS Mix on lo-fi → KHS resonance approximates the lo-fi colour"
+    "_hint": "RS Mix → resonance/Q for lo-fi colour (kHs Filter has no dry/wet)"
    }
   }
  },
@@ -1381,14 +1382,6 @@
    },
    "Sens": {
     "param": "Resonance",
-    "scale": 0.01
-   }
-  }
- },
- "Pedal_AcousticEmulator": {
-  "khs filter": {
-   "Mix": {
-    "param": "Cutoff",
     "scale": 0.01
    }
   }
