@@ -600,12 +600,18 @@
    "Time": {
     "param": "Decay",
     "scale": 0.0065,
-    "_hint": "RS Time → kHs Reverb Decay (0.5-30s, log internal). scale 0.0065 → Time 0≈0.5s, 78≈4s, 100≈7s. Calibrate from readout."
+    "_hint": "RS Time → Decay (0.5-30s log). Time 0≈0.5s, 78≈4s, 100≈7s."
    },
    "Depth": {
     "param": "Size",
     "scale": 0.01,
-    "_hint": "RS Depth → Size (50-200%). Depth 0→50%, 100→200%."
+    "_hint": "RS Depth → Size (50-200%). 0→50%, 100→200%."
+   },
+   "Tone": {
+    "param": "Dampen",
+    "scale": 0.01,
+    "invert": true,
+    "_hint": "RS Tone (brightness) → less Dampen. Inverted."
    },
    "Mix": {
     "param": "Mix",
@@ -616,18 +622,20 @@
  "Pedal_DigitalVerb": {
   "khs reverb": {
    "Time": {
-    "param": "Size",
-    "scale": 0.01
+    "param": "Decay",
+    "scale": 0.0065,
+    "_hint": "RS Time → Decay (0.5-30s log). Time 0≈0.5s, 78≈4s, 100≈7s."
    },
    "Depth": {
-    "param": "Predelay",
+    "param": "Size",
     "scale": 0.01,
-    "_hint": "Larger depth = more predelay"
+    "_hint": "RS Depth → Size (50-200%). 0→50%, 100→200%."
    },
    "Tone": {
-    "param": "Damping",
+    "param": "Dampen",
     "scale": 0.01,
-    "invert": true
+    "invert": true,
+    "_hint": "RS Tone (brightness) → less Dampen. Inverted."
    },
    "Mix": {
     "param": "Mix",
@@ -638,12 +646,20 @@
  "Pedal_PlateVerb": {
   "khs reverb": {
    "Time": {
-    "param": "Size",
-    "scale": 0.01
+    "param": "Decay",
+    "scale": 0.0065,
+    "_hint": "RS Time → Decay (0.5-30s log). Time 0≈0.5s, 78≈4s, 100≈7s."
    },
    "Depth": {
-    "param": "Predelay",
-    "scale": 0.01
+    "param": "Size",
+    "scale": 0.01,
+    "_hint": "RS Depth → Size (50-200%). 0→50%, 100→200%."
+   },
+   "Tone": {
+    "param": "Dampen",
+    "scale": 0.01,
+    "invert": true,
+    "_hint": "RS Tone (brightness) → less Dampen. Inverted."
    },
    "Mix": {
     "param": "Mix",
@@ -1969,18 +1985,20 @@
  "Rack_StudioChamber": {
   "khs reverb": {
    "Time": {
-    "param": "Time",
-    "scale": 0.01
-   },
-   "Tone": {
-    "param": "Damping",
-    "scale": 0.01,
-    "_hint": "RS Tone ≈ damping/HF roll-off in kHs Reverb"
+    "param": "Decay",
+    "scale": 0.0065,
+    "_hint": "RS Time → Decay (0.5-30s log). Time 0≈0.5s, 78≈4s, 100≈7s."
    },
    "Depth": {
-    "param": "Predelay",
+    "param": "Size",
     "scale": 0.01,
-    "_hint": "RS Depth on a chamber maps best to predelay"
+    "_hint": "RS Depth → Size (50-200%). 0→50%, 100→200%."
+   },
+   "Tone": {
+    "param": "Dampen",
+    "scale": 0.01,
+    "invert": true,
+    "_hint": "RS Tone (brightness) → less Dampen. Inverted."
    },
    "Mix": {
     "param": "Mix",
@@ -2080,16 +2098,20 @@
  "Rack_StudioVerb": {
   "khs reverb": {
    "Time": {
-    "param": "Time",
-    "scale": 0.01
-   },
-   "Tone": {
-    "param": "Damping",
-    "scale": 0.01
+    "param": "Decay",
+    "scale": 0.0065,
+    "_hint": "RS Time → Decay (0.5-30s log). Time 0≈0.5s, 78≈4s, 100≈7s."
    },
    "Depth": {
-    "param": "Predelay",
-    "scale": 0.01
+    "param": "Size",
+    "scale": 0.01,
+    "_hint": "RS Depth → Size (50-200%). 0→50%, 100→200%."
+   },
+   "Tone": {
+    "param": "Dampen",
+    "scale": 0.01,
+    "invert": true,
+    "_hint": "RS Tone (brightness) → less Dampen. Inverted."
    },
    "Mix": {
     "param": "Mix",
