@@ -1394,43 +1394,38 @@
    }
   },
   "mequalizer": {
-   "63": {
-    "param": "Gain 1 (EQ 1)",
-    "scale": 1.0,
-    "_hint": "RS 63Hz graphic band → MEqualizer Band 1 gain (dB direct). Frequency pinned via _static."
-   },
-   "250": {
-    "param": "Gain 2 (EQ 2)",
-    "scale": 1.0,
-    "_hint": "RS 250Hz graphic band → MEqualizer Band 2 gain (dB direct). Frequency pinned via _static."
-   },
-   "750": {
-    "param": "Gain 3 (EQ 3)",
-    "scale": 1.0,
-    "_hint": "RS 750Hz graphic band → MEqualizer Band 3 gain (dB direct). Frequency pinned via _static."
-   },
-   "2200": {
-    "param": "Gain 4 (EQ 4)",
-    "scale": 1.0,
-    "_hint": "RS 2200Hz graphic band → MEqualizer Band 4 gain (dB direct). Frequency pinned via _static."
-   },
-   "5700": {
-    "param": "Gain 5 (EQ 5)",
-    "scale": 1.0,
-    "_hint": "RS 5700Hz graphic band → MEqualizer Band 5 gain (dB direct). Frequency pinned via _static."
-   },
-   "_static": {
-    "Frequency 1 (EQ 1)": 63.0,
-    "Frequency 2 (EQ 2)": 250.0,
-    "Frequency 3 (EQ 3)": 750.0,
-    "Frequency 4 (EQ 4)": 2200.0,
-    "Frequency 5 (EQ 5)": 5700.0,
-    "Enable 1 (EQ 1)": 1.0,
-    "Enable 2 (EQ 2)": 1.0,
-    "Enable 3 (EQ 3)": 1.0,
-    "Enable 4 (EQ 4)": 1.0,
-    "Enable 5 (EQ 5)": 1.0
-   }
+   "_graphic_eq": [
+    {
+     "freq": 63,
+     "rs": [
+      "63"
+     ]
+    },
+    {
+     "freq": 250,
+     "rs": [
+      "250"
+     ]
+    },
+    {
+     "freq": 750,
+     "rs": [
+      "750"
+     ]
+    },
+    {
+     "freq": 2200,
+     "rs": [
+      "2200"
+     ]
+    },
+    {
+     "freq": 5700,
+     "rs": [
+      "5700"
+     ]
+    }
+   ]
   }
  },
  "Pedal_EQ8": {
@@ -1452,64 +1447,46 @@
    }
   },
   "mequalizer": {
-   "50": {
-    "param": "Gain 1 (EQ 1)",
-    "scale": 1.0,
-    "_hint": "RS 50Hz graphic band → MEqualizer Band 1 gain (dB direct). Frequency pinned via _static."
-   },
-   "100": {
-    "param": "Gain 2 (EQ 2)",
-    "scale": 1.0,
-    "_hint": "RS 100Hz graphic band → MEqualizer Band 2 gain (dB direct). Frequency pinned via _static."
-   },
-   "200": {
-    "param": "Gain 3 (EQ 3)",
-    "scale": 1.0,
-    "_hint": "RS 200Hz graphic band → MEqualizer Band 3 gain (dB direct). Frequency pinned via _static."
-   },
-   "400": {
-    "param": "Gain 4 (EQ 4)",
-    "scale": 1.0,
-    "_hint": "RS 400Hz graphic band → MEqualizer Band 4 gain (dB direct). Frequency pinned via _static."
-   },
-   "800": {
-    "param": "Gain 5 (EQ 5)",
-    "scale": 1.0,
-    "_hint": "RS 800Hz graphic band → MEqualizer Band 5 gain (dB direct). Frequency pinned via _static."
-   },
-   "1600": {
-    "param": "Gain 6 (EQ 6)",
-    "scale": 1.0,
-    "_hint": "RS 1600Hz graphic band → MEqualizer Band 6 gain (dB direct). Frequency pinned via _static."
-   },
-   "3200": {
-    "param": "Gain 7 (EQ 7)",
-    "scale": 1.0,
-    "_hint": "RS 3200Hz graphic band → MEqualizer Band 7 gain (dB direct). Frequency pinned via _static."
-   },
-   "6400": {
-    "param": "Gain 8 (EQ 8)",
-    "scale": 1.0,
-    "_hint": "RS 6400Hz graphic band → MEqualizer Band 8 gain (dB direct). Frequency pinned via _static."
-   },
-   "_static": {
-    "Frequency 1 (EQ 1)": 50.0,
-    "Frequency 2 (EQ 2)": 100.0,
-    "Frequency 3 (EQ 3)": 200.0,
-    "Frequency 4 (EQ 4)": 400.0,
-    "Frequency 5 (EQ 5)": 800.0,
-    "Frequency 6 (EQ 6)": 1600.0,
-    "Frequency 7 (EQ 7)": 3200.0,
-    "Frequency 8 (EQ 8)": 6400.0,
-    "Enable 1 (EQ 1)": 1.0,
-    "Enable 2 (EQ 2)": 1.0,
-    "Enable 3 (EQ 3)": 1.0,
-    "Enable 4 (EQ 4)": 1.0,
-    "Enable 5 (EQ 5)": 1.0,
-    "Enable 6 (EQ 6)": 1.0,
-    "Enable 7 (EQ 7)": 1.0,
-    "Enable 8 (EQ 8)": 1.0
-   }
+   "_graphic_eq": [
+    {
+     "freq": 71,
+     "rs": [
+      "50",
+      "100"
+     ]
+    },
+    {
+     "freq": 283,
+     "rs": [
+      "200",
+      "400"
+     ]
+    },
+    {
+     "freq": 800,
+     "rs": [
+      "800"
+     ]
+    },
+    {
+     "freq": 1600,
+     "rs": [
+      "1600"
+     ]
+    },
+    {
+     "freq": 3200,
+     "rs": [
+      "3200"
+     ]
+    },
+    {
+     "freq": 6400,
+     "rs": [
+      "6400"
+     ]
+    }
+   ]
   }
  },
  "Bass_Pedal_BassEQ8": {
@@ -1531,64 +1508,46 @@
    }
   },
   "mequalizer": {
-   "30": {
-    "param": "Gain 1 (EQ 1)",
-    "scale": 1.0,
-    "_hint": "RS 30Hz graphic band → MEqualizer Band 1 gain (dB direct). Frequency pinned via _static."
-   },
-   "75": {
-    "param": "Gain 2 (EQ 2)",
-    "scale": 1.0,
-    "_hint": "RS 75Hz graphic band → MEqualizer Band 2 gain (dB direct). Frequency pinned via _static."
-   },
-   "185": {
-    "param": "Gain 3 (EQ 3)",
-    "scale": 1.0,
-    "_hint": "RS 185Hz graphic band → MEqualizer Band 3 gain (dB direct). Frequency pinned via _static."
-   },
-   "460": {
-    "param": "Gain 4 (EQ 4)",
-    "scale": 1.0,
-    "_hint": "RS 460Hz graphic band → MEqualizer Band 4 gain (dB direct). Frequency pinned via _static."
-   },
-   "1100": {
-    "param": "Gain 5 (EQ 5)",
-    "scale": 1.0,
-    "_hint": "RS 1100Hz graphic band → MEqualizer Band 5 gain (dB direct). Frequency pinned via _static."
-   },
-   "2700": {
-    "param": "Gain 6 (EQ 6)",
-    "scale": 1.0,
-    "_hint": "RS 2700Hz graphic band → MEqualizer Band 6 gain (dB direct). Frequency pinned via _static."
-   },
-   "6800": {
-    "param": "Gain 7 (EQ 7)",
-    "scale": 1.0,
-    "_hint": "RS 6800Hz graphic band → MEqualizer Band 7 gain (dB direct). Frequency pinned via _static."
-   },
-   "16000": {
-    "param": "Gain 8 (EQ 8)",
-    "scale": 1.0,
-    "_hint": "RS 16000Hz graphic band → MEqualizer Band 8 gain (dB direct). Frequency pinned via _static."
-   },
-   "_static": {
-    "Frequency 1 (EQ 1)": 30.0,
-    "Frequency 2 (EQ 2)": 75.0,
-    "Frequency 3 (EQ 3)": 185.0,
-    "Frequency 4 (EQ 4)": 460.0,
-    "Frequency 5 (EQ 5)": 1100.0,
-    "Frequency 6 (EQ 6)": 2700.0,
-    "Frequency 7 (EQ 7)": 6800.0,
-    "Frequency 8 (EQ 8)": 16000.0,
-    "Enable 1 (EQ 1)": 1.0,
-    "Enable 2 (EQ 2)": 1.0,
-    "Enable 3 (EQ 3)": 1.0,
-    "Enable 4 (EQ 4)": 1.0,
-    "Enable 5 (EQ 5)": 1.0,
-    "Enable 6 (EQ 6)": 1.0,
-    "Enable 7 (EQ 7)": 1.0,
-    "Enable 8 (EQ 8)": 1.0
-   }
+   "_graphic_eq": [
+    {
+     "freq": 30,
+     "rs": [
+      "30"
+     ]
+    },
+    {
+     "freq": 75,
+     "rs": [
+      "75"
+     ]
+    },
+    {
+     "freq": 185,
+     "rs": [
+      "185"
+     ]
+    },
+    {
+     "freq": 460,
+     "rs": [
+      "460"
+     ]
+    },
+    {
+     "freq": 1723,
+     "rs": [
+      "1100",
+      "2700"
+     ]
+    },
+    {
+     "freq": 10431,
+     "rs": [
+      "6800",
+      "16000"
+     ]
+    }
+   ]
   }
  },
  "Rack_StudioEQ": {

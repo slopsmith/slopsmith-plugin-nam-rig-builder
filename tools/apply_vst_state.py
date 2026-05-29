@@ -240,6 +240,32 @@ def _build_params_for_piece(
         return None
     out: dict = {}
     skipped: list = []
+    # Graphic-EQ fold — MEqualizer (free) has only 6 bands, but RS graphic EQs
+    # (EQ8 / Bass EQ8) carry up to 8 fixed-frequency bands. A `_graphic_eq`
+    # block folds them into <=6 target bands: each target pins a center
+    # Frequency (Hz) and takes the AVERAGE gain of the RS knobs assigned to it
+    # (so a merged pair lands at their geometric-mean freq with mean gain).
+    # This fully defines the MEqualizer output; the per-knob loop is skipped.
+    geq = vst_block.get("_graphic_eq")
+    if isinstance(geq, list) and geq:
+        frng = _VST_PARAM_RANGES.get(stem, {}).get("Frequency 1 (EQ 1)") or ("log", 20.0, 20000.0)
+        grng = _VST_PARAM_RANGES.get(stem, {}).get("Gain 1 (EQ 1)") or ("linear", -24.0, 24.0)
+        for i, band in enumerate(geq[:16], 1):
+            try:
+                freq = float(band.get("freq"))
+            except (ValueError, TypeError):
+                continue
+            gains = []
+            for k in (band.get("rs") or []):
+                try:
+                    gains.append(float(knobs[k]))
+                except (KeyError, ValueError, TypeError):
+                    pass
+            avg = sum(gains) / len(gains) if gains else 0.0
+            out[f"Frequency {i} (EQ {i})"] = _normalize_display(freq, *frng)
+            out[f"Gain {i} (EQ {i})"] = _normalize_display(avg, *grng)
+            out[f"Enable {i} (EQ {i})"] = 1.0
+        return (out, skipped)
     # Static defaults first — `_static` block in the mapping holds
     # curator-pinned params applied regardless of RS knobs (e.g.
     # kHs Distortion Mode + Dynamics, so every fuzz pedal sounds fuzzy
