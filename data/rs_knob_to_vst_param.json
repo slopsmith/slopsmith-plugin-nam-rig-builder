@@ -809,6 +809,16 @@
   }
  },
  "Pedal_GermaniumDrive": {
+  "germaniumdrive": {
+   "Gain": {
+    "param": "Gain",
+    "scale": 0.01
+   },
+   "Tone": {
+    "param": "Tone",
+    "scale": 0.01
+   }
+  },
   "khs distortion": {
    "Gain": {
     "param": "Drive",
@@ -1077,9 +1087,19 @@
     "scale": 0.01,
     "_hint": "RS Blend 0-100 → kHs Dry/Wet 0-1. Most distortion pedals don't expose Blend; Bass_Pedal_BassOverdrive does."
    }
-  }
- },
+ }
+},
  "Pedal_FuzzWasHe": {
+  "fuzzwashe": {
+   "Gain": {
+    "param": "Gain",
+    "scale": 0.01
+   },
+   "Tone": {
+    "param": "Tone",
+    "scale": 0.01
+   }
+  },
   "khs distortion": {
    "Gain": {
     "param": "Drive",
@@ -1104,9 +1124,19 @@
     "scale": 0.01,
     "_hint": "RS Blend 0-100 → kHs Dry/Wet 0-1. Most distortion pedals don't expose Blend; Bass_Pedal_BassOverdrive does."
    }
-  }
- },
+ }
+},
  "Pedal_CaptFuzzle": {
+  "captainfuzzle": {
+   "Gain": {
+    "param": "Gain",
+    "scale": 0.01
+   },
+   "Tone": {
+    "param": "Tone",
+    "scale": 0.01
+   }
+  },
   "khs distortion": {
    "Gain": {
     "param": "Drive",
@@ -1211,6 +1241,21 @@
   }
  },
  "Pedal_Compression": {
+  "dynamicscompression": {
+   "Comp": {
+    "param": "Comp",
+    "scale": 0.01
+   },
+   "Attack": {
+    "param": "Attack",
+    "scale": 0.01
+   },
+   "Release": {
+    "param": "Release",
+    "scale": 0.0016666666666666668,
+    "_hint": "RS Release reaches ~540 ms in the DB. Normalize by 600 so DynamicsCompression can preserve long releases instead of clamping above 100."
+   }
+  },
   "khs compressor": {
    "Comp": {
     "param": "Threshold",

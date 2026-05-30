@@ -69,19 +69,29 @@ _default_db_path = default_db_path
 # ── Path helpers ────────────────────────────────────────────────────────
 
 def _vst_search_roots() -> list[Path]:
-    """Standard VST3 + AU install locations per platform."""
+    """Plugin-bundled VSTs first, then standard VST3 + AU install locations.
+
+    The plugin ships its own DSP plugins under ``vst/`` (e.g. AutoSweep.vst3,
+    a built-in envelope filter). Searching that dir first means a gear whose
+    primary VST is one of ours resolves without any system install — the
+    engine loads it by the absolute path we record here. Per-user installs
+    compute the right absolute path because PLUGIN_ROOT resolves to wherever
+    this plugin folder actually lives on that machine."""
+    roots = [_PLUGIN_DIR / "vst"]
     system = platform.system()
     if system == "Darwin":
-        return [
+        roots += [
             Path("/Library/Audio/Plug-Ins/VST3"),
             Path.home() / "Library/Audio/Plug-Ins/VST3",
             Path("/Library/Audio/Plug-Ins/Components"),
             Path.home() / "Library/Audio/Plug-Ins/Components",
         ]
-    if system == "Windows":
+    elif system == "Windows":
         common = Path(os.environ.get("CommonProgramFiles", r"C:\Program Files\Common Files"))
-        return [common / "VST3"]
-    return [Path.home() / ".vst3"]
+        roots += [common / "VST3"]
+    else:
+        roots += [Path.home() / ".vst3"]
+    return roots
 
 
 def _find_vst(name: str, roots: list[Path]) -> tuple[Path, str] | None:

@@ -46,18 +46,23 @@ import sys
 import time
 from pathlib import Path
 
+from common import PLUGIN_ROOT
+
 
 def _vst_roots() -> list[Path]:
     system = platform.system()
+    roots = [PLUGIN_ROOT / "vst"]
     if system == "Darwin":
-        return [
+        roots += [
             Path("/Library/Audio/Plug-Ins/VST3"),
             Path.home() / "Library/Audio/Plug-Ins/VST3",
         ]
-    if system == "Windows":
+    elif system == "Windows":
         common = Path(os.environ.get("CommonProgramFiles", r"C:\Program Files\Common Files"))
-        return [common / "VST3"]
-    return [Path.home() / ".vst3"]
+        roots += [common / "VST3"]
+    else:
+        roots += [Path.home() / ".vst3"]
+    return roots
 
 
 def _au_roots() -> list[Path]:

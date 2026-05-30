@@ -81,6 +81,13 @@ def _gear_matches_category(rs_gear_type: str, rs_info: dict,
     if info_cat == category:
         return True
     g = rs_gear_type.lower()
+    if category == "amp":
+        # Guitar + bass amps, plus DI amps (Tube/Mixer pre, Bass Driver).
+        # DI amps carry category="other" in rs_to_real but their art ships
+        # under gfxassets/tone_designer/amp/gear_di_amp_*, so the prefix —
+        # not the category — is what locates their texture.
+        return (g.startswith("amp_") or g.startswith("bass_amp_")
+                or g.startswith("di_amp_"))
     if category == "pedal":
         return g.startswith("pedal_") or g.startswith("bass_pedal_")
     if category == "rack":

@@ -498,6 +498,15 @@
  ],
  "Pedal_Compression": [
   {
+   "name": "DynamicsCompression",
+   "manufacturer": "Rig Builder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/DynamicsCompression.vst3",
+   "notes": "Bundled Dyna Comp-style pedal compressor using Rocksmith's Comp, Attack, and Release knobs."
+  },
+  {
    "name": "kHs Compressor",
    "manufacturer": "Kilohearts",
    "format": "VST3",
@@ -803,7 +812,7 @@
    "format": "VST3",
    "bundled": "vst/AutoSweep.vst3",
    "free": true,
-   "notes": "Bundled envelope filter / auto-wah — ships with Rig Builder, no install"
+   "notes": "Bundled envelope filter / auto-wah (ships in vst/AutoSweep.vst3). Real envelope follower -> biquad sweep, no separate install."
   },
   {
    "name": "kHs Filter",
@@ -811,7 +820,7 @@
    "format": "VST3",
    "url": "https://kilohearts.com/products/essentials",
    "free": true,
-   "notes": "Envelope-driven filter"
+   "notes": "Fallback — static envelope-driven filter"
   }
  ],
  "Bass_Pedal_BassAutoFilter": [
@@ -826,12 +835,21 @@
  ],
  "Pedal_GermaniumDrive": [
   {
+   "name": "GermaniumDrive",
+   "manufacturer": "Rig Builder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/GermaniumDrive.vst3",
+   "notes": "Bundled two-knob smooth germanium overdrive for Rocksmith's Gain/Tone pedal."
+  },
+  {
    "name": "kHs Distortion",
    "manufacturer": "Kilohearts",
    "format": "VST3",
    "url": "https://kilohearts.com/products/essentials",
    "free": true,
-   "notes": "Drive + Mix + Type — switch to 'Soft' or 'Diode' for germanium character"
+   "notes": "Fallback: Drive + Bias + Type when bundled GermaniumDrive is unavailable."
   }
  ],
  "Pedal_CustomDrive": [
@@ -926,22 +944,40 @@
  ],
  "Pedal_FuzzWasHe": [
   {
-   "name": "kHs Distortion",
-   "manufacturer": "Kilohearts",
+   "name": "FuzzWasHe",
+   "manufacturer": "Rig Builder",
    "format": "VST3",
-   "url": "https://kilohearts.com/products/essentials",
+   "url": "",
    "free": true,
-   "notes": "Fuzz Face style — Hard type, high drive"
-  }
- ],
- "Pedal_CaptFuzzle": [
+   "bundled": "vst/FuzzWasHe.vst3",
+   "notes": "Bundled two-knob silicon FZ-3 style fuzz based on the local Fuzz Was He schematic."
+  },
   {
    "name": "kHs Distortion",
    "manufacturer": "Kilohearts",
    "format": "VST3",
    "url": "https://kilohearts.com/products/essentials",
    "free": true,
-   "notes": "Hard / Fuzz character"
+   "notes": "Fallback: generic fuzz character when bundled FuzzWasHe is unavailable."
+  }
+ ],
+ "Pedal_CaptFuzzle": [
+  {
+   "name": "CaptainFuzzle",
+   "manufacturer": "Rig Builder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/CaptainFuzzle.vst3",
+   "notes": "Bundled two-knob low-headroom germanium fuzz based on the local Captain Fuzzle schematic."
+  },
+  {
+   "name": "kHs Distortion",
+   "manufacturer": "Kilohearts",
+   "format": "VST3",
+   "url": "https://kilohearts.com/products/essentials",
+   "free": true,
+   "notes": "Fallback: generic fuzz character when bundled CaptainFuzzle is unavailable."
   }
  ],
  "Pedal_BuzzOne": [

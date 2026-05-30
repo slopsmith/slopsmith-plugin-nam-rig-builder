@@ -4584,6 +4584,18 @@ async function rbLoadKnownVsts() {
     //   2. Our backend filesystem cache /vst/known — persisted on our side.
     //   3. Empty list, user must click Scan.
     const api = window.slopsmithDesktop && window.slopsmithDesktop.audio;
+    const mergeByPath = (a, b) => {
+        const byPath = new Map();
+        for (const p of (a || [])) if (p && p.path) byPath.set(p.path, p);
+        for (const p of (b || [])) if (p && p.path) byPath.set(p.path, p);
+        return Array.from(byPath.values()).sort((x, y) => String(x.name || '').localeCompare(String(y.name || '')));
+    };
+    const loadBackend = async () => {
+        const r = await fetch(`${RB_API}/vst/known`);
+        if (!r.ok) return [];
+        const data = await r.json();
+        return Array.isArray(data.plugins) ? data.plugins : [];
+    };
     if (api && typeof api.loadPluginList === 'function' && typeof api.getKnownPlugins === 'function') {
         try {
             // loadPluginList loads the engine's cached list (no scan). Safe
@@ -4591,23 +4603,21 @@ async function rbLoadKnownVsts() {
             await api.loadPluginList();
             const plugins = await api.getKnownPlugins();
             if (Array.isArray(plugins) && plugins.length > 0) {
-                rbState.knownVsts = plugins;
+                const backendPlugins = await loadBackend().catch(() => []);
+                rbState.knownVsts = mergeByPath(backendPlugins, plugins);
                 // Sync to our backend cache so future loads work even if
                 // the engine cache gets wiped.
                 fetch(`${RB_API}/vst/sync_known`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({plugins}),
+                    body: JSON.stringify({plugins: rbState.knownVsts}),
                 }).catch(() => {});
                 return;
             }
         } catch (_) { /* fall through to backend cache */ }
     }
     try {
-        const r = await fetch(`${RB_API}/vst/known`);
-        if (!r.ok) return;
-        const data = await r.json();
-        rbState.knownVsts = Array.isArray(data.plugins) ? data.plugins : [];
+        rbState.knownVsts = await loadBackend();
     } catch (_) { /* best-effort */ }
 }
 
