@@ -1684,7 +1684,8 @@ def _build_master_stages(role: str, models_dir, irs_dir,
                 missing.append(file)
                 continue
             stages.append(_ir_stage(ir_path, bypassed=bypassed,
-                                    slot=slot_tag, rs_gear=gear))
+                                    slot=slot_tag, rs_gear=gear,
+                                    gain=_RS_IR_MAKEUP if kind == "rs_ir" else 1.0))
         elif kind == "vst" and vst_path:
             vp = Path(vst_path)
             stages.append(_vst_stage(
@@ -2548,6 +2549,14 @@ def _nam_stage(path, *, bypassed, input_level=1.0, output_drive=None,
                                  "inputLevel": input_level,
                                  "outputLevel": out_level})
     return stage
+
+
+# Rocksmith-extracted cab IRs (kind 'rs_ir') are L2-normalized and come out
+# quieter than tone3000 IRs; apply a fixed makeup so they sit at a usable
+# level. tone3000 IRs (kind 'ir') stay at unity. This is a level makeup, NOT
+# the preset output_gain (chainOutputGain still applies that once — the −12 dB
+# fix removed the DOUBLE output_gain, not deliberate makeup like this).
+_RS_IR_MAKEUP = 1.5
 
 
 def _ir_stage(ir_path, *, bypassed, gain=1.0,
@@ -5829,18 +5838,19 @@ def setup(app, context):
         # One cab IR at the tail (prefer the cabinet slot). Indexed in the
         # original `rows` tuples — column order: slot, kind, file, rs_gear,
         # bypassed, slot_order, vst_path, vst_format, vst_state.
-        ir_rows = [(r[0], r[2], r[3], bool(r[4])) for r in rows if r[1] in ("ir", "rs_ir") and r[2]]
+        ir_rows = [(r[0], r[2], r[3], bool(r[4]), r[1]) for r in rows if r[1] in ("ir", "rs_ir") and r[2]]
         ir_pick = next((row for row in ir_rows if row[0] == "cabinet"), None)
         if ir_pick is None and ir_rows:
             ir_pick = ir_rows[0]
         if ir_pick:
-            ir_slot, ir_file, ir_gear, ir_bypassed = ir_pick
+            ir_slot, ir_file, ir_gear, ir_bypassed, ir_kind = ir_pick
             ir_path = _safe_child(irs_dir, ir_file)
             if ir_path and ir_path.exists():
-                # Unity gain — the engine's chainOutputGain already applies
-                # the preset's output_gain (see the −12 dB fix).
+                # chainOutputGain applies the preset output_gain once (−12 dB
+                # fix); RS IRs get a fixed makeup since they're quieter.
                 chain.append(_ir_stage(ir_path, bypassed=ir_bypassed,
-                                       slot=ir_slot, rs_gear=ir_gear))
+                                       slot=ir_slot, rs_gear=ir_gear,
+                                       gain=_RS_IR_MAKEUP if ir_kind == "rs_ir" else 1.0))
             else:
                 missing.append(ir_file)
 
@@ -5983,18 +5993,19 @@ def setup(app, context):
                         slot=slot, rs_gear=gear, tone_key=tone_key))
 
             # Cab IR at the tail of the tone (prefer cabinet slot).
-            ir_rows = [(r[0], r[2], r[3], bool(r[4])) for r in rows
+            ir_rows = [(r[0], r[2], r[3], bool(r[4]), r[1]) for r in rows
                        if r[1] in ("ir", "rs_ir") and r[2]]
             ir_pick = next((row for row in ir_rows if row[0] == "cabinet"), None)
             if ir_pick is None and ir_rows:
                 ir_pick = ir_rows[0]
             if ir_pick:
-                ir_slot, ir_file, ir_gear, ir_bypassed = ir_pick
+                ir_slot, ir_file, ir_gear, ir_bypassed, ir_kind = ir_pick
                 ir_path = _safe_child(irs_dir, ir_file)
                 if ir_path and ir_path.exists():
                     tone_stages.append(_ir_stage(
                         ir_path, bypassed=ir_bypassed,
-                        slot=ir_slot, rs_gear=ir_gear, tone_key=tone_key))
+                        slot=ir_slot, rs_gear=ir_gear, tone_key=tone_key,
+                        gain=_RS_IR_MAKEUP if ir_kind == "rs_ir" else 1.0))
                 else:
                     missing.append(ir_file)
             return tone_stages
