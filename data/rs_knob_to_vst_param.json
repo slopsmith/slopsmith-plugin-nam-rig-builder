@@ -1363,13 +1363,40 @@
   }
  },
  "Pedal_AutoFilter": {
+  "autosweep": {
+   "FilterType": {
+    "param": "Mode",
+    "scale": 0.5,
+    "_hint": "0/1/2 → LP/BP/HP"
+   },
+   "Res": {
+    "param": "Peak",
+    "scale": 0.01
+   },
+   "Attack": {
+    "param": "Attack",
+    "scale": 1.0,
+    "_hint": "RS Attack as ms → log[1,300]"
+   },
+   "Release": {
+    "param": "Release",
+    "scale": 1.0,
+    "_hint": "RS Release as ms → log[5,1000]"
+   },
+   "_static": {
+    "Range": 0.9,
+    "Mix": 0.5,
+    "Gain": 0.8,
+    "Boost": 0.2
+   }
+  },
   "khs filter": {
-   "Speed": {
+   "FilterType": {
     "param": "Cutoff",
     "scale": 0.01
    },
-   "Sens": {
-    "param": "Resonance",
+   "Res": {
+    "param": "Q",
     "scale": 0.01
    }
   }

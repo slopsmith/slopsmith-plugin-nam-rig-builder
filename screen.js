@@ -2697,10 +2697,17 @@ async function rbToneEditVst(toneIdx, pIdx) {
             const v  = param.value ?? param.current;
             if (id != null && typeof v === 'number') piece._vst_params[id] = v;
         }
-        if (api.openPluginEditor) {
-            api.openPluginEditor(slotId).catch(() => {});
-        }
+        // Render the inline slider panel FIRST so a headless plugin (no GUI —
+        // e.g. the bundled QTron envelope filter) still gets an editable
+        // panel even if openPluginEditor misbehaves for a UI-less plugin
+        // (returns non-promise / throws). Native-window plugins are unaffected.
         rbToneRenderInlineVstParams(toneIdx, pIdx);
+        if (api.openPluginEditor) {
+            try {
+                const _ed = api.openPluginEditor(slotId);
+                if (_ed && typeof _ed.catch === 'function') _ed.catch(() => {});
+            } catch (_) { /* UI-less plugin: no native editor view to open */ }
+        }
     } catch (e) {
         editor.innerHTML = `<div class="text-xs text-red-400">load failed: ${rbEsc(e.message || e)}</div>`;
     } finally {
@@ -3384,12 +3391,16 @@ async function rbMasterEditVst(role, idx) {
             const v  = param.value ?? param.current;
             if (id != null && typeof v === 'number') piece._vst_params[id] = v;
         }
-        // Open the plugin's own editor window too as an optional visual
-        // — the inline sliders still drive everything.
-        if (api.openPluginEditor) {
-            api.openPluginEditor(slotId).catch(() => {});
-        }
+        // Render inline sliders FIRST (headless plugins like the bundled QTron
+        // have no native window); then open the plugin's own editor window as
+        // an optional visual. The inline sliders drive everything regardless.
         rbMasterRenderInlineVstParams(role, idx);
+        if (api.openPluginEditor) {
+            try {
+                const _ed = api.openPluginEditor(slotId);
+                if (_ed && typeof _ed.catch === 'function') _ed.catch(() => {});
+            } catch (_) { /* UI-less plugin: no native editor view to open */ }
+        }
     } catch (e) {
         editor.innerHTML = `<div class="text-xs text-red-400">load failed: ${rbEsc(e.message || e)}</div>`;
     } finally {

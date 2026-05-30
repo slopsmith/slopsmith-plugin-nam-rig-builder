@@ -118,6 +118,14 @@ _VST_PARAM_RANGES: dict[str, dict[str, tuple[str, float, float]]] = {
         # Dry-Wet stay scale=0.01 (already normalized) — deliberately NOT here.
         "Rate": ("log", 0.01, 20.0),
     },
+    "autosweep": {
+        # AutoSweep (bundled QTron envelope filter). Attack/Release are
+        # display-domain in MILLISECONDS: the curated rule passes the RS value
+        # through as ms and the DSP knob maps the same log range, so the RS ms
+        # value reproduces as the same ms attack/release in the plugin.
+        "Attack":  ("log",  1.0,  300.0),
+        "Release": ("log",  5.0, 1000.0),
+    },
     # Other Melda effects (MFlanger, MChorus, MFreqShifter, MReverb) —
     # intentionally NO entries here. Every curated rs_knob_to_vst_param.json
     # rule for these uses `scale: 0.01` (RS 0-100 → 0-1) which already
