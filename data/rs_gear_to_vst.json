@@ -690,6 +690,14 @@
  ],
  "Rack_StudioEQ": [
   {
+   "name": "Studio EQ",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "bundled": "vst/StudioEQ.vst3",
+   "free": true,
+   "notes": "Bundled 4-band parametric EQ, GML-style clean"
+  },
+  {
    "name": "MEqualizer",
    "manufacturer": "MeldaProduction",
    "format": "VST3",

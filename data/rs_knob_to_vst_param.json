@@ -1704,6 +1704,57 @@
   }
  },
  "Rack_StudioEQ": {
+  "studioeq": {
+   "Bass": {
+    "param": "Bass",
+    "scale": 0.033333,
+    "offset": 0.5
+   },
+   "BassFreq": {
+    "param": "BassFreq",
+    "scale": 1.0,
+    "_hint": "Hz, log[30,300]"
+   },
+   "LoMid": {
+    "param": "LoMid",
+    "scale": 0.033333,
+    "offset": 0.5
+   },
+   "LoMidFreq": {
+    "param": "LoMidFreq",
+    "scale": 1.0,
+    "_hint": "Hz, log[120,2000]"
+   },
+   "LoMidQ": {
+    "param": "LoMidQ",
+    "scale": 1.0,
+    "_hint": "Q, log[0.3,4]"
+   },
+   "HiMid": {
+    "param": "HiMid",
+    "scale": 0.033333,
+    "offset": 0.5
+   },
+   "HiMidFreq": {
+    "param": "HiMidFreq",
+    "scale": 1000.0,
+    "_hint": "RS kHz→Hz, log[400,8000]"
+   },
+   "HiMidQ": {
+    "param": "HiMidQ",
+    "scale": 1.0
+   },
+   "Treble": {
+    "param": "Treble",
+    "scale": 0.033333,
+    "offset": 0.5
+   },
+   "TrebleFreq": {
+    "param": "TrebleFreq",
+    "scale": 1000.0,
+    "_hint": "RS kHz→Hz, log[1500,16000]"
+   }
+  },
   "khs 3-band eq": {
    "Bass": {
     "param": "Low Gain",

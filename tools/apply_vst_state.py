@@ -154,6 +154,19 @@ _VST_PARAM_RANGES: dict[str, dict[str, tuple[str, float, float]]] = {
         "Low Freq":    ("log",    20.0, 1000.0),
         "High Freq":   ("log",   1000.0, 20000.0),
     },
+    "studioeq": {
+        # Bundled Studio EQ (GML-style parametric). Freq params are display-Hz
+        # (the curated rule passes Hz, ×1000 for the kHz HiMid/Treble knobs) and
+        # Q is the raw value; these log ranges MUST match the DSP helpers in
+        # StudioEqParams.h so RS values reproduce exactly. Gains use scale=
+        # 1/30 + offset 0.5 (already normalized) — no range here.
+        "BassFreq":   ("log",   30.0,   300.0),
+        "LoMidFreq":  ("log",  120.0,  2000.0),
+        "HiMidFreq":  ("log",  400.0,  8000.0),
+        "TrebleFreq": ("log", 1500.0, 16000.0),
+        "LoMidQ":     ("log",    0.3,     4.0),
+        "HiMidQ":     ("log",    0.3,     4.0),
+    },
     # No khs chorus entries — RS Rate maps directly via curator scale=0.01
     # (RS 0-100 → 0-1 normalized). User wants the slider POSITION to track
     # the RS Rate value (e.g. RS=4 → slider at 4%). The plugin's internal
