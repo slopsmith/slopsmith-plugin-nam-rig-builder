@@ -2761,6 +2761,15 @@
   }
  },
  "Rack_StudioChorus": {
+  "studiochorus": {
+   "Rate":     { "param": "Rate",      "scale": 0.16949, "offset": -0.01695, "_hint": "RS Rate in Hz (0.2..2.5) → normalized (plugin 0.1..6 Hz)." },
+   "Depth":    { "param": "Depth",     "scale": 0.01, "_hint": "RS Depth 0-100 → mod depth 0..1." },
+   "Mix":      { "param": "Mix",       "scale": 0.01, "_hint": "RS Mix 0-100 → wet/dry 0..1." },
+   "LoFilter": { "param": "Lo Filter", "scale": 0.01, "_hint": "RS LoFilter 0-100 → wet high-pass 0..1." },
+   "HiFilter": { "param": "Hi Filter", "scale": 0.01, "_hint": "RS HiFilter 0-100 → wet low-pass 0..1." },
+   "Stereo":   { "param": "Stereo",    "scale": 0.01, "_hint": "RS Stereo 0-100 → L/R spread 0..1." },
+   "Delay":    { "param": "Delay",     "scale": 0.01, "_hint": "RS Delay 0-100 → base delay 0..1." }
+  },
   "khs chorus": {
    "Rate": {
     "param": "Rate",

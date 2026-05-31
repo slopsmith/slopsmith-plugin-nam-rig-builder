@@ -1413,6 +1413,14 @@
  ],
  "Rack_StudioChorus": [
   {
+   "name": "StudioChorus",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "bundled": "vst/StudioChorus.vst3",
+   "free": true,
+   "notes": "Bundled Boss RCE-10 Chorus Ensemble model — stereo BBD chorus, two ensemble voices per channel, Lo/Hi wet filtering, Stereo spread. Maps all 7 RS knobs (Rate in Hz)."
+  },
+  {
    "name": "kHs Chorus",
    "manufacturer": "Kilohearts",
    "format": "VST3",
