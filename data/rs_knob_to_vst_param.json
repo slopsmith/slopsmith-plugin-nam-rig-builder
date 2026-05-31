@@ -1212,6 +1212,14 @@
    }
   }
  },
+ "Bass_Pedal_BassEnbig": {
+  "bassenbig": {
+   "Rate":   { "param": "Rate",   "scale": 0.01, "_hint": "RS Rate 0-100 → LFO wobble speed 0..1." },
+   "Depth":  { "param": "Depth",  "scale": 0.01, "_hint": "RS Depth 0-100 → sweep range 0..1." },
+   "Mix":    { "param": "Mix",    "scale": 0.01, "_hint": "RS Mix 0-100 → wet/dry 0..1." },
+   "Filter": { "param": "Filter", "scale": 0.01, "_hint": "RS Filter 0-100 → base centre frequency 0..1." }
+  }
+ },
  "Bass_Pedal_BassFilterDelay": {
   "bassfilterdelay": {
    "Time":     { "param": "Time",     "scale": 0.01, "_hint": "RS Time 0-100 → 30..700 ms." },

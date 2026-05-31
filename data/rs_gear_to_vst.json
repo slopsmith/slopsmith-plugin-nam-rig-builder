@@ -1347,6 +1347,14 @@
  ],
  "Bass_Pedal_BassEnbig": [
   {
+   "name": "BassEnbig",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "bundled": "vst/BassEnbig.vst3",
+   "free": true,
+   "notes": "Bundled 'Enbiggenator' — a fictional RS pedal modeled as an LFO-modulated resonant band-pass (sci-fi vibe/wobble). Maps RS Rate/Depth/Mix/Filter."
+  },
+  {
    "name": "kHs Distortion",
    "manufacturer": "Kilohearts",
    "format": "VST3",
