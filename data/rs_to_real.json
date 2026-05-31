@@ -527,15 +527,15 @@
     "tone3000_id": 31267
    }
   },
-  "make": "ENGL",
+  "make": "Vox",
   "manifest": "gear_amp_en30",
-  "model": "30",
-  "name": "ENGL 30",
+  "model": "AC30",
+  "name": "Vox AC30",
   "name_correction_note": "auto-gen mismapped 'EN' prefix → ENGL; corrected per name_from_sheet + zoom_notes | user re-curated as Vox AC30 CH (was 'Vox AC-30')",
-  "query_source": "series",
+  "query_source": "override",
   "sound_bank": "amp_en30",
   "tone3000_gears": "amp",
-  "tone3000_query": "ENGL"
+  "tone3000_query": "Vox AC30"
  },
  "Amp_EN50": {
   "art_asset": "en50",
@@ -1782,15 +1782,15 @@
     "tone3000_id": 1733
    }
   },
-  "make": "Fender Tweed",
+  "make": "Fender",
   "manifest": "gear_amp_tw22",
-  "model": "22",
-  "name": "Fender Tweed 22",
-  "name_correction_note": "auto-gen mismapped 'TW' prefix → Tweed; corrected per zoom_notes + alternatives_from_sheet (both call it Twin Reverb)",
-  "query_source": "series",
+  "model": "Super-Sonic 22",
+  "name": "Fender Super-Sonic 22",
+  "name_correction_note": "Corrected from earlier TW22/Tweed/Twin-Reverb fallback using local Fender Super-Sonic 22 schematic folder.",
+  "query_source": "local_schematic",
   "sound_bank": "amp_tw22",
   "tone3000_gears": "amp",
-  "tone3000_query": "Fender Tweed"
+  "tone3000_query": "Fender Super-Sonic 22"
  },
  "Amp_TW26": {
   "art_asset": "tw26",

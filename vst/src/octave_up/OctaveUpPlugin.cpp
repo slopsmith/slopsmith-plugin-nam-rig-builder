@@ -1,29 +1,220 @@
 /*
- * OctaveUp - analog octave-up for Rocksmith's Pedal_OctaveUp.
- * The reference layout is Foxrox Octron-style: buffered dry path plus an
- * octave-up path generated from driven rectification. Rocksmith exposes only
- * Tone and Mix, so Tone shapes the rectified octave voice and Mix blends it
- * against the direct guitar.
+ * OctaveUp - clean +12 octave pedal for Rocksmith's Pedal_OctaveUp.
+ *
+ * Rocksmith exposes only Tone and Mix. The local Tentacle/Octron references
+ * explain the two-path octave-up family, but the in-game pedal needs the wet
+ * voice to read as a clean octave above the dry guitar. The wet path therefore
+ * uses a fixed 2x phase-vocoder pitch shifter instead of rectifier waveshaping,
+ * envelope tracking, or a filter-like phase doubler.
  */
 #include "DistrhoPlugin.hpp"
 #include "OctaveUpParams.h"
+#include <algorithm>
 #include <cmath>
+#include <complex>
+#include <vector>
 
 START_NAMESPACE_DISTRHO
 
 namespace {
+
+static constexpr float kPi = 3.14159265359f;
+static constexpr float kTwoPi = 6.28318530718f;
+static constexpr int kFrameSize = 2048;
+static constexpr int kOversample = 8;
+static constexpr int kStepSize = kFrameSize / kOversample;
+static constexpr int kFftBins = kFrameSize / 2 + 1;
+static constexpr float kPitchRatio = 2.0f;
 
 static inline float clamp01(float v)
 {
     return v < 0.0f ? 0.0f : (v > 1.0f ? 1.0f : v);
 }
 
-static inline float softClip(float x)
+static inline float onePoleCoeffHz(float hz, float sr)
 {
-    return std::tanh(x);
+    hz = std::fmax(2.0f, std::fmin(hz, sr * 0.45f));
+    return 1.0f - std::exp(-kTwoPi * hz / sr);
+}
+
+static void fft(std::vector<std::complex<float>>& a, bool inverse)
+{
+    const int n = (int)a.size();
+    for (int i = 1, j = 0; i < n; ++i)
+    {
+        int bit = n >> 1;
+        for (; j & bit; bit >>= 1)
+            j ^= bit;
+        j ^= bit;
+        if (i < j)
+            std::swap(a[(size_t)i], a[(size_t)j]);
+    }
+
+    for (int len = 2; len <= n; len <<= 1)
+    {
+        const float angle = (inverse ? kTwoPi : -kTwoPi) / (float)len;
+        const std::complex<float> wlen(std::cos(angle), std::sin(angle));
+        for (int i = 0; i < n; i += len)
+        {
+            std::complex<float> w(1.0f, 0.0f);
+            for (int j = 0; j < len / 2; ++j)
+            {
+                const std::complex<float> u = a[(size_t)(i + j)];
+                const std::complex<float> v = a[(size_t)(i + j + len / 2)] * w;
+                a[(size_t)(i + j)] = u + v;
+                a[(size_t)(i + j + len / 2)] = u - v;
+                w *= wlen;
+            }
+        }
+    }
+
+    if (inverse)
+    {
+        const float invN = 1.0f / (float)n;
+        for (auto& x : a)
+            x *= invN;
+    }
 }
 
 } // namespace
+
+class PitchUpShifter
+{
+    float sampleRate = 48000.0f;
+    int rover = kFrameSize - kStepSize;
+
+    std::vector<float> inFifo;
+    std::vector<float> outFifo;
+    std::vector<float> outputAccum;
+    std::vector<float> lastPhase;
+    std::vector<float> sumPhase;
+    std::vector<float> anaMagn;
+    std::vector<float> anaFreq;
+    std::vector<float> synMagn;
+    std::vector<float> synFreq;
+    std::vector<std::complex<float>> fftBuf;
+
+    void processFrame()
+    {
+        const float freqPerBin = sampleRate / (float)kFrameSize;
+        const float expected = kTwoPi * (float)kStepSize / (float)kFrameSize;
+
+        for (int k = 0; k < kFrameSize; ++k)
+        {
+            const float window = 0.5f - 0.5f * std::cos(kTwoPi * (float)k / (float)kFrameSize);
+            fftBuf[(size_t)k] = std::complex<float>(inFifo[(size_t)k] * window, 0.0f);
+        }
+
+        fft(fftBuf, false);
+
+        for (int k = 0; k < kFftBins; ++k)
+        {
+            const float real = fftBuf[(size_t)k].real();
+            const float imag = fftBuf[(size_t)k].imag();
+            const float magn = std::sqrt(real * real + imag * imag);
+            const float phase = std::atan2(imag, real);
+
+            float delta = phase - lastPhase[(size_t)k];
+            lastPhase[(size_t)k] = phase;
+            delta -= (float)k * expected;
+
+            while (delta < -kPi)
+                delta += kTwoPi;
+            while (delta > kPi)
+                delta -= kTwoPi;
+
+            const float trueFreq = ((float)k + delta * (float)kOversample / kTwoPi) * freqPerBin;
+            anaMagn[(size_t)k] = magn;
+            anaFreq[(size_t)k] = trueFreq;
+        }
+
+        std::fill(synMagn.begin(), synMagn.end(), 0.0f);
+        std::fill(synFreq.begin(), synFreq.end(), 0.0f);
+
+        for (int k = 0; k < kFftBins; ++k)
+        {
+            const int index = (int)((float)k * kPitchRatio + 0.5f);
+            if (index < kFftBins)
+            {
+                synMagn[(size_t)index] += anaMagn[(size_t)k];
+                synFreq[(size_t)index] = anaFreq[(size_t)k] * kPitchRatio;
+            }
+        }
+
+        std::fill(fftBuf.begin(), fftBuf.end(), std::complex<float>(0.0f, 0.0f));
+
+        for (int k = 0; k < kFftBins; ++k)
+        {
+            const float magn = synMagn[(size_t)k];
+            float deltaFreq = synFreq[(size_t)k] - (float)k * freqPerBin;
+            deltaFreq /= freqPerBin;
+            const float deltaPhase = (deltaFreq * kTwoPi / (float)kOversample)
+                                   + (float)k * expected;
+            sumPhase[(size_t)k] += deltaPhase;
+
+            const float phase = sumPhase[(size_t)k];
+            const std::complex<float> bin(magn * std::cos(phase), magn * std::sin(phase));
+            fftBuf[(size_t)k] = bin;
+            if (k > 0 && k < kFrameSize / 2)
+                fftBuf[(size_t)(kFrameSize - k)] = std::conj(bin);
+        }
+
+        fft(fftBuf, true);
+
+        const float olaNorm = 1.0f / (0.375f * (float)kOversample);
+        for (int k = 0; k < kFrameSize; ++k)
+        {
+            const float window = 0.5f - 0.5f * std::cos(kTwoPi * (float)k / (float)kFrameSize);
+            outputAccum[(size_t)k] += fftBuf[(size_t)k].real() * window * olaNorm;
+        }
+
+        for (int k = 0; k < kStepSize; ++k)
+            outFifo[(size_t)k] = outputAccum[(size_t)k];
+
+        for (int k = 0; k < kFrameSize - kStepSize; ++k)
+            outputAccum[(size_t)k] = outputAccum[(size_t)(k + kStepSize)];
+        std::fill(outputAccum.begin() + (kFrameSize - kStepSize), outputAccum.end(), 0.0f);
+
+        for (int k = 0; k < kFrameSize - kStepSize; ++k)
+            inFifo[(size_t)k] = inFifo[(size_t)(k + kStepSize)];
+    }
+
+public:
+    void reset(float sr)
+    {
+        sampleRate = sr > 1000.0f ? sr : 48000.0f;
+        rover = kFrameSize - kStepSize;
+
+        inFifo.assign(kFrameSize, 0.0f);
+        outFifo.assign(kFrameSize, 0.0f);
+        outputAccum.assign(kFrameSize * 2, 0.0f);
+        lastPhase.assign(kFftBins, 0.0f);
+        sumPhase.assign(kFftBins, 0.0f);
+        anaMagn.assign(kFftBins, 0.0f);
+        anaFreq.assign(kFftBins, 0.0f);
+        synMagn.assign(kFftBins, 0.0f);
+        synFreq.assign(kFftBins, 0.0f);
+        fftBuf.assign(kFrameSize, std::complex<float>(0.0f, 0.0f));
+    }
+
+    float process(float in)
+    {
+        if (inFifo.empty())
+            reset(sampleRate);
+
+        inFifo[(size_t)rover] = in;
+        const float out = outFifo[(size_t)(rover - (kFrameSize - kStepSize))];
+
+        ++rover;
+        if (rover >= kFrameSize)
+        {
+            rover = kFrameSize - kStepSize;
+            processFrame();
+        }
+
+        return out;
+    }
+};
 
 class OctaveUpCore
 {
@@ -31,55 +222,42 @@ class OctaveUpCore
     float tone = kOctaveUpDef[kTone];
     float mix = kOctaveUpDef[kMix];
 
-    float inHpX1 = 0.0f;
-    float inHpY1 = 0.0f;
-    float rectHpX1 = 0.0f;
-    float rectHpY1 = 0.0f;
-    float toneLowY = 0.0f;
-    float brightY = 0.0f;
+    PitchUpShifter shifter;
+
+    float inputHpX1 = 0.0f;
+    float inputHpY1 = 0.0f;
+    float wetHpX1 = 0.0f;
+    float wetHpY1 = 0.0f;
+    float wetToneY = 0.0f;
+    float wetAirY = 0.0f;
     float dryToneY = 0.0f;
 
-    float inHpA = 0.0f;
-    float rectHpA = 0.0f;
-    float toneLowA = 0.0f;
-    float brightA = 0.0f;
+    float inputHpA = 0.0f;
+    float wetHpA = 0.0f;
+    float wetToneA = 0.0f;
+    float wetAirA = 0.0f;
     float dryToneA = 0.0f;
 
     void updateFilters()
     {
         const float dt = 1.0f / sampleRate;
+        const float inputHpRc = 1.0f / (kTwoPi * 38.0f);
+        inputHpA = inputHpRc / (inputHpRc + dt);
 
-        const float inHpHz = 45.0f;
-        const float inHpRc = 1.0f / (2.0f * 3.14159265359f * inHpHz);
-        inHpA = inHpRc / (inHpRc + dt);
+        const float wetHpRc = 1.0f / (kTwoPi * 48.0f);
+        wetHpA = wetHpRc / (wetHpRc + dt);
 
-        const float rectHpHz = 180.0f + 90.0f * tone;
-        const float rectHpRc = 1.0f / (2.0f * 3.14159265359f * rectHpHz);
-        rectHpA = rectHpRc / (rectHpRc + dt);
-
-        const float toneLowHz = 1650.0f * std::pow(4.0f, tone);
-        toneLowA = 1.0f - std::exp(-2.0f * 3.14159265359f * toneLowHz / sampleRate);
-
-        const float brightHz = 2600.0f + 3600.0f * tone;
-        brightA = 1.0f - std::exp(-2.0f * 3.14159265359f * brightHz / sampleRate);
-
-        dryToneA = 1.0f - std::exp(-2.0f * 3.14159265359f * 8500.0f / sampleRate);
-
+        const float t = tone * tone * (3.0f - 2.0f * tone);
+        wetToneA = onePoleCoeffHz(6200.0f + 7600.0f * t, sampleRate);
+        wetAirA = onePoleCoeffHz(2600.0f + 3600.0f * t, sampleRate);
+        dryToneA = onePoleCoeffHz(13000.0f, sampleRate);
     }
 
-    float inputHighPass(float x)
+    float highPass(float x, float& x1, float& y1, float a)
     {
-        const float y = inHpA * (inHpY1 + x - inHpX1);
-        inHpX1 = x;
-        inHpY1 = y;
-        return y;
-    }
-
-    float rectHighPass(float x)
-    {
-        const float y = rectHpA * (rectHpY1 + x - rectHpX1);
-        rectHpX1 = x;
-        rectHpY1 = y;
+        const float y = a * (y1 + x - x1);
+        x1 = x;
+        y1 = y;
         return y;
     }
 
@@ -92,8 +270,9 @@ class OctaveUpCore
 public:
     void reset()
     {
-        inHpX1 = inHpY1 = rectHpX1 = rectHpY1 = 0.0f;
-        toneLowY = brightY = dryToneY = 0.0f;
+        shifter.reset(sampleRate);
+        inputHpX1 = inputHpY1 = wetHpX1 = wetHpY1 = 0.0f;
+        wetToneY = wetAirY = dryToneY = 0.0f;
         updateFilters();
     }
 
@@ -116,32 +295,20 @@ public:
 
     float process(float in)
     {
-        float dry = lowPass(in, dryToneY, dryToneA);
-        float x = inputHighPass(in);
+        const float dry = lowPass(in, dryToneY, dryToneA);
+        const float shiftedIn = highPass(in, inputHpX1, inputHpY1, inputHpA);
 
-        // Octron-like octave-up path: pre-drive into a full-wave rectifier,
-        // then block DC. Tone raises both diode bite and top-end.
-        const float drive = 1.18f + 1.15f * tone;
-        float driven = x * drive;
-        driven = 0.94f * driven + 0.06f * softClip(driven * (1.15f + 0.65f * tone));
+        float wet = shifter.process(shiftedIn);
+        wet = highPass(wet, wetHpX1, wetHpY1, wetHpA);
+        wet = lowPass(wet, wetToneY, wetToneA);
 
-        float rect = std::fabs(driven);
-        rect = rectHighPass(rect);
-        float octave = rect;
+        const float airBase = lowPass(wet, wetAirY, wetAirA);
+        wet = airBase + (wet - airBase) * (0.45f + 0.50f * tone);
 
-        const float smooth = lowPass(octave, toneLowY, toneLowA);
-        const float brightBase = lowPass(octave, brightY, brightA);
-        const float bright = octave - 0.48f * brightBase;
-        octave = smooth * (1.00f - 0.34f * tone) + bright * (0.12f + 0.52f * tone);
-
-        // Light diode/output-transistor rounding only. The octave-up pedal
-        // should track immediately and stay cleaner than a fuzz.
-        octave = 0.96f * octave + 0.04f * softClip(octave * (1.4f + 0.45f * tone));
-
-        const float wet = octave * 1.15f;
-        const float dryLevel = 1.0f - 0.78f * mix;
-        const float wetLevel = 1.55f * mix;
-        return dry * dryLevel + wet * wetLevel;
+        const float m = mix;
+        const float dryLevel = 1.0f - m;
+        const float wetLevel = 0.96f * m;
+        return (dry * dryLevel + wet * wetLevel) * 0.98f;
     }
 };
 
@@ -172,10 +339,10 @@ public:
 
 protected:
     const char* getLabel() const override { return "OctaveUp"; }
-    const char* getDescription() const override { return "Analog octave-up pedal"; }
+    const char* getDescription() const override { return "Clean octave-up pedal"; }
     const char* getMaker() const override { return "RigBuilder"; }
     const char* getLicense() const override { return "ISC"; }
-    uint32_t getVersion() const override { return d_version(1, 0, 1); }
+    uint32_t getVersion() const override { return d_version(1, 0, 8); }
     int64_t getUniqueId() const override { return d_cconst('O', 'c', 'u', 'p'); }
 
     void initParameter(uint32_t index, Parameter& parameter) override

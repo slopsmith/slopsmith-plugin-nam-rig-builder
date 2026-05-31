@@ -1217,6 +1217,38 @@ def _compute_vst_state_for_piece(rs_gear: str, vst_path: str,
     return json.dumps({"params": params_by_name})
 
 
+def _effective_vst_state_for_piece(
+    rs_gear: str,
+    vst_path: str,
+    vst_state: str | None,
+    params_json: str | dict | None,
+) -> str | None:
+    """Return stored VST state, or derive it from Rocksmith knobs.
+
+    UI assignment endpoints may leave `vst_state` empty while preserving the
+    original `params_json`. For bundled mapped VSTs that should still load the
+    Rocksmith knob values, not plugin defaults.
+    """
+    if vst_state:
+        try:
+            env = json.loads(vst_state)
+            if isinstance(env, dict) and (env.get("opaque") or isinstance(env.get("params"), dict)):
+                return vst_state
+        except (ValueError, TypeError):
+            return vst_state
+
+    if isinstance(params_json, dict):
+        knobs = params_json
+    else:
+        try:
+            knobs = json.loads(params_json or "{}") or {}
+        except (ValueError, TypeError):
+            knobs = {}
+    if not isinstance(knobs, dict) or not knobs:
+        return vst_state
+    return _compute_vst_state_for_piece(rs_gear, vst_path, knobs) or vst_state
+
+
 class _CaseInsensitiveDict(dict):
     """A dict whose `.get(key)` falls back to a case-insensitive lookup
     when the exact key isn't present. Used for the rs_cab_to_ir and
@@ -1884,7 +1916,8 @@ def _load_saved_chain(conn: sqlite3.Connection, preset_id: int,
             "assigned_mode": assigned_mode,
             "vst_path": vst_path,
             "vst_format": vst_format,
-            "vst_state": vst_state,
+            "vst_state": _effective_vst_state_for_piece(rs_gear, vst_path, vst_state, knobs)
+            if kind == "vst" and vst_path else vst_state,
         }
         enriched["bypassed"] = bool(bypassed)
         enriched["_preset_piece_id"] = piece_id   # so the UI can reorder/remove by id
@@ -2629,9 +2662,9 @@ def _vst_stage_state(vst_path: str, vst_format: str | None, vst_state) -> str:
 
     Legacy pieces saved before opaque-capture (vst_state is a bare
     `{"params": {...}}` or empty) fall back to the old pluginPath/pluginState
-    wrapper. Those only re-apply via the preview's setParameter pass — they
-    play at plugin defaults in a real song until re-captured. See the
-    chain-editor VST notes in HANDOFF.md.
+    wrapper. Current native hosts also parse that wrapper and apply named
+    params on load, so these presets no longer depend on the editor/config
+    path to leave plugin defaults.
     """
     opaque = None
     if vst_state:
@@ -3303,6 +3336,25 @@ def _manual_piece_usable(prev: dict) -> bool:
     if kind in ("ir", "rs_ir"):
         return (_config_dir / "nam_irs" / f).exists()
     return False
+
+
+def _resolve_song_swap_assignment(to_gear: str, params_json: str | None,
+                                  rs_gain: float | None) -> dict | None:
+    """Resolve the target gear for a per-song swap.
+
+    Song swaps should mirror what the All Gear catalog says this target gear
+    plays today. That means an existing manual/manual_vst assignment wins over
+    curated amp gain variants; otherwise swapping to an amp with EN30/TW22 VST
+    assigned globally silently falls back to the old NAM variant.
+    """
+    res = _existing_assignment_for_gear(to_gear)
+    if res is None:
+        res = _resolve_gear_assignment(to_gear, None, rs_gain)
+    if res and res.get("kind") == "vst" and res.get("vst_path") and not res.get("vst_state"):
+        res = dict(res)
+        res["vst_state"] = _effective_vst_state_for_piece(
+            to_gear, str(res["vst_path"]), None, params_json)
+    return res
 
 
 # Global rate-limit gate for tone3000 API calls. Pure tone3000 server-
@@ -4029,9 +4081,10 @@ def _batch_worker(mode: str = "all"):
                     # apply_vst_state.py would generate from the RS knobs
                     # — without that step the plugin would load at
                     # defaults regardless of how the song's tone is
-                    # actually configured. Skip for amps + cabs (amps
-                    # use the NAM-capture pipeline; cabs use IRs).
-                    if category not in ("amp", "cab"):
+                    # actually configured. Cabs use IRs; amps normally use
+                    # NAM captures unless a bundled primary VST exists for the
+                    # exact amp (e.g. Amp_EN30 -> EN30).
+                    if category != "cab":
                         _vst_pick = _pick_installed_primary_vst(rs_type, known_vst_lookup)
                         if _vst_pick:
                             _vst_state = _compute_vst_state_for_piece(
@@ -4390,10 +4443,9 @@ def _auto_download_for_song(filename: str, path: Path) -> dict:
                 # query (file IS NOT NULL) and re-used as that NAM here, never
                 # reaching the VST primary — so cloud-downloaded songs landed on
                 # NAMs and needed a manual "remap all". Computing the VST first
-                # means pedals/racks/EQ get their VST + RS-knob vst_state on
-                # download. Skip amps (NAM-capture pipeline) + cabs (IRs); those
-                # fall through to the reuse/IR/NAM paths below.
-                if category not in ("amp", "cab"):
+                # means mapped VST gear gets its VST + RS-knob vst_state on
+                # download. Cabs still fall through to IR paths below.
+                if category != "cab":
                     _vst_pick = _pick_installed_primary_vst(rs_type, known_vst_lookup)
                     if _vst_pick:
                         _vst_state = _compute_vst_state_for_piece(
@@ -6068,9 +6120,11 @@ def setup(app, context):
                 vst_path_p = Path(payload)
                 # Opaque state blob (verbatim) so the plugin restores its
                 # captured params during real playback — not defaults.
+                effective_vst_state = _effective_vst_state_for_piece(
+                    gear, str(vst_path_p), vst_state, params_json)
                 chain.append(_vst_stage(
                     vst_path_p, vst_format, bypassed=bypassed,
-                    state=_vst_stage_state(str(vst_path_p), vst_format, vst_state),
+                    state=_vst_stage_state(str(vst_path_p), vst_format, effective_vst_state),
                     slot=slot, rs_gear=gear))
 
         # One cab IR at the tail (prefer the cabinet slot). Indexed in the
@@ -6225,9 +6279,11 @@ def setup(app, context):
                     # NOTE: mega_chain uses the simpler pluginPath wrapper (no
                     # opaque-state restore) — preserved verbatim by passing the
                     # state in. See _vst_stage / _vst_stage_state.
+                    effective_vst_state = _effective_vst_state_for_piece(
+                        gear, str(vp), vst_state, params_json)
                     state_obj = {"pluginPath": str(vp), "format": vst_format}
-                    if vst_state:
-                        state_obj["pluginState"] = vst_state
+                    if effective_vst_state:
+                        state_obj["pluginState"] = effective_vst_state
                     tone_stages.append(_vst_stage(
                         vp, vst_format, bypassed=persisted_bypassed,
                         state=_state_b64(state_obj),
@@ -7496,7 +7552,8 @@ def setup(app, context):
     # Three endpoints powering the new song/gear editor UX:
     #   GET  /gears_in_category/{cat}    list candidate replacements
     #   POST /piece_variant_override     force a variant for one preset
-    #   POST /gear/replace_with          swap one gear's file across all songs
+    #   POST /gear/replace_with          swap one gear to another gear's
+    #                                      current All Gear assignment
 
     # Single source of truth: the module-level resolver. Aliased here
     # so the gear-centric endpoints below keep their original name.
@@ -7721,12 +7778,10 @@ def setup(app, context):
                              preset. Omit to bulk-swap across every song.
 
         Effect: every matching preset_pieces row with rs_gear_type=from
-        gets a new file/tone3000_id drawn from to's gain_variants, with
-        the matching variant picked per-row by that row's Gain knob (so
-        songs with high Gain inherit to's dist variant, low Gain →
-        clean, etc.). The row's rs_gear_type stays the same — Rocksmith
-        still identifies the song as using `from` — but it now SOUNDS
-        like `to`. Marked `assigned_mode='manual'` so a Remap all
+        is rewritten to the current All Gear assignment for `to_rs_gear`
+        (including VST path + VST state). If the target gear is not assigned
+        yet, falls back to the curated resolver, with amp variants picked
+        per-row by that row's Gain knob. Marked manual/manual_vst so Remap all
         doesn't undo it.
         """
         try:
@@ -7777,7 +7832,7 @@ def setup(app, context):
                     rs_gain = float(rs_gain) if rs_gain is not None else None
                 except (ValueError, TypeError):
                     rs_gain = None
-                res = _resolve_gear_file(to_gear, None, rs_gain)
+                res = _resolve_song_swap_assignment(to_gear, params_json, rs_gain)
                 if res is None or (not res.get("file") and not res.get("vst_path")):
                     skipped += 1
                     continue
@@ -7792,7 +7847,7 @@ def setup(app, context):
                         "SET rs_gear_type = ?, kind = 'vst', "
                         "    file = NULL, tone3000_id = NULL, "
                         "    vst_path = ?, vst_format = ?, vst_state = ?, "
-                        "    assigned_mode = 'manual' "
+                        "    assigned_mode = 'manual_vst' "
                         "WHERE id = ?",
                         (to_gear, res["vst_path"],
                          res.get("vst_format") or "VST3",

@@ -531,6 +531,8 @@ async function rbPreLoadMute(chainLen, targetGain) {
             // Goes through our patched loadPreset (mute + chain-gain 0)
             // so the AMP-on transient is suppressed just like a tone change.
             await api.loadPreset(JSON.stringify(full.native_preset));
+            await rbReapplyVstParamsToChain(api, chain).catch((e) =>
+                console.warn('[rig_builder] AMP auto-apply re-apply VST params:', e));
             console.log(`[rig_builder] AMP auto-apply: ${chain.length} stages for tone "${tone || '(base)'}"`
                 + ` (master ${full.master_pre_count || 0}+${full.master_post_count || 0})`);
         } catch (e) {
@@ -2426,6 +2428,7 @@ function rbRenderPieceEditor(p, toneIdx, pIdx, filename) {
     const effFile = rbEffFile(p);
     const hasVst = effKind === 'vst' && !!effVstPath;
     const hasFile = !hasVst && !!effFile;
+    const hasNam = !hasVst && effKind === 'nam' && !!effFile;
     const mode = (p.assigned && p.assigned.assigned_mode) || (p._uploaded_file ? 'manual' : '');
     const bypassed = !!p._bypassed;
 
@@ -2489,7 +2492,7 @@ function rbRenderPieceEditor(p, toneIdx, pIdx, filename) {
 
     // Amp gain variant picker — clickable buttons, active level highlighted.
     let ampVariantBadge = '';
-    if (p.amp_variant && Array.isArray(p.amp_variant.available) && p.amp_variant.available.length) {
+    if (hasNam && p.amp_variant && Array.isArray(p.amp_variant.available) && p.amp_variant.available.length) {
         const av = p.amp_variant;
         const activeLevel = av.current_level || av.picked;
         const manualMode = (p.assigned && p.assigned.assigned_mode === 'manual');
@@ -3062,8 +3065,9 @@ function rbLibLabel(file, titleCounts) {
 //
 //   rbToggleGearSwap — open a category-filtered picker showing curated
 //                      gears with photos. Picking one swaps THIS song's
-//                      piece to that gear's NAM (variant auto-picked
-//                      by the row's Gain knob). Backed by POST
+//                      piece to that gear's current All Gear assignment
+//                      (VST when assigned, otherwise fallback NAM/IR).
+//                      Backed by POST
 //                      /gear/replace_with with `preset_id`.
 //
 // Both operations mark `assigned_mode='manual'` on the row so a Remap
@@ -3169,7 +3173,7 @@ function rbRenderGearSwapPanel(panel, gears, piece, toneIdx, pIdx) {
             <span class="text-[10px] text-gray-500">${gears.length} gears</span>
         </div>
         <div id="rb-swap-rows-${toneIdx}-${pIdx}" class="max-h-72 overflow-y-auto grid grid-cols-2 gap-1">${cards}</div>
-        <div class="text-[10px] text-gray-500 italic mt-2">Gears with curated multi-NAM variants are recommended. Cabs are skipped — use the IR dropdown instead.</div>`;
+        <div class="text-[10px] text-gray-500 italic mt-2">Uses the target gear's current All Gear assignment. Cabs are skipped — use the IR dropdown instead.</div>`;
     panel._rbGearList = gears;
     panel._rbToneIdx = toneIdx;
     panel._rbPIdx = pIdx;

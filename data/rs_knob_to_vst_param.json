@@ -38,6 +38,179 @@
    "kHs Distortion subtype convention (user-curated, verified via rbSweepParam): the `Type` param has 6 discrete modes — Overdrive (0.0), Saturate (0.2), Foldback (0.4), Sine (0.6), Hard Clip (0.8), Quantize (1.0). Fuzz pedals → Type=0.2 (Saturate); overdrive pedals → Type=0.0 (Overdrive); distortion pedals → Type=0.8 (Hard Clip). All three pin Dynamics=1.0 so the pedal's response tracks the player's pick attack."
   ]
  },
+ "Amp_EN30": {
+  "en30": {
+   "Gain": {
+    "param": "Gain",
+    "scale": 0.01
+   },
+   "Bass": {
+    "param": "Bass",
+    "scale": 0.01
+   },
+   "Mid": {
+    "param": "Mid",
+    "scale": 0.01,
+    "_hint": "The AC30 Top Boost reference has no Mid pot; this fills or cuts the post-tone-stack body while preserving Rocksmith's Mid knob."
+   },
+   "Treble": {
+    "param": "Treble",
+    "scale": 0.01
+   },
+   "Pres": {
+    "param": "Pres",
+    "scale": 0.01,
+    "_hint": "Pres maps to the inverse of the AC30 cut/presence behavior: higher Rocksmith Pres means less cut and more EL84/speaker bite."
+   },
+   "Bright": {
+    "param": "Bright",
+    "scale": 1.0,
+    "_hint": "Rocksmith stores Bright as 0/1; EN30 treats values >= 0.5 as the brilliant/top-boost voicing."
+   }
+  }
+ },
+ "Amp_TW22": {
+  "tw22": {
+   "Gain": {
+    "param": "Gain",
+    "scale": 0.01,
+    "_hint": "Rocksmith's single Gain blends the Super-Sonic 22 from Vintage/Fat clean behavior into the Burn channel's cascaded gain stages."
+   },
+   "Bass": {
+    "param": "Bass",
+    "scale": 0.01
+   },
+   "Mid": {
+    "param": "Mid",
+    "scale": 0.01
+   },
+   "Treble": {
+    "param": "Treble",
+    "scale": 0.01
+   }
+  }
+ },
+ "Amp_TW26": {
+  "tw26": {
+   "Gain": {
+    "param": "Gain",
+    "scale": 0.01,
+    "_hint": "5E3 volume behavior: Rocksmith Gain drives the 12AY7 preamp and cathode-biased 6V6 output section."
+   },
+   "Bass": {
+    "param": "Bass",
+    "scale": 0.01,
+    "_hint": "The real 57 Deluxe has no Bass pot; this controls low-end coupling and tweed thump while tightening high-gain flub."
+   },
+   "Mid": {
+    "param": "Mid",
+    "scale": 0.01,
+    "_hint": "The real 5E3 has no Mid pot; this controls the tweed mid body instead of a blackface-style scoop."
+   },
+   "Treble": {
+    "param": "Treble",
+    "scale": 0.01,
+    "_hint": "Maps to the single 5E3 Tone circuit."
+   },
+   "Pres": {
+    "param": "Pres",
+    "scale": 0.01,
+    "_hint": "The schematic has no presence pot; this adds/removes power-amp and speaker bite."
+   }
+  }
+ },
+ "Amp_TW40": {
+  "tw40": {
+   "Gain": {
+    "param": "Gain",
+    "scale": 0.01,
+    "_hint": "Rocksmith Gain drives the 5F6-A preamp and 5881-style output section."
+   },
+   "Bass": {
+    "param": "Bass",
+    "scale": 0.01,
+    "_hint": "Maps to the Bassman FMV tone stack bass control."
+   },
+   "Mid": {
+    "param": "Mid",
+    "scale": 0.01,
+    "_hint": "Maps to the Bassman FMV tone stack middle control."
+   },
+   "Treble": {
+    "param": "Treble",
+    "scale": 0.01,
+    "_hint": "Maps to the Bassman FMV tone stack treble control and bright-channel blend."
+   },
+   "Pres": {
+    "param": "Pres",
+    "scale": 0.01,
+    "_hint": "Maps to the Bassman presence circuit and upper speaker bite."
+   }
+  }
+ },
+ "Amp_MarshallDSL100H": {
+  "dsl100": {
+   "Gain": {
+    "param": "Gain",
+    "scale": 0.01,
+    "_hint": "Rocksmith Gain morphs the DSL100 from Classic Clean into Classic Crunch and Ultra OD1."
+   },
+   "Bass": {
+    "param": "Bass",
+    "scale": 0.01,
+    "_hint": "Maps to the DSL tone stack bass control plus low-end tightening at high gain."
+   },
+   "Mid": {
+    "param": "Mid",
+    "scale": 0.01,
+    "_hint": "Maps to the DSL tone stack middle control; low Mid at high Gain increases the Tone Shift-style scoop."
+   },
+   "Treble": {
+    "param": "Treble",
+    "scale": 0.01,
+    "_hint": "Maps to the DSL tone stack treble control and high-gain bite."
+   },
+   "Pres": {
+    "param": "Pres",
+    "scale": 0.01,
+    "_hint": "Maps to the upper feedback-loop presence and speaker bite."
+   },
+   "Res": {
+    "param": "Res",
+    "scale": 0.01,
+    "_hint": "Maps to the DSL deep/resonance low-feedback behavior."
+   }
+  }
+ },
+ "Amp_CA100": {
+  "dualrect": {
+   "Gain": {
+    "param": "Gain",
+    "scale": 0.01,
+    "_hint": "Rocksmith Gain morphs the Dual Rectifier Red channel through the local Red G2/G5/G8 curation."
+   },
+   "Bass": {
+    "param": "Bass",
+    "scale": 0.01,
+    "_hint": "Maps to the Dual Rectifier Red tone stack bass control with high-gain low-end tightening."
+   },
+   "Mid": {
+    "param": "Mid",
+    "scale": 0.01,
+    "_hint": "Maps to the Red tone stack mid control; high Gain adds the Rectifier modern scoop around it."
+   },
+   "Treble": {
+    "param": "Treble",
+    "scale": 0.01,
+    "_hint": "Maps to the Red tone stack treble control and cascaded-stage bite."
+   },
+   "Pres": {
+    "param": "Pres",
+    "scale": 0.01,
+    "_hint": "Maps to the presence and feedback network in the power amp."
+   }
+  }
+ },
  "Pedal_AcousticEmulator": {
   "acousticsimulator": {
    "Tone": {
@@ -298,6 +471,20 @@
   }
  },
  "Pedal_80sFlanger": {
+  "eightiesflanger": {
+   "Rate": {
+    "param": "Rate",
+    "scale": 0.01
+   },
+   "Depth": {
+    "param": "Depth",
+    "scale": 0.01
+   },
+   "Mix": {
+    "param": "Mix",
+    "scale": 0.01
+   }
+  },
   "khs flanger": {
    "Rate": {
     "param": "Rate",
@@ -336,6 +523,20 @@
   }
  },
  "Pedal_ClassicFlanger": {
+  "classicflanger": {
+   "Rate": {
+    "param": "Rate",
+    "scale": 0.01
+   },
+   "Depth": {
+    "param": "Depth",
+    "scale": 0.01
+   },
+   "Mix": {
+    "param": "Mix",
+    "scale": 0.01
+   }
+  },
   "khs flanger": {
    "Rate": {
     "param": "Rate",
@@ -374,6 +575,30 @@
   }
  },
  "Pedal_ModernFlanger": {
+  "modernflanger": {
+   "Rate": {
+    "param": "Rate",
+    "scale": 0.01
+   },
+   "Depth": {
+    "param": "Depth",
+    "scale": 0.01
+   },
+   "Regen": {
+    "param": "Regen",
+    "scale": 0.01,
+    "_hint": "Rocksmith calls the feedback control Regen; the bundled MF-108M style flanger uses it as BBD feedback/regeneration."
+   },
+   "Feedback": {
+    "param": "Regen",
+    "scale": 0.01,
+    "_hint": "Alias for any extracted rows that use Feedback instead of Regen."
+   },
+   "Mix": {
+    "param": "Mix",
+    "scale": 0.01
+   }
+  },
   "khs flanger": {
    "Rate": {
     "param": "Rate",
@@ -385,6 +610,10 @@
    },
    "Mix": {
     "param": "Mix",
+    "scale": 0.01
+   },
+   "Regen": {
+    "param": "Feedback",
     "scale": 0.01
    }
   },
@@ -405,6 +634,10 @@
     "param": "Feedback",
     "scale": 0.01
    },
+   "Regen": {
+    "param": "Feedback",
+    "scale": 0.01
+   },
    "Mix": {
     "param": "Dry/Wet",
     "scale": 0.01
@@ -412,6 +645,20 @@
   }
  },
  "Pedal_VintageFlanger": {
+  "vintageflanger": {
+   "Rate": {
+    "param": "Rate",
+    "scale": 0.01
+   },
+   "Depth": {
+    "param": "Depth",
+    "scale": 0.01
+   },
+   "Mix": {
+    "param": "Mix",
+    "scale": 0.01
+   }
+  },
   "khs flanger": {
    "Rate": {
     "param": "Rate",
@@ -510,6 +757,17 @@
   }
  },
  "Pedal_Phaser": {
+  "phaser363": {
+   "Rate": {
+    "param": "Rate",
+    "scale": 0.01
+   },
+   "0": {
+    "param": "Rate",
+    "scale": 0.01,
+    "_hint": "Alias for extracted rows that carried the single Phaser 363 knob as index 0."
+   }
+  },
   "khs phaser": {
    "Rate": {
     "param": "Rate",
@@ -548,6 +806,16 @@
   }
  },
  "Pedal_ShaverPhaser": {
+  "shaverphaser": {
+   "Rate": {
+    "param": "Rate",
+    "scale": 0.01
+   },
+   "Depth": {
+    "param": "Depth",
+    "scale": 0.01
+   }
+  },
   "khs phaser": {
    "Rate": {
     "param": "Rate",
@@ -586,6 +854,20 @@
   }
  },
  "Pedal_PlanePhase": {
+  "planephase": {
+   "Rate": {
+    "param": "Rate",
+    "scale": 0.01
+   },
+   "Depth": {
+    "param": "Depth",
+    "scale": 0.01
+   },
+   "Mix": {
+    "param": "Mix",
+    "scale": 0.01
+   }
+  },
   "khs phaser": {
    "Rate": {
     "param": "Rate",
@@ -662,6 +944,17 @@
   }
  },
  "Pedal_Tremolo": {
+  "tremolo": {
+   "Speed": {
+    "param": "Speed",
+    "scale": 0.01
+   },
+   "Mix": {
+    "param": "Mix",
+    "scale": 0.01,
+    "_hint": "Rocksmith Tremolo Mix is the depth/intensity control for the bundled Colorsound-style tremolo."
+   }
+  },
   "bertom_freetremolo": {
    "Speed": {
     "param": "Rate",
@@ -814,9 +1107,30 @@
     "param": "Mix",
     "scale": 0.01
    }
-  }
- },
- "Pedal_DigitalVerb": {
+ }
+},
+"Pedal_DigitalVerb": {
+  "digitalverb": {
+   "Time": {
+    "param": "Time",
+    "scale": 0.01,
+    "_hint": "Rocksmith Time controls the digital reverb decay."
+   },
+   "Mix": {
+    "param": "Mix",
+    "scale": 0.01
+   },
+   "Depth": {
+    "param": "Depth",
+    "scale": 0.01,
+    "_hint": "Rocksmith Depth controls digital room depth, pre-delay and tail density."
+   },
+   "Tone": {
+    "param": "Tone",
+    "scale": 0.01,
+    "_hint": "Rocksmith Tone controls brightness/damping."
+   }
+  },
   "khs reverb": {
    "Time": {
     "param": "Decay",
@@ -862,12 +1176,53 @@
     "param": "Mix",
     "scale": 0.01
    }
-  }
- },
- "Pedal_TubeSpring": {
+ }
+},
+"Pedal_TubeSpring": {
+  "tubespring": {
+   "Mix": {
+    "param": "Mix",
+    "scale": 0.01
+   },
+   "Depth": {
+    "param": "Depth",
+    "scale": 0.01,
+    "_hint": "Rocksmith Tube Spring Depth controls dwell, tank decay, and spring drip intensity."
+   }
+  },
   "khs reverb": {
    "Time": {
     "param": "Size",
+    "scale": 0.01
+   },
+   "Mix": {
+    "param": "Mix",
+    "scale": 0.01
+   }
+  }
+ },
+ "Pedal_OmniMod": {
+  "omnimod": {
+   "Rate": {
+    "param": "Rate",
+    "scale": 0.01
+   },
+   "Depth": {
+    "param": "Depth",
+    "scale": 0.01
+   },
+   "Mix": {
+    "param": "Mix",
+    "scale": 0.01
+   }
+  },
+  "khs chorus": {
+   "Rate": {
+    "param": "Rate",
+    "scale": 0.01
+   },
+   "Depth": {
+    "param": "Depth",
     "scale": 0.01
    },
    "Mix": {
@@ -2465,6 +2820,16 @@
   }
  },
  "Pedal_Octavius": {
+  "octavius": {
+   "Tone": {
+    "param": "Tone",
+    "scale": 0.01
+   },
+   "Mix": {
+    "param": "Mix",
+    "scale": 0.01
+   }
+  },
   "khs pitch shifter": {
    "Mix": {
     "param": "Mix",
@@ -2473,6 +2838,22 @@
   }
  },
  "Pedal_MultiPitch": {
+  "multipitch": {
+   "Pitch1": {
+    "param": "Pitch1",
+    "scale": 0.020833333333333332,
+    "offset": 0.5,
+    "_hint": "RS semitone Pitch1 normalized from -24..+24; -12 maps to 0.25 for a low MF-102 carrier."
+   },
+   "Tone": {
+    "param": "Tone",
+    "scale": 0.01
+   },
+   "Mix": {
+    "param": "Mix",
+    "scale": 0.01
+   }
+  },
   "khs pitch shifter": {
    "Mix": {
     "param": "Mix",
@@ -2600,9 +2981,35 @@
     "param": "Dry/Wet",
     "scale": 0.01
    }
-  }
- },
- "Pedal_MultiVibe": {
+ }
+},
+"Pedal_MultiVibe": {
+  "multivibe": {
+   "Speed": {
+    "param": "Speed",
+    "scale": 0.01
+   },
+   "Rate": {
+    "param": "Speed",
+    "scale": 0.01,
+    "_hint": "Alias for any extracted rows that use Rate instead of Speed."
+   },
+   "Mix": {
+    "param": "Mix",
+    "scale": 0.01,
+    "_hint": "Rocksmith Multi Vib Mix controls wet/depth intensity."
+   },
+   "Waveform": {
+    "param": "Waveform",
+    "scale": 1.0,
+    "_hint": "Rocksmith Waveform is selector-like here; value 1 selects the stronger VB-2 LFO/rise character."
+   },
+   "Wave": {
+    "param": "Waveform",
+    "scale": 1.0,
+    "_hint": "Alias for any extracted rows that use Wave instead of Waveform."
+   }
+  },
   "mvibrato": {
    "Speed": {
     "param": "Rate",
@@ -2623,6 +3030,30 @@
   }
  },
  "Pedal_MarshallSupervibe": {
+  "marshallsupervibe": {
+   "Rate": {
+    "param": "Rate",
+    "scale": 0.01
+   },
+   "Speed": {
+    "param": "Rate",
+    "scale": 0.01,
+    "_hint": "Alias for any extracted rows that use Speed instead of Rate."
+   },
+   "Depth": {
+    "param": "Depth",
+    "scale": 0.01
+   },
+   "Mix": {
+    "param": "Mix",
+    "scale": 0.01
+   },
+   "Wave": {
+    "param": "Wave",
+    "scale": 0.01,
+    "_hint": "Rocksmith Wave shapes the Supervibe LFO and sharper rotary/vibe character."
+   }
+  },
   "mvibrato": {
    "Speed": {
     "param": "Rate",

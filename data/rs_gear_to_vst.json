@@ -36,6 +36,72 @@
    }
   ]
  },
+ "Amp_EN30": [
+  {
+   "name": "EN30",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/EN30.vst3",
+   "notes": "Bundled Vox AC30 Top Boost / EL84 style amp based on the local EN30 schematics, using Rocksmith's Gain, Bass, Mid, Treble, Pres, and Bright knobs."
+  }
+ ],
+ "Amp_TW22": [
+  {
+   "name": "TW22",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/TW22.vst3",
+   "notes": "Bundled Fender Super-Sonic 22 / 6V6 style amp based on the local TW22 schematic, using Rocksmith's Gain, Bass, Mid, and Treble knobs."
+  }
+ ],
+ "Amp_TW26": [
+  {
+   "name": "TW26",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/TW26.vst3",
+   "notes": "Bundled Fender 57 Deluxe / 5E3 tweed style amp based on the local TW26 schematic, using Rocksmith's Gain, Bass, Mid, Treble, and Pres knobs."
+  }
+ ],
+ "Amp_TW40": [
+  {
+   "name": "TW40",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/TW40.vst3",
+   "notes": "Bundled Fender Bassman 5F6-A / 5881 style amp based on the local TW40 schematic, using Rocksmith's Gain, Bass, Mid, Treble, and Pres knobs."
+  }
+ ],
+ "Amp_MarshallDSL100H": [
+  {
+   "name": "DSL100",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/DSL100.vst3",
+   "notes": "Bundled Marshall DSL100H / JCM2000 style amp based on the local DSL100 schematics, using Rocksmith's Gain, Bass, Mid, Treble, Pres, and Res knobs."
+  }
+ ],
+ "Amp_CA100": [
+  {
+   "name": "DualRect",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/DualRect.vst3",
+   "notes": "Bundled Mesa-Boogie Dual Rectifier Red-channel style amp based on the local Cali_100 schematic, using Rocksmith's Gain, Bass, Mid, Treble, and Pres knobs."
+  }
+ ],
  "Pedal_AcousticEmulator": [
   {
    "name": "AcousticSimulator",
@@ -171,6 +237,15 @@
  ],
  "Pedal_80sFlanger": [
   {
+   "name": "EightiesFlanger",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/EightiesFlanger.vst3",
+   "notes": "Bundled MXR Flanger Original/SAD1024 style BBD flanger based on the local 80s flanger schematic, using Rocksmith's Rate, Depth, and Mix knobs."
+  },
+  {
    "name": "MFlanger",
    "manufacturer": "MeldaProduction",
    "format": "VST3",
@@ -188,6 +263,15 @@
   }
  ],
  "Pedal_ClassicFlanger": [
+  {
+   "name": "ClassicFlanger",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/ClassicFlanger.vst3",
+   "notes": "Bundled Boss BF-2/MN3207 style BBD flanger based on the local classic flanger schematic, using Rocksmith's Rate, Depth, and Mix knobs."
+  },
   {
    "name": "MFlanger",
    "manufacturer": "MeldaProduction",
@@ -207,6 +291,15 @@
  ],
  "Pedal_ModernFlanger": [
   {
+   "name": "ModernFlanger",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/ModernFlanger.vst3",
+   "notes": "Bundled MF-108M/Cluster Flux style BBD flanger based on the local modern flange schematic, using Rocksmith's Rate, Depth, Regen, and Mix knobs."
+  },
+  {
    "name": "MFlanger",
    "manufacturer": "MeldaProduction",
    "format": "VST3",
@@ -224,6 +317,15 @@
   }
  ],
  "Pedal_VintageFlanger": [
+  {
+   "name": "VintageFlanger",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/VintageFlanger.vst3",
+   "notes": "Bundled Deluxe Electric Mistress style BBD flanger based on the local vintage flanger schematic, using Rocksmith's Rate, Depth, and Mix knobs."
+  },
   {
    "name": "MFlanger",
    "manufacturer": "MeldaProduction",
@@ -269,6 +371,15 @@
  ],
  "Pedal_Phaser": [
   {
+   "name": "Phaser363",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/Phaser363.vst3",
+   "notes": "Bundled MXR Phase 90 style four-stage phaser based on the local Phaser 363 schematic, using Rocksmith's single Rate knob."
+  },
+  {
    "name": "MPhaser",
    "manufacturer": "MeldaProduction",
    "format": "VST3",
@@ -287,6 +398,15 @@
  ],
  "Pedal_ShaverPhaser": [
   {
+   "name": "ShaverPhaser",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/ShaverPhaser.vst3",
+   "notes": "Bundled ET-25B style phaser based on the local shaver phaser schematic, using Rocksmith's Rate and Depth knobs with fixed internal mix."
+  },
+  {
    "name": "MPhaser",
    "manufacturer": "MeldaProduction",
    "format": "VST3",
@@ -304,6 +424,15 @@
   }
  ],
  "Pedal_PlanePhase": [
+  {
+   "name": "PlanePhase",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/PlanePhase.vst3",
+   "notes": "Bundled AP-7 style eight-stage phaser based on the local Plane Phase schematic, using Rocksmith's Rate, Depth, and Mix knobs."
+  },
   {
    "name": "MPhaser",
    "manufacturer": "MeldaProduction",
@@ -348,6 +477,15 @@
   }
  ],
  "Pedal_Tremolo": [
+  {
+   "name": "Tremolo",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/Tremolo.vst3",
+   "notes": "Bundled Colorsound Tremolo/Tremola style transistor tremolo based on the local schematic, using Rocksmith's Speed and Mix knobs."
+  },
   {
    "name": "MTremolo",
    "manufacturer": "MeldaProduction",
@@ -426,6 +564,15 @@
  ],
  "Pedal_MultiVibe": [
   {
+   "name": "MultiVibe",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/MultiVibe.vst3",
+   "notes": "Bundled Boss VB-2 style BBD vibrato based on the local schematic, using Rocksmith's Speed, Mix and Waveform knobs."
+  },
+  {
    "name": "MVibrato",
    "manufacturer": "MeldaProduction",
    "format": "VST3",
@@ -445,6 +592,15 @@
   }
  ],
  "Pedal_MarshallSupervibe": [
+  {
+   "name": "MarshallSupervibe",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/MarshallSupervibe.vst3",
+   "notes": "Bundled Marshall SV-1/Supervibe style MN3007 BBD vibe based on the local schematic, using Rocksmith's Rate, Depth, Mix and Wave knobs."
+  },
   {
    "name": "MVibrato",
    "manufacturer": "MeldaProduction",
@@ -474,6 +630,15 @@
   }
  ],
  "Pedal_OmniMod": [
+  {
+   "name": "OmniMod",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/OmniMod.vst3",
+   "notes": "Bundled Uni-Vibe/Shin-ei style photocell phase modulation based on the local Omni Mod schematics, using Rocksmith's Rate, Depth, and Mix knobs."
+  },
   {
    "name": "kHs Chorus",
    "manufacturer": "Kilohearts",
@@ -619,6 +784,15 @@
  ],
  "Pedal_DigitalVerb": [
   {
+   "name": "DigitalVerb",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/DigitalVerb.vst3",
+   "notes": "Bundled Boss RV-2 style early digital reverb based on the local schematic, using Rocksmith's Time, Mix, Depth, and Tone knobs."
+  },
+  {
    "name": "kHs Reverb",
    "manufacturer": "Kilohearts",
    "format": "VST3",
@@ -638,6 +812,15 @@
   }
  ],
  "Pedal_TubeSpring": [
+  {
+   "name": "TubeSpring",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/TubeSpring.vst3",
+   "notes": "Bundled tube/spring tank reverb based on the local spring driver schematic, using Rocksmith's Mix and Depth knobs."
+  },
   {
    "name": "kHs Reverb",
    "manufacturer": "Kilohearts",
@@ -1355,7 +1538,7 @@
    "url": "",
    "free": true,
    "bundled": "vst/OctaveUp.vst3",
-   "notes": "Bundled analog octave-up based on a Foxrox Octron-style rectifier path, using Rocksmith's Tone and Mix knobs."
+   "notes": "Bundled clean +12 octave-up inspired by Foxrox Octron and EQD Tentacle two-path octave references, using Rocksmith's Tone and Mix knobs."
   },
   {
    "name": "kHs Pitch Shifter",
@@ -1368,6 +1551,15 @@
  ],
  "Pedal_Octavius": [
   {
+   "name": "Octavius",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/Octavius.vst3",
+   "notes": "Bundled Boss OC-2 style octave-down pedal based on the local Octavius schematic, using Rocksmith's Tone and Mix knobs."
+  },
+  {
    "name": "kHs Pitch Shifter",
    "manufacturer": "Kilohearts",
    "format": "VST3",
@@ -1377,6 +1569,15 @@
   }
  ],
  "Pedal_MultiPitch": [
+  {
+   "name": "MultiPitch",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/MultiPitch.vst3",
+   "notes": "Bundled MF-102 style ring mod pitch-sideband pedal based on the local multipitch schematic, using Rocksmith's Pitch1, Tone and Mix knobs."
+  },
   {
    "name": "kHs Pitch Shifter",
    "manufacturer": "Kilohearts",
