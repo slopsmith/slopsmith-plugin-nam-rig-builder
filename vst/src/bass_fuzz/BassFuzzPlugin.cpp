@@ -28,7 +28,7 @@ class BigMuff {
     // coefficients
     float cInHP, cBass, cS1, cS2, cToneLP, cToneHP, cOutDC;
     // params (derived)
-    float drive = 80.f, tone = 0.55f, dryBlend = 0.45f, makeup = 0.6f;
+    float drive = 30.f, tone = 0.55f, dryBlend = 0.45f, makeup = 0.7f;
 
     static inline float softclip(float x) { return std::tanh(x); }
 public:
@@ -43,7 +43,11 @@ public:
         cOutDC  = onePoleCoef(18.f,   fs);   // output DC blocker
     }
     void setParams(float gain, float toneP, float filterP) {
-        drive    = std::pow(10.0f, 0.5f + gain * 2.0f);   // ~3 .. 316 (huge sustain)
+        // Moderate drive: high enough for a sustaining Muff fuzz, low enough
+        // that the two clip stages DON'T saturate the input noise floor (the
+        // old pow(10,…)=126× pushed -50 dB hiss up to ~ signal level → loud
+        // white noise). ~3 .. 37; gain 0.8 (RS default) → ~30.
+        drive    = 3.0f + gain * 34.0f;
         tone     = toneP;
         dryBlend = filterP;
     }
@@ -56,8 +60,9 @@ public:
         // stage 1: gain + soft clip + interstage LP
         float s = softclip(drive * xin);
         zS1 += cS1 * (s - zS1); s = zS1;
-        // stage 2
-        s = softclip(drive * 0.8f * s);
+        // stage 2 — fixed modest gain (just for harmonics; re-applying the
+        // full drive here is what saturated the noise floor)
+        s = softclip(2.5f * s);
         zS2 += cS2 * (s - zS2); s = zS2;
         // Big Muff tone: crossfade LP and HP (mid scoop at tone=0.5)
         zToneLP += cToneLP * (s - zToneLP);

@@ -36,7 +36,10 @@ public:
     void setSampleRate(float s) { fs = (s > 0.f) ? s : 48000.f; recalcFixed(); }
     void recalcFixed() { cHP = onePoleCoef(35.f, fs); }   // input coupling HP
     void setParams(float gain, float toneP, float filterP) {
-        drive = std::pow(10.0f, 0.5f + gain * 2.2f);                 // ~3 .. 500 (RAT gain)
+        // Moderate drive so the hard clip doesn't saturate the input noise
+        // floor into loud hiss (the old pow(10,…)=up to 500× did). ~2 .. 32;
+        // gain 0.8 → ~26. Plenty for an aggressive RAT with the hard clip.
+        drive = 2.0f + gain * 30.0f;
         cPre  = onePoleCoef(800.0f  * std::pow(10.0f, toneP),  fs);  // 800 .. 8000 Hz pre-clip
         cPost = onePoleCoef(700.0f  * std::pow(2.0f, filterP * 3.1f), fs); // 700 .. ~6000 Hz Filter
     }

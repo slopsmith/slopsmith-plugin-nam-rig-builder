@@ -2575,8 +2575,16 @@ function rbFilterVstParams(params) {
 async function rbTeardownVstEditor(api) {
     const slot = rbState._vstEditorSlot;
     rbState._vstEditorSlot = null;
-    if (slot == null || !api) return;
-    try { if (api.closePluginEditor) await api.closePluginEditor(slot); } catch (_) {}
+    if (!api) return;
+    // Close the prior editor's native window only if there was one…
+    if (slot != null) {
+        try { if (api.closePluginEditor) await api.closePluginEditor(slot); } catch (_) {}
+    }
+    // …but ALWAYS clear the chain. The earlier `slot == null` early-return
+    // skipped this when opening the editor with no prior editor slot — so a
+    // live "Listen" chain (loaded via loadPreset, which sets no editor slot)
+    // stayed loaded, and the subsequent loadVST stacked a SECOND copy of the
+    // pedal on top → the effect was applied twice ("Edit VST doubles the sound").
     try { if (api.clearChain) await api.clearChain(); } catch (_) {}
 }
 
