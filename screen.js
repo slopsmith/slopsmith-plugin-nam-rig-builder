@@ -190,9 +190,13 @@ function rbApplyChainInputDrive(opts) {
 // asymmetry without a slider — the caller passes this to rbPreLoadMute
 // so the fade-in lands at the right level for whatever this chain has.
 //
-//   active amp + active cab IR → ×2.0 (compensate cab attenuation)
-//   active amp + no cab IR     → ×0.5 (knock the raw-amp spike down)
-//   no active amp / fallback   → ×1.0 (don't change anything)
+//   active amp + Rocksmith cab IR → ×2.0 (RS cabs are raw/quiet — boost +6 dB)
+//   active amp + non-RS cab IR    → ×1.0 (tone3000 IRs are already loudness-
+//                                         normalized — boosting them over-drove
+//                                         the output, the "too boosted/saturated
+//                                         without the Rocksmith cab" report)
+//   active amp + no cab IR        → ×0.5 (knock the raw-amp spike down)
+//   no active amp / fallback      → ×1.0 (don't change anything)
 function rbChainGainTargetFor(chainSpec) {
     // User "Chain volume" trim (chain_makeup, default 1.0) — the ONLY level
     // the engine respects (per-stage IR gain is ignored). Multiplies the
@@ -200,21 +204,27 @@ function rbChainGainTargetFor(chainSpec) {
     const makeup = (typeof window.__rbChainMakeup === 'number') ? window.__rbChainMakeup : 4.0;
     let base = 1.0;
     if (Array.isArray(chainSpec)) {
-        let hasActiveAmp = false, hasActiveCab = false, activeNamCount = 0;
+        let hasActiveAmp = false, hasRsCab = false, hasOtherCab = false, activeNamCount = 0;
         for (const stage of chainSpec) {
             if (!stage || stage.bypassed) continue;
             if (stage.type === 1) {
                 activeNamCount++;
                 if (stage.slot === 'amp') hasActiveAmp = true;
             }
-            // type 2 = IR; ANY active IR counts as a cab (rs_ir master_pre etc.).
-            if (stage.type === 2) hasActiveCab = true;
+            // type 2 = IR. A Rocksmith cab IR lives under nam_irs/rocksmith/ and
+            // is RAW (quiet → needs +6 dB). A tone3000 IR is already normalized
+            // (boosting it is what saturated non-RS-cab tones), so 0 dB.
+            if (stage.type === 2) {
+                if (String(stage.path || '').toLowerCase().includes('rocksmith')) hasRsCab = true;
+                else hasOtherCab = true;
+            }
         }
-        // Auto makeup (dB): +6 if a cab IR is active, -6 if amp-only; +2 per
-        // extra NAM beyond the first; capped at +18. (Each NAM loses ~2-3 dB;
-        // the cab IR ~6 dB.) Only when an amp is active — otherwise leave at 1.
+        // Auto makeup (dB): +6 for a Rocksmith cab, 0 for a non-RS (tone3000)
+        // cab, -6 if amp-only; +2 per extra NAM beyond the first; capped at +18.
+        // Only when an amp is active — otherwise leave at 1.
         if (hasActiveAmp) {
-            let dB = (hasActiveCab ? 6 : -6) + 2 * Math.max(0, activeNamCount - 1);
+            const cabDb = hasRsCab ? 6 : (hasOtherCab ? 0 : -6);
+            let dB = cabDb + 2 * Math.max(0, activeNamCount - 1);
             dB = Math.max(-12, Math.min(18, dB));
             base = Math.pow(10, dB / 20);
         }
