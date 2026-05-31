@@ -7212,8 +7212,6 @@ async function rbLoadSettings() {
     }
     const megaCb = document.getElementById('rb-mega-chain-mode');
     if (megaCb) megaCb.checked = !!s.mega_chain_mode;
-    const bac = document.getElementById('rb-bypass-all-cabs');
-    if (bac) bac.checked = !!s.bypass_all_cabs;
     // Inverted-sense checkbox: the user opts OUT of curated-only by
     // ticking the box (= allow tone3000 fuzzy fallback). The persisted
     // setting is still `curated_only`; the UI just shows the opposite.
@@ -7303,12 +7301,10 @@ async function rbOauthDisconnect() {
 async function rbSaveSettings() {
     const megaCb = document.getElementById('rb-mega-chain-mode');
     const mega_chain_mode = megaCb ? !!megaCb.checked : false;
-    const bac = document.getElementById('rb-bypass-all-cabs');
-    const bypass_all_cabs = bac ? !!bac.checked : false;
     await fetch(`${RB_API}/settings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mega_chain_mode, bypass_all_cabs }),
+        body: JSON.stringify({ mega_chain_mode }),
     });
     // Mirror to the runtime so RbMegaChain picks it up without a restart.
     window.__rbMegaChainSetting = mega_chain_mode;
