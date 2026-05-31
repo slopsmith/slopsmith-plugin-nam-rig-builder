@@ -130,10 +130,26 @@
  },
  "Bass_Pedal_BassChorus": {
   "basschorus": {
-   "Rate": { "param": "Rate", "scale": 0.01, "_hint": "RS Rate → LFO speed 0..1 (0.1..8 Hz)." },
-   "Depth": { "param": "Depth", "scale": 0.01, "_hint": "RS Depth → LFO mod depth 0..1." },
-   "LoFilter": { "param": "LoFilter", "scale": 0.01, "_hint": "RS LoFilter → wet high-pass 0..1 (keeps lows dry)." },
-   "Mix": { "param": "Mix", "scale": 0.01, "_hint": "RS Mix → dry/wet 0..1." }
+   "Rate": {
+    "param": "Rate",
+    "scale": 0.01,
+    "_hint": "RS Rate → LFO speed 0..1 (0.1..8 Hz)."
+   },
+   "Depth": {
+    "param": "Depth",
+    "scale": 0.01,
+    "_hint": "RS Depth → LFO mod depth 0..1."
+   },
+   "LoFilter": {
+    "param": "LoFilter",
+    "scale": 0.01,
+    "_hint": "RS LoFilter → wet high-pass 0..1 (keeps lows dry)."
+   },
+   "Mix": {
+    "param": "Mix",
+    "scale": 0.01,
+    "_hint": "RS Mix → dry/wet 0..1."
+   }
   },
   "khs chorus": {
    "Rate": {
@@ -346,6 +362,28 @@
   }
  },
  "Bass_Pedal_BassFlanger": {
+  "bassflanger": {
+   "Rate": {
+    "param": "Rate",
+    "scale": 0.01,
+    "_hint": "RS Rate→LFO speed 0..1 (0.05..5 Hz)."
+   },
+   "Depth": {
+    "param": "Depth",
+    "scale": 0.01,
+    "_hint": "RS Depth→sweep width 0..1."
+   },
+   "Filter": {
+    "param": "Filter",
+    "scale": 0.01,
+    "_hint": "RS Filter→Resonance/feedback 0..1 (the jet)."
+   },
+   "Mix": {
+    "param": "Mix",
+    "scale": 0.01,
+    "_hint": "RS Mix→dry/wet 0..1."
+   }
+  },
   "khs flanger": {
    "Rate": {
     "param": "Rate",
@@ -985,10 +1023,26 @@
  },
  "Bass_Pedal_BassOverdrive": {
   "bassoverdrive": {
-   "Blend": { "param": "Blend", "scale": 0.01, "_hint": "RS Blend 0-100 → clean/dist mix 0..1." },
-   "Gain": { "param": "Gain", "scale": 0.01, "_hint": "RS Gain 0-100 → B3K Drive 0..1." },
-   "Filter": { "param": "Filter", "scale": 0.01, "_hint": "RS Filter 0-100 → B3K Grunt 0..1 (low end into the clipper)." },
-   "Tone": { "param": "Tone", "scale": 0.01, "_hint": "RS Tone 0-100 → B3K Attack 0..1 (treble of the distortion)." }
+   "Blend": {
+    "param": "Blend",
+    "scale": 0.01,
+    "_hint": "RS Blend 0-100 → clean/dist mix 0..1."
+   },
+   "Gain": {
+    "param": "Gain",
+    "scale": 0.01,
+    "_hint": "RS Gain 0-100 → B3K Drive 0..1."
+   },
+   "Filter": {
+    "param": "Filter",
+    "scale": 0.01,
+    "_hint": "RS Filter 0-100 → B3K Grunt 0..1 (low end into the clipper)."
+   },
+   "Tone": {
+    "param": "Tone",
+    "scale": 0.01,
+    "_hint": "RS Tone 0-100 → B3K Attack 0..1 (treble of the distortion)."
+   }
   },
   "khs distortion": {
    "Gain": {
@@ -1160,9 +1214,21 @@
  },
  "Bass_Pedal_BassDistortion": {
   "bassdistortion": {
-   "Gain": { "param": "Gain", "scale": 0.01, "_hint": "RS Gain 0-100 → RAT Distortion (drive) 0..1." },
-   "Tone": { "param": "Tone", "scale": 0.01, "_hint": "RS Tone 0-100 → pre-clip brightness 0..1 (grit character)." },
-   "Filter": { "param": "Filter", "scale": 0.01, "_hint": "RS Filter 0-100 → RAT Filter low-pass 0..1 (dark↔bright)." }
+   "Gain": {
+    "param": "Gain",
+    "scale": 0.01,
+    "_hint": "RS Gain 0-100 → RAT Distortion (drive) 0..1."
+   },
+   "Tone": {
+    "param": "Tone",
+    "scale": 0.01,
+    "_hint": "RS Tone 0-100 → pre-clip brightness 0..1 (grit character)."
+   },
+   "Filter": {
+    "param": "Filter",
+    "scale": 0.01,
+    "_hint": "RS Filter 0-100 → RAT Filter low-pass 0..1 (dark↔bright)."
+   }
   },
   "khs distortion": {
    "Gain": {
@@ -1188,8 +1254,8 @@
     "scale": 0.01,
     "_hint": "RS Blend 0-100 → kHs Dry/Wet 0-1. Most distortion pedals don't expose Blend; Bass_Pedal_BassOverdrive does."
    }
- }
-},
+  }
+ },
  "Pedal_FuzzWasHe": {
   "fuzzwashe": {
    "Gain": {
@@ -1225,8 +1291,8 @@
     "scale": 0.01,
     "_hint": "RS Blend 0-100 → kHs Dry/Wet 0-1. Most distortion pedals don't expose Blend; Bass_Pedal_BassOverdrive does."
    }
- }
-},
+  }
+ },
  "Pedal_CaptFuzzle": {
   "captainfuzzle": {
    "Gain": {
@@ -1441,7 +1507,7 @@
    "Filter": {
     "param": "Filter",
     "scale": 0.0011235955056179776,
-    "offset": -0.12359550561797753,
+    "offset": -0.12359550561797752,
     "_hint": "RS Filter is the multiband crossover in Hz, observed 110-1000. BassMultiComp stores it normalized: (Hz - 110) / 890."
    },
    "Rate": {

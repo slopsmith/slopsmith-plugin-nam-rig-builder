@@ -207,6 +207,14 @@
  ],
  "Bass_Pedal_BassFlanger": [
   {
+   "name": "BassFlanger",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "bundled": "vst/BassFlanger.vst3",
+   "free": true,
+   "notes": "Bundled Boss BF-2/BF-3 model adapted for bass — modulated delay + feedback (Filter=resonance), lows kept clean. Rate/Depth/Filter/Mix map 1:1."
+  },
+  {
    "name": "MFlanger",
    "manufacturer": "MeldaProduction",
    "format": "VST3",
