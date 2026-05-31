@@ -2737,6 +2737,12 @@
   }
  },
  "Rack_StudioChamber": {
+  "studiochamber": {
+   "Time":  { "param": "Time",  "scale": 0.01, "_hint": "RS Time 0-100 → decay 0..1." },
+   "Tone":  { "param": "Tone",  "scale": 0.01, "_hint": "RS Tone 0-100 → damping (dark↔bright)." },
+   "Depth": { "param": "Depth", "scale": 0.01, "_hint": "RS Depth 0-100 → wet tail modulation 0..1." },
+   "Mix":   { "param": "Mix",   "scale": 0.01, "_hint": "RS Mix 0-100 → wet/dry 0..1." }
+  },
   "khs reverb": {
    "Time": {
     "param": "Decay",
@@ -2839,6 +2845,12 @@
   }
  },
  "Rack_StudioPlate": {
+  "studioplate": {
+   "Time":  { "param": "Time",  "scale": 0.01, "_hint": "RS Time 0-100 → decay 0..1." },
+   "Tone":  { "param": "Tone",  "scale": 0.01, "_hint": "RS Tone 0-100 → damping (dark↔bright)." },
+   "Depth": { "param": "Depth", "scale": 0.01, "_hint": "RS Depth 0-100 → wet tail modulation 0..1." },
+   "Mix":   { "param": "Mix",   "scale": 0.01, "_hint": "RS Mix 0-100 → wet/dry 0..1." }
+  },
   "khs reverb": {
    "Time": {
     "param": "Time",
@@ -2859,6 +2871,12 @@
   }
  },
  "Rack_StudioVerb": {
+  "studioverb": {
+   "Time":  { "param": "Time",  "scale": 0.01, "_hint": "RS Time 0-100 → decay 0..1." },
+   "Tone":  { "param": "Tone",  "scale": 0.01, "_hint": "RS Tone 0-100 → damping (dark↔bright)." },
+   "Depth": { "param": "Depth", "scale": 0.01, "_hint": "RS Depth 0-100 → wet tail modulation 0..1." },
+   "Mix":   { "param": "Mix",   "scale": 0.01, "_hint": "RS Mix 0-100 → wet/dry 0..1." }
+  },
   "khs reverb": {
    "Time": {
     "param": "Decay",

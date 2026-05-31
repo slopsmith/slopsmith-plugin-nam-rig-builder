@@ -1403,6 +1403,14 @@
  ],
  "Rack_StudioChamber": [
   {
+   "name": "StudioChamber",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "bundled": "vst/StudioChamber.vst3",
+   "free": true,
+   "notes": "Bundled Freeverb-style StudioChamber. Maps RS Time/Tone/Depth/Mix."
+  },
+  {
    "name": "kHs Reverb",
    "manufacturer": "Kilohearts",
    "format": "VST3",
@@ -1451,6 +1459,14 @@
  ],
  "Rack_StudioPlate": [
   {
+   "name": "StudioPlate",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "bundled": "vst/StudioPlate.vst3",
+   "free": true,
+   "notes": "Bundled Freeverb-style StudioPlate. Maps RS Time/Tone/Depth/Mix."
+  },
+  {
    "name": "kHs Reverb",
    "manufacturer": "Kilohearts",
    "format": "VST3",
@@ -1460,6 +1476,14 @@
   }
  ],
  "Rack_StudioVerb": [
+  {
+   "name": "StudioVerb",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "bundled": "vst/StudioVerb.vst3",
+   "free": true,
+   "notes": "Bundled Freeverb-style StudioVerb. Maps RS Time/Tone/Depth/Mix."
+  },
   {
    "name": "kHs Reverb",
    "manufacturer": "Kilohearts",
