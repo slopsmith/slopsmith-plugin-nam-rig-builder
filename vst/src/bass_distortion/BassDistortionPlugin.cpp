@@ -36,10 +36,11 @@ public:
     void setSampleRate(float s) { fs = (s > 0.f) ? s : 48000.f; recalcFixed(); }
     void recalcFixed() { cHP = onePoleCoef(35.f, fs); }   // input coupling HP
     void setParams(float gain, float toneP, float filterP) {
-        // Moderate drive so the hard clip doesn't saturate the input noise
-        // floor into loud hiss (the old pow(10,…)=up to 500× did). ~2 .. 32;
-        // gain 0.8 → ~26. Plenty for an aggressive RAT with the hard clip.
-        drive = 2.0f + gain * 30.0f;
+        // RAT gain: high enough to clip aggressively even on a low-level live
+        // bass DI (the earlier 2..32 was too clean on quiet inputs — "barely
+        // distorts"), but well below the old 500× that made loud hiss.
+        // ~5 .. 85; gain 0.8 → ~69.
+        drive = 5.0f + gain * 80.0f;
         cPre  = onePoleCoef(800.0f  * std::pow(10.0f, toneP),  fs);  // 800 .. 8000 Hz pre-clip
         cPost = onePoleCoef(700.0f  * std::pow(2.0f, filterP * 3.1f), fs); // 700 .. ~6000 Hz Filter
     }
@@ -49,7 +50,7 @@ public:
         zPre += cPre * (s - zPre); s = zPre;   // pre-clip brightness (Tone)
         s = clip(s);                           // hard silicon clipping
         zPost += cPost * (s - zPost); s = zPost; // RAT Filter low-pass
-        return s * 0.6f;                       // output make-up
+        return s * 0.85f;                      // output make-up (louder/more present)
     }
 };
 

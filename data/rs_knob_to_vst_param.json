@@ -1691,6 +1691,42 @@
   }
  },
  "Bass_Pedal_BassAutoFilter": {
+  "autosweep": {
+   "FilterType": {
+    "param": "FilterType",
+    "scale": 0.5,
+    "_hint": "0/1/2 → LP/BP/HP"
+   },
+   "Res": {
+    "param": "Res",
+    "scale": 0.01
+   },
+   "Sens": {
+    "param": "Sens",
+    "scale": 0.006,
+    "offset": 0.3,
+    "_hint": "floored so low Sens isn't inaudible"
+   },
+   "Attack": {
+    "param": "Attack",
+    "scale": 0.001,
+    "_hint": "RS Attack /1000 (RS 128 → 0.128 ≈ 2ms)"
+   },
+   "Release": {
+    "param": "Release",
+    "scale": 0.001
+   },
+   "_static": {
+    "Range": 0.9,
+    "Mix": 0.5,
+    "Boost": 0.2
+   },
+   "Speed": {
+    "param": "Release",
+    "scale": 0.001,
+    "_hint": "RS Bass-AutoFilter Speed (if present) → envelope release."
+   }
+  },
   "khs filter": {
    "Speed": {
     "param": "Cutoff",

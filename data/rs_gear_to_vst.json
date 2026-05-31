@@ -953,6 +953,14 @@
  ],
  "Bass_Pedal_BassAutoFilter": [
   {
+   "name": "AutoSweep",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "bundled": "vst/AutoSweep.vst3",
+   "free": true,
+   "notes": "Bundled Q-Tron-style envelope filter (moved here from Auto Tone; the guitar Auto Tone now uses the colleague's Mu-Tron III clone)."
+  },
+  {
    "name": "kHs Filter",
    "manufacturer": "Kilohearts",
    "format": "VST3",
