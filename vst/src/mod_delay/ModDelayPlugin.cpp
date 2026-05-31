@@ -286,11 +286,11 @@ public:
         writeSample = std::tanh(writeSample * (0.95f + 0.18f * feedback));
         delay.write(writeSample);
 
-        const float wetTone = repeat * (0.88f + 0.22f * depth);
-        const float dryLevel = 1.0f - 0.74f * mix;
-        const float wetLevel = mix * (1.10f + 0.22f * feedback);
+        const float wetTone = repeat * (0.80f + 0.16f * depth);
+        const float dryLevel = 1.0f - 0.56f * mix;
+        const float wetLevel = mix * (0.78f + 0.16f * feedback);
         float y = in * dryLevel + wetTone * wetLevel;
-        y = std::tanh(y * 1.03f) * 0.98f;
+        y = std::tanh(y * 0.94f) * 0.97f;
         return y;
     }
 };
@@ -333,7 +333,7 @@ protected:
     const char* getDescription() const override { return "Modulated digital delay"; }
     const char* getMaker() const override { return "RigBuilder"; }
     const char* getLicense() const override { return "ISC"; }
-    uint32_t getVersion() const override { return d_version(1, 0, 0); }
+    uint32_t getVersion() const override { return d_version(1, 0, 1); }
     int64_t getUniqueId() const override { return d_cconst('M', 'd', 'D', 'l'); }
 
     void initParameter(uint32_t index, Parameter& parameter) override

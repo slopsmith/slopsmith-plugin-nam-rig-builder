@@ -207,11 +207,11 @@ public:
         shifted *= throb;
 
         const float wet = shifted;
-        const float dryLevel = 0.40f - 0.28f * intensity;
-        const float wetLevel = 1.10f + 0.62f * intensity;
+        const float dryLevel = 0.46f - 0.20f * intensity;
+        const float wetLevel = 0.78f + 0.40f * intensity;
         float y = x * dryLevel - wet * wetLevel;
         y = outputHp.highPass(y);
-        y = std::tanh(y * (1.20f + 0.20f * intensity)) * 0.86f;
+        y = std::tanh(y * (0.96f + 0.10f * intensity)) * 0.88f;
         return y;
     }
 };
@@ -251,7 +251,7 @@ protected:
     const char* getDescription() const override { return "Uni-Vibe style modulation"; }
     const char* getMaker() const override { return "RigBuilder"; }
     const char* getLicense() const override { return "ISC"; }
-    uint32_t getVersion() const override { return d_version(1, 0, 3); }
+    uint32_t getVersion() const override { return d_version(1, 0, 4); }
     int64_t getUniqueId() const override { return d_cconst('A', 'm', 'V', 'b'); }
 
     void initParameter(uint32_t index, Parameter& parameter) override

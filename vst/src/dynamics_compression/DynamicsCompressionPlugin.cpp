@@ -169,10 +169,10 @@ public:
 
         // Sustain makeup follows the Dyna Comp idea but is trimmed so the
         // pedal does not behave like a pure boost.
-        const float makeupDb = 1.8f + 13.0f * comp;
-        y *= dbToAmp(makeupDb) * (0.56f + 0.10f * (1.0f - comp));
+        const float makeupDb = 0.8f + 6.2f * comp;
+        y *= dbToAmp(makeupDb) * (0.62f + 0.08f * (1.0f - comp));
 
-        y = softClip(y * (1.00f + 0.22f * comp));
+        y = softClip(y * (0.94f + 0.08f * comp)) * 0.98f;
         y = lowPass(y);
         return y;
     }
@@ -210,7 +210,7 @@ protected:
     const char* getDescription() const override { return "Dyna Comp-style pedal compressor"; }
     const char* getMaker() const override { return "RigBuilder"; }
     const char* getLicense() const override { return "ISC"; }
-    uint32_t getVersion() const override { return d_version(1, 0, 0); }
+    uint32_t getVersion() const override { return d_version(1, 0, 1); }
     int64_t getUniqueId() const override { return d_cconst('D', 'c', 'm', 'p'); }
 
     void initParameter(uint32_t index, Parameter& parameter) override

@@ -4,13 +4,14 @@ Small one-knob VST for Rocksmith's `Pedal_RangeBooster`.
 
 It keeps the Rocksmith control:
 
-- `Boost`: transistor push and output level.
+- `Boost`: emphasized frequency range and transistor color.
 
 The local `pedals/range booster.png` schematic is a Rangemaster Treble Booster:
 single OC44 transistor, small input capacitor, bright voicing, and one Boost
 pot. This implementation is not a SPICE clone; it keeps the rig-slot cues that
 matter: treble-focused input filtering, germanium-like asymmetric rounding, and
-a rising output level as Boost increases.
+near-unity output so Rocksmith clean chains do not turn into accidental drive
+presets.
 
 ## Build (macOS arm64)
 

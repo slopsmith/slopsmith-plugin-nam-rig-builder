@@ -51,7 +51,7 @@ public:
     }
     void setMix(float v)   { mix_level = v; }
     void setGain(float v)  { gain_level = 1.0f + v * 14.0f; }
-    void setBoost(float v) { boost_level = 1.0f + v * 5.0f; }
+    void setBoost(float v) { boost_level = 1.0f + v * 2.0f; }
 
     float processSample(float input) {
         const float input_abs = fabsf(input) * gain_level;
@@ -78,7 +78,9 @@ public:
 
         const float out = b0 * input + b1 * x1 + b2 * x2 - a1 * y1_ - a2 * y2_;
         x2 = x1; x1 = input; y2_ = y1_; y1_ = out;
-        return (out * mix_level) * boost_level + input * (1.0f - mix_level);
+        const float dryLevel = 1.0f - 0.56f * mix_level;
+        const float wetLevel = mix_level * boost_level * (0.58f + 0.14f * (1.0f - mix_level));
+        return out * wetLevel + input * dryLevel;
     }
 };
 
@@ -110,7 +112,7 @@ protected:
     const char* getDescription() const override { return "Envelope filter / auto-wah"; }
     const char* getMaker()       const override { return "RigBuilder"; }
     const char* getLicense()     const override { return "ISC"; }
-    uint32_t    getVersion()     const override { return d_version(1, 1, 0); }
+    uint32_t    getVersion()     const override { return d_version(1, 1, 1); }
     int64_t     getUniqueId()    const override { return d_cconst('A', 'S', 'w', 'p'); }
 
     void initParameter(uint32_t i, Parameter& p) override {

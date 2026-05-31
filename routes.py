@@ -880,6 +880,39 @@ def _amp_input_drive_for(rs_gear: str | None, slot: str | None) -> float:
     return max(0.1, float(settings.get("nam_input_drive", 2.5)))
 
 
+def _rs_gain_from_params_json(params_json: str | None, rs_gear: str | None = None):
+    """Read the stored Rocksmith amp gain value from a preset_pieces row.
+
+    Returns None when the amp does not expose a gain-like knob. The frontend
+    uses this only to choose the chain-level input drive, so absence should
+    mean "unknown" rather than forcing a synthetic crunch value.
+    """
+    try:
+        knobs = json.loads(params_json or "{}")
+    except Exception:
+        return None
+    if not isinstance(knobs, dict):
+        return None
+    gear_def = (_load_rs_to_real() or {}).get(rs_gear or "") if rs_gear else {}
+    proxies = (gear_def or {}).get("gain_proxy_knobs") or []
+    if proxies:
+        vals = []
+        for key in proxies:
+            try:
+                vals.append(float(knobs[key]))
+            except (KeyError, TypeError, ValueError):
+                continue
+        if vals:
+            return sum(vals) / len(vals)
+    raw = knobs.get("Gain")
+    if raw is None:
+        return None
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return None
+
+
 def _gear_rs_gain(piece: dict, gear_def: dict | None = None) -> float:
     """Read the RS Gain knob value (0-100) from a parsed piece's knobs.
 
@@ -2627,7 +2660,8 @@ def _vst_stage_state(vst_path: str, vst_format: str | None, vst_state) -> str:
 # None so every caller's emitted JSON stays byte-identical to before.
 
 def _nam_stage(path, *, bypassed, input_level=1.0, output_drive=None,
-               output_mult=1.0, slot=None, rs_gear=None, tone_key=None) -> dict:
+               output_mult=1.0, slot=None, rs_gear=None, tone_key=None,
+               rs_gain=None) -> dict:
     """Build a type-1 (NAM) chain stage.
 
     `input_level` is the engine inputLevel (drive into the model); the
@@ -2646,6 +2680,11 @@ def _nam_stage(path, *, bypassed, input_level=1.0, output_drive=None,
         stage["rs_gear"] = rs_gear
     if tone_key is not None:
         stage["tone_key"] = tone_key
+    if rs_gain is not None:
+        try:
+            stage["rs_gain"] = float(rs_gain)
+        except (TypeError, ValueError):
+            pass
     stage["state"] = _state_b64({"modelPath": str(path),
                                  "inputLevel": input_level,
                                  "outputLevel": out_level})
@@ -5968,7 +6007,7 @@ def setup(app, context):
 
         rows = conn.execute(
             "SELECT slot, kind, file, rs_gear_type, bypassed, slot_order, "
-            "vst_path, vst_format, vst_state "
+            "vst_path, vst_format, vst_state, params_json "
             "FROM preset_pieces WHERE preset_id = ? "
             "ORDER BY slot_order",
             (preset_id,),
@@ -5986,19 +6025,21 @@ def setup(app, context):
         # so we can stable-sort everything (NAM + VST) by signal-flow first
         # and stored slot_order within the same slot second.
         audio_pieces = []
-        for slot, kind, file, gear, bypassed, slot_order, vst_path, vst_format, vst_state in rows:
+        for slot, kind, file, gear, bypassed, slot_order, vst_path, vst_format, vst_state, params_json in rows:
             if kind == "nam" and file:
                 audio_pieces.append((_rank(slot), slot_order, "nam", slot,
-                                     file, gear, bool(bypassed), None, None))
+                                     file, gear, bool(bypassed), None, None,
+                                     params_json))
             elif kind == "vst" and vst_path:
                 audio_pieces.append((_rank(slot), slot_order, "vst", slot,
                                      vst_path, gear, bool(bypassed),
-                                     vst_format or "VST3", vst_state))
+                                     vst_format or "VST3", vst_state,
+                                     params_json))
         audio_pieces.sort(key=lambda t: (t[0], t[1]))
 
         chain: list[dict] = []
         missing: list[str] = []
-        for _r, _o, kind, slot, payload, gear, bypassed, vst_format, vst_state in audio_pieces:
+        for _r, _o, kind, slot, payload, gear, bypassed, vst_format, vst_state, params_json in audio_pieces:
             if kind == "nam":
                 path = _safe_child(models_dir, payload)
                 if not path or not path.exists():
@@ -6018,7 +6059,8 @@ def setup(app, context):
                 _drive = _amp_input_drive_for(gear, slot)
                 chain.append(_nam_stage(path, bypassed=bypassed,
                                         input_level=_drive, output_drive=_drive,
-                                        slot=slot, rs_gear=gear))
+                                        slot=slot, rs_gear=gear,
+                                        rs_gain=_rs_gain_from_params_json(params_json, gear)))
             else:  # vst
                 # VST paths are absolute (no sandbox under models_dir). We
                 # don't .exists()-check on the backend because the engine
@@ -6034,7 +6076,7 @@ def setup(app, context):
 
         # One cab IR at the tail (prefer the cabinet slot). Indexed in the
         # original `rows` tuples — column order: slot, kind, file, rs_gear,
-        # bypassed, slot_order, vst_path, vst_format, vst_state.
+        # bypassed, slot_order, vst_path, vst_format, vst_state, params_json.
         ir_rows = [(r[0], r[2], r[3], bool(r[4]), r[1]) for r in rows if r[1] in ("ir", "rs_ir") and r[2]]
         ir_pick = next((row for row in ir_rows if row[0] == "cabinet"), None)
         if ir_pick is None and ir_rows:
@@ -6141,7 +6183,7 @@ def setup(app, context):
         def _build_tone_stages(preset_id: int, tone_key: str, out_gain: float):
             rows = conn.execute(
                 "SELECT slot, kind, file, rs_gear_type, bypassed, slot_order, "
-                "vst_path, vst_format, vst_state "
+                "vst_path, vst_format, vst_state, params_json "
                 "FROM preset_pieces WHERE preset_id = ? "
                 "ORDER BY slot_order",
                 (preset_id,),
@@ -6151,18 +6193,20 @@ def setup(app, context):
                 return _CHAIN_NAM_ORDER.index(slot) if slot in _CHAIN_NAM_ORDER else len(_CHAIN_NAM_ORDER)
 
             audio_pieces = []
-            for slot, kind, file, gear, bypassed, slot_order, vst_path, vst_format, vst_state in rows:
+            for slot, kind, file, gear, bypassed, slot_order, vst_path, vst_format, vst_state, params_json in rows:
                 if kind == "nam" and file:
                     audio_pieces.append((_rank(slot), slot_order, "nam", slot,
-                                         file, gear, bool(bypassed), None, None))
+                                         file, gear, bool(bypassed), None, None,
+                                         params_json))
                 elif kind == "vst" and vst_path:
                     audio_pieces.append((_rank(slot), slot_order, "vst", slot,
                                          vst_path, gear, bool(bypassed),
-                                         vst_format or "VST3", vst_state))
+                                         vst_format or "VST3", vst_state,
+                                         params_json))
             audio_pieces.sort(key=lambda t: (t[0], t[1]))
 
             tone_stages: list[dict] = []
-            for _r, _o, kind, slot, payload, gear, persisted_bypassed, vst_format, vst_state in audio_pieces:
+            for _r, _o, kind, slot, payload, gear, persisted_bypassed, vst_format, vst_state, params_json in audio_pieces:
                 if kind == "nam":
                     path = _safe_child(models_dir, payload)
                     if not path or not path.exists():
@@ -6175,7 +6219,8 @@ def setup(app, context):
                     tone_stages.append(_nam_stage(
                         path, bypassed=persisted_bypassed,
                         input_level=_drive, output_drive=_drive,
-                        slot=slot, rs_gear=gear, tone_key=tone_key))
+                        slot=slot, rs_gear=gear, tone_key=tone_key,
+                        rs_gain=_rs_gain_from_params_json(params_json, gear)))
                 else:  # vst
                     vp = Path(payload)
                     # NOTE: mega_chain uses the simpler pluginPath wrapper (no
@@ -6313,7 +6358,16 @@ def setup(app, context):
                     dkey = ("vst", tone_key, stage.get("name") or stage.get("path"))
                 idx = index_of_dkey.get((slot_type, dkey))
                 if idx is not None and idx not in seen:
-                    seen[idx] = {"idx": idx, "bypassed": bool(stage.get("bypassed", False))}
+                    entry = {"idx": idx, "bypassed": bool(stage.get("bypassed", False))}
+                    if stage.get("type") is not None:
+                        entry["type"] = stage.get("type")
+                    if stage.get("slot") is not None:
+                        entry["slot"] = stage.get("slot")
+                    if stage.get("rs_gear") is not None:
+                        entry["rs_gear"] = stage.get("rs_gear")
+                    if stage.get("rs_gain") is not None:
+                        entry["rs_gain"] = stage.get("rs_gain")
+                    seen[idx] = entry
             slots_list = sorted(seen.values(), key=lambda e: e["idx"])
             tone_index.append({
                 "tone_key": tone_key,

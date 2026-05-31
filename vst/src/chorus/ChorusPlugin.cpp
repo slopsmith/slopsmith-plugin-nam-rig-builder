@@ -202,10 +202,10 @@ public:
         wet = softClip(wet * comp * (1.04f + 0.15f * d));
 
         const float wetMix = 0.18f + 0.82f * mix;
-        const float dryLevel = 0.92f - 0.34f * wetMix;
-        const float wetLevel = 0.28f + 0.88f * wetMix;
+        const float dryLevel = 1.0f - 0.44f * wetMix;
+        const float wetLevel = 0.22f + 0.58f * wetMix;
         const float y = x * dryLevel + wet * wetLevel;
-        return softClip(y * 1.03f) * 0.97f;
+        return softClip(y * 0.92f) * 0.96f;
     }
 };
 
@@ -241,7 +241,7 @@ protected:
     const char* getDescription() const override { return "CE-2 style BBD chorus"; }
     const char* getMaker() const override { return "RigBuilder"; }
     const char* getLicense() const override { return "ISC"; }
-    uint32_t getVersion() const override { return d_version(1, 0, 0); }
+    uint32_t getVersion() const override { return d_version(1, 0, 1); }
     int64_t getUniqueId() const override { return d_cconst('C', 'h', 'o', 'r'); }
 
     void initParameter(uint32_t index, Parameter& parameter) override

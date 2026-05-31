@@ -12,3 +12,6 @@ Implemented controls match Rocksmith:
   narrow-band lo-fi filtering.
 - `Mix`: controls effect intensity: drive, resonance, lo-fi texture, and wet
   balance.
+
+Version 1.0.1 trims the internal drive and wet/output gain so high Rocksmith
+`Mix` values do not behave like an output boost in clean chains.

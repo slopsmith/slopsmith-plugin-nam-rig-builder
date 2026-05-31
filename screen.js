@@ -102,7 +102,7 @@
                 // entire library sounds "very clean and similar".
                 // Same delay strategy as the VST param re-apply so it
                 // lands after the chain has settled in the engine.
-                setTimeout(() => { rbApplyChainInputDrive(); }, reapplyDelay);
+                setTimeout(() => { rbApplyChainInputDrive({ chain }); }, reapplyDelay);
             } catch (_) {
                 return origFetch(input, init);
             }
@@ -124,17 +124,10 @@
 // don't all refetch — the boot-time fetch in rbInit / mega-chain hook
 // populates it. Falls back to 8.0 if the cache hasn't loaded yet.
 //
-// BASS handling: tone3000 bass captures (Gallien-Krueger G1.0/G3.0/G5.0,
-// CS75B, Bassman, etc.) are typically authored at clean gain settings,
-// so the guitar-amp 8× drive over-saturates them — the model is being
-// fed +18 dB beyond its capture-time operating point. For bass songs
-// (4-string arrangement) or auditioning a Bass_* gear, we use unity
-// (1.0) drive instead. Detection sources, in priority:
-//   1. opts.isBass: explicit override (audition path passes this based
-//      on rs_gear, which the gear catalog has on hand)
-//   2. window.highway.getStringCount() <= 4 (song-playback path; the
-//      bundle publishes string count from the song_info payload)
-//   3. fall through to guitar drive
+// The old rule was "all guitars get 8×". That fixes high-gain amps, but it
+// also pushes clean amp captures into breakup. Prefer the active amp's stored
+// Rocksmith Gain when the chain JSON has it, and fall back to the old
+// guitar/bass split only when the chain has no useful amp metadata.
 //
 // The engine resets input gain to 1.0 on every chain reload, so we
 // have to re-apply after each loadPreset. Hooks:
@@ -142,25 +135,113 @@
 //   - mega-chain build (initial preload at song start)
 //   - rbListenTone (Listen ▶ in per-song view)
 //   - rbAuditionFile (▶ in Gear catalog)
+function rbNumberOrNull(value) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+}
+
+function rbSmoothstep01(value) {
+    const t = Math.max(0, Math.min(1, Number(value) || 0));
+    return t * t * (3 - 2 * t);
+}
+
+function rbConfiguredChainInputDrive() {
+    return (typeof window.__rbChainInputDrive === 'number' && window.__rbChainInputDrive > 0)
+        ? window.__rbChainInputDrive : 8.0;
+}
+
+function rbCleanGuitarChainInputDrive(maxDrive) {
+    // The backend's NAM output normalization and the captures themselves
+    // expect a guitar-level push even for clean amps. Unity made clean tones
+    // too quiet and made crunch/dist never reach their captured breakup.
+    return Math.min(maxDrive, Math.max(3.5, maxDrive * 0.68));
+}
+
+function rbLooksLikeBassFromHighway() {
+    try {
+        const hw = window.highway;
+        const sc = hw && typeof hw.getStringCount === 'function'
+            ? hw.getStringCount() : null;
+        return (typeof sc === 'number' && sc > 0 && sc <= 4);
+    } catch (_) {
+        return false;
+    }
+}
+
+function rbCleanishAmpDrive(stage, maxDrive) {
+    const gear = String(stage && stage.rs_gear || '');
+    if (gear.startsWith('Bass_') || gear.startsWith('DI_Amp_')) return 1.0;
+
+    const cleanDrive = rbCleanGuitarChainInputDrive(maxDrive);
+    const gain = rbNumberOrNull(stage && (stage.rs_gain ?? stage.rsGain));
+    if (gain !== null) {
+        if (gain <= 20) return cleanDrive * 0.82;
+        return cleanDrive + (maxDrive - cleanDrive) * rbSmoothstep01((gain - 30.0) / 45.0);
+    }
+
+    // Metadata fallback for catalog audition or older cached chains.
+    const haystack = [
+        stage && stage.name,
+        stage && stage.path,
+        stage && stage.rs_gear,
+    ].filter(Boolean).join(' ').toLowerCase();
+    if (/\bclean\b/.test(haystack)) return cleanDrive;
+    if (/amp_en30/i.test(gear) && /_v0?3(?:_|\.|$)/i.test(haystack)) return cleanDrive;
+    return maxDrive;
+}
+
+function rbActiveAmpStageForChain(chain) {
+    if (!Array.isArray(chain)) return null;
+    for (const stage of chain) {
+        if (!stage || stage.bypassed) continue;
+        const isAmp = Number(stage.type) === 1 && String(stage.slot || '').toLowerCase() === 'amp';
+        if (isAmp) return stage;
+    }
+    return null;
+}
+
+function rbPostAmpMakeupForChain(chainSpec) {
+    const amp = rbActiveAmpStageForChain(chainSpec);
+    if (!amp) return 1.0;
+    const gear = String(amp.rs_gear || '');
+    if (gear.startsWith('Bass_') || gear.startsWith('DI_Amp_')) return 1.0;
+
+    const maxDrive = rbConfiguredChainInputDrive();
+    const drive = rbCleanishAmpDrive(amp, maxDrive);
+    const ratio = maxDrive / Math.max(1.0, drive);
+    let makeup = Math.pow(Math.max(1.0, ratio), 0.9);
+
+    const gain = rbNumberOrNull(amp.rs_gain ?? amp.rsGain);
+    if (gain !== null) {
+        // Clean amps need their level recovered after we reduce pre-NAM drive
+        // to keep them clean. Do that post-amp so volume comes back without
+        // pushing the model into breakup again.
+        if (gain <= 20) makeup *= 1.70;
+        else if (gain <= 45) makeup *= 1.42;
+        else if (gain <= 60) makeup *= 1.16;
+    }
+    return Math.max(1.0, Math.min(3.25, makeup));
+}
+
+function rbDriveForChainInput(opts) {
+    const maxDrive = rbConfiguredChainInputDrive();
+    if (opts && opts.isBass === true) return 1.0;
+
+    const chain = opts && Array.isArray(opts.chain) ? opts.chain : null;
+    if (chain) {
+        const activeAmp = rbActiveAmpStageForChain(chain);
+        if (activeAmp) return rbCleanishAmpDrive(activeAmp, maxDrive);
+        return 1.0;
+    }
+
+    if (opts && opts.isBass === false) return maxDrive;
+    return rbLooksLikeBassFromHighway() ? 1.0 : maxDrive;
+}
+
 function rbApplyChainInputDrive(opts) {
     const audio = window.slopsmithDesktop && window.slopsmithDesktop.audio;
     if (!audio || typeof audio.setGain !== 'function') return;
-    let isBass = (opts && opts.isBass === true);
-    if (!isBass && !(opts && opts.isBass === false)) {
-        try {
-            const hw = window.highway;
-            const sc = hw && typeof hw.getStringCount === 'function'
-                ? hw.getStringCount() : null;
-            if (typeof sc === 'number' && sc > 0 && sc <= 4) isBass = true;
-        } catch (_) {}
-    }
-    let drive;
-    if (isBass) {
-        drive = 1.0;
-    } else {
-        drive = (typeof window.__rbChainInputDrive === 'number' && window.__rbChainInputDrive > 0)
-            ? window.__rbChainInputDrive : 8.0;
-    }
+    const drive = rbDriveForChainInput(opts);
     // Re-poll guard: the song-playback callers fire this ~600 ms after
     // the bundle's chain load — but `highway.getStringCount()` may not
     // have absorbed the song_info WS message yet (it defaults to 6
@@ -173,7 +254,7 @@ function rbApplyChainInputDrive(opts) {
     // idempotent on the engine side). Skipped when the caller passed
     // an explicit isBass — they already KNOW the answer (catalog
     // audition path).
-    const calledExplicitly = opts && (opts.isBass === true || opts.isBass === false);
+    const calledExplicitly = opts && (opts.isBass === true || opts.isBass === false || Array.isArray(opts.chain));
     if (!calledExplicitly && !opts?._isRepoll) {
         setTimeout(() => rbApplyChainInputDrive({ _isRepoll: true }), 1500);
         setTimeout(() => rbApplyChainInputDrive({ _isRepoll: true }), 3500);
@@ -217,10 +298,29 @@ function rbChainGainTargetFor(chainSpec) {
             let dB = (hasActiveCab ? 6 : -6) + 2 * Math.max(0, activeNamCount - 1);
             dB = Math.max(-12, Math.min(18, dB));
             base = Math.pow(10, dB / 20);
+            base *= rbPostAmpMakeupForChain(chainSpec);
         }
     }
     window.__rbChainBaseTarget = base;   // remember (pre-trim) for live makeup changes
     return base * makeup;
+}
+
+function rbClampChainGainTarget(targetGain) {
+    return (typeof targetGain === 'number' && isFinite(targetGain) && targetGain >= 0)
+        ? Math.max(0, Math.min(32, targetGain))
+        : 1.0;
+}
+
+async function rbApplyChainOutputGain(opts) {
+    const chain = opts && Array.isArray(opts.chain) ? opts.chain : null;
+    if (!chain) return;
+    const audio = window.slopsmithDesktop && window.slopsmithDesktop.audio;
+    if (!audio || typeof audio.setGain !== 'function') return;
+    const target = rbClampChainGainTarget(rbChainGainTargetFor(chain));
+    window.__rbPendingChainGainTarget = target;
+    return audio.setGain('chain', target).catch((e) => {
+        console.warn('[rig_builder] setGain(chain,', target, ') failed:', e);
+    });
 }
 
 // User cab/chain volume trim. Persists to /settings and applies LIVE via
@@ -260,13 +360,13 @@ async function rbSetChainMakeup(v) {
 let _rbMuteInFlight = false;
 async function rbPreLoadMute(chainLen, targetGain) {
     if (window.__rbMutePreLoad === false) return;
+    const pendingTarget = rbClampChainGainTarget(targetGain);
+    window.__rbPendingChainGainTarget = pendingTarget;
     if (_rbMuteInFlight) return;            // coalesce rapid tone changes
     _rbMuteInFlight = true;
     const audio = window.slopsmithDesktop && window.slopsmithDesktop.audio;
     if (!audio) { _rbMuteInFlight = false; return; }
-    const target = (typeof targetGain === 'number' && isFinite(targetGain) && targetGain >= 0)
-        ? Math.max(0, Math.min(32, targetGain))   // was 4 — clamped the auto-level + user makeup; chains can need ~20×
-        : 1.0;
+    const target = pendingTarget;   // was 4 — chains can need ~20×
     const hold = (typeof window.__rbMutePreLoadHold === 'number')
         ? Math.max(20, window.__rbMutePreLoadHold | 0)
         : 100 + 50 * Math.max(1, chainLen | 0);
@@ -287,7 +387,8 @@ async function rbPreLoadMute(chainLen, targetGain) {
             // not a fixed 1.0 — that's how we normalise across "amp +
             // cab" and "amp only" without a user-facing knob.
             if (typeof audio.setGain === 'function') {
-                const steps = [target * 0.25, target * 0.5, target * 0.8, target];
+                const restoreTarget = rbClampChainGainTarget(window.__rbPendingChainGainTarget ?? target);
+                const steps = [restoreTarget * 0.25, restoreTarget * 0.5, restoreTarget * 0.8, restoreTarget];
                 for (const v of steps) {
                     await audio.setGain('chain', v);
                     await new Promise(r => setTimeout(r, 6));
@@ -623,17 +724,20 @@ const RbMegaChain = (function () {
         const api = _api();
         if (!api || !_mega) return;
         const tone = _findToneByKey(activeToneKey);
-        const totalStages = (_mega.native_preset && _mega.native_preset.chain && _mega.native_preset.chain.length) || 0;
+        const chainSpec = (_mega.native_preset && _mega.native_preset.chain) || [];
+        const totalStages = chainSpec.length || 0;
         if (!totalStages) return;
 
         // Build a map: idx → desired bypass. Default for every slot is
         // bypassed=true (passthrough). For master + active-tone slots,
         // use the persisted bypass from the backend.
         const bypassByIdx = new Array(totalStages).fill(true);
+        const activeToneSlotByIdx = new Map();
         const applyEntry = (entry) => {
             if (!entry || typeof entry.idx !== 'number') return;
             if (entry.idx < 0 || entry.idx >= totalStages) return;
             bypassByIdx[entry.idx] = !!entry.bypassed;
+            activeToneSlotByIdx.set(entry.idx, entry);
         };
         (_mega.master_pre_slots  || []).forEach(applyEntry);
         (_mega.master_post_slots || []).forEach(applyEntry);
@@ -659,6 +763,19 @@ const RbMegaChain = (function () {
         } catch (e) {
             console.warn('[rig_builder mega-chain] applyActiveTone failed:', e);
         }
+        const effectiveChain = chainSpec.map((stage, idx) => {
+            const copy = Object.assign({}, stage, { bypassed: !!bypassByIdx[idx] });
+            const activeEntry = activeToneSlotByIdx.get(idx);
+            if (activeEntry) {
+                if (activeEntry.rs_gain != null) copy.rs_gain = activeEntry.rs_gain;
+                if (activeEntry.rs_gear != null) copy.rs_gear = activeEntry.rs_gear;
+                if (activeEntry.slot != null) copy.slot = activeEntry.slot;
+                if (activeEntry.type != null) copy.type = activeEntry.type;
+            }
+            return copy;
+        });
+        await rbApplyChainInputDrive({ chain: effectiveChain });
+        await rbApplyChainOutputGain({ chain: effectiveChain });
         _activeToneKey = activeToneKey;
     }
 
@@ -815,10 +932,8 @@ const RbMegaChain = (function () {
         try {
             const wasRunning = api.isAudioRunning ? await api.isAudioRunning().catch(() => true) : true;
             if (!wasRunning && api.startAudio) await api.startAudio();
-            // Input gain to chain-input-drive — pre-NAM, drives the amp
-            // captures from clean region into their saturation operating
-            // point (see rbApplyChainInputDrive comment).
-            await rbApplyChainInputDrive();
+            // _applyActiveTone already set the input drive from the active
+            // tone's amp metadata; don't overwrite it with a generic value.
         } catch (e) { console.warn('[rig_builder mega-chain] startAudio failed:', e); }
 
         // 6. Start watching highway for tone changes AND the bundle's
@@ -5504,6 +5619,8 @@ async function rbReloadPreview(refetchPresetId) {
         // explicitly so VSTs come up at their saved values, not defaults.
         await rbReapplyVstParamsToChain(api, chainArr).catch((e) =>
             console.warn('[rig_builder] reload re-apply VST params:', e));
+        await rbApplyChainInputDrive({ chain: chainArr });
+        await rbApplyChainOutputGain({ chain: chainArr });
         // Don't manually un-mute here — rbPreLoadMute does it with a fade
         // on its own timer. Forcing un-mute now would defeat the fade.
     } catch (e) { console.warn('[rig_builder] reload preview failed', e); }
@@ -5596,7 +5713,7 @@ async function rbAuditionFile(file, kind, btnId, gain, rsGear) {
             // over-saturating the tone3000 clean-gain capture; the
             // catalog always knows g.rs_gear so this is reliable.
             const isBass = typeof rsGear === 'string' && rsGear.startsWith('Bass_');
-            await rbApplyChainInputDrive({ isBass });
+            await rbApplyChainInputDrive({ isBass, chain });
             await api.setGain('chain', 1.0).catch(() => {});
         }
         if (api.setMonitorMute) await api.setMonitorMute(false).catch(() => {});
@@ -7144,7 +7261,10 @@ async function rbListenTone(toneIdx, filename) {
             // Don't touch chain gain or monitor mute — rbPreLoadMute fades
             // chain back to its target and un-mutes on its own timer
             // with a smooth ramp. Forcing them here defeats the fade.
-            if (api.setGain) { await rbApplyChainInputDrive(); }
+            if (api.setGain) {
+                await rbApplyChainInputDrive({ chain });
+                await rbApplyChainOutputGain({ chain });
+            }
             const wasRunning = api.isAudioRunning ? await api.isAudioRunning().catch(() => true) : true;
             await api.startAudio();
             rbState._previewStartedAudio = !wasRunning;

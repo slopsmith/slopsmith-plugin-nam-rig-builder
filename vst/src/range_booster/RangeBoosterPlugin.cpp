@@ -2,7 +2,7 @@
  * RangeBooster - Rangemaster-style treble booster for Rocksmith's
  * Pedal_RangeBooster. Reference: single OC44 germanium transistor, tiny input
  * coupling cap, fixed bias, and one Boost pot. Rocksmith exposes only Boost,
- * so the DSP uses that one control for transistor push and output level.
+ * so the DSP uses that one control for range emphasis and transistor color.
  */
 #include "DistrhoPlugin.hpp"
 #include "RangeBoosterParams.h"
@@ -52,18 +52,18 @@ class RangeBoosterCore
 
         // 5nF input cap into the Rangemaster bias network: intentionally
         // high-passed, but not so thin that low guitar notes disappear.
-        const float inputHpHz = 210.0f + 520.0f * boost;
+        const float inputHpHz = 180.0f + 610.0f * boost;
         const float inputHpRc = 1.0f / (2.0f * 3.14159265359f * inputHpHz);
         inputHpA = inputHpRc / (inputHpRc + dt);
 
-        const float outputHpHz = 70.0f + 45.0f * boost;
+        const float outputHpHz = 58.0f + 32.0f * boost;
         const float outputHpRc = 1.0f / (2.0f * 3.14159265359f * outputHpHz);
         outputHpA = outputHpRc / (outputHpRc + dt);
 
-        const float brightHz = 900.0f + 980.0f * boost;
+        const float brightHz = 760.0f + 1320.0f * boost;
         brightA = 1.0f - std::exp(-2.0f * 3.14159265359f * brightHz / sampleRate);
 
-        const float topHz = 7800.0f + 3200.0f * (1.0f - boost);
+        const float topHz = 6800.0f + 5200.0f * (1.0f - boost);
         topA = 1.0f - std::exp(-2.0f * 3.14159265359f * topHz / sampleRate);
     }
 
@@ -113,26 +113,28 @@ public:
     {
         float x = inputHighPass(in);
 
-        // Treble emphasis around the transistor input. Low Boost keeps some
-        // body; high Boost becomes classic bright Rangemaster bite.
+        // Treble emphasis around the transistor input. Low Boost keeps body;
+        // high Boost increasingly shifts the pedal toward focused upper mids.
         const float low = lowPass(x, brightY, brightA);
-        const float high = x - 0.70f * low;
-        x = low * (0.34f - 0.10f * boost) + high * (1.05f + 1.05f * boost);
+        const float high = x - (0.58f + 0.18f * boost) * low;
+        x = low * (0.42f - 0.20f * boost) + high * (1.10f + 1.65f * boost);
 
-        // One germanium transistor stage. It should add hair and push the amp,
-        // not sound like a fuzz pedal by itself.
-        const float stageGain = 1.15f + 4.25f * boost;
-        const float bias = -0.035f - 0.030f * boost;
+        // One germanium transistor stage. Rocksmith presets often put this in
+        // front of clean amps, so the transistor adds bite without acting like
+        // a hidden output knob.
+        const float boost2 = boost * boost;
+        const float stageGain = 1.05f + 2.05f * boost + 0.85f * boost2;
+        const float bias = -0.024f - 0.024f * boost;
         float y = x * stageGain + bias;
-        y = asymClip(y, 0.95f + 0.80f * boost, 0.72f + 0.62f * boost);
+        y = asymClip(y, 0.78f + 0.55f * boost, 0.62f + 0.42f * boost);
 
         // Output cap and mild top-end smoothing.
         y = outputHighPass(y);
         y = lowPass(y, topY, topA);
 
-        // The pedal is a booster, so this can get louder, but trim enough that
-        // engaging it is not just an uncontrolled volume jump.
-        const float level = 0.64f + 1.55f * boost;
+        // Rocksmith does not expose output level here. Keep the pedal close to
+        // unity and let Boost mostly change the emphasized frequency range.
+        const float level = 0.70f + 0.40f * boost;
         return y * level;
     }
 };

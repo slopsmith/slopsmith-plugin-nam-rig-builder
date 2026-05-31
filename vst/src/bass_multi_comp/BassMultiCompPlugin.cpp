@@ -177,11 +177,11 @@ public:
         // Parallel component keeps attack and makes low Compress settings feel
         // like the original pedal rather than a studio limiter.
         const float dry = 0.20f * (1.0f - compress) + 0.05f;
-        const float makeup = dbToGain(1.0f + 5.5f * compress);
+        const float makeup = dbToGain(0.6f + 3.0f * compress);
         float y = clean * dry + compressed * (1.0f - dry) * makeup;
 
         // Very light output safety, not an audible drive stage.
-        y = std::tanh(y * 1.06f) * 0.965f;
+        y = std::tanh(y * 0.98f) * 0.99f;
         return y;
     }
 };
@@ -218,7 +218,7 @@ protected:
     const char* getDescription() const override { return "Multiband bass compressor"; }
     const char* getMaker() const override { return "RigBuilder"; }
     const char* getLicense() const override { return "ISC"; }
-    uint32_t getVersion() const override { return d_version(1, 0, 0); }
+    uint32_t getVersion() const override { return d_version(1, 0, 1); }
     int64_t getUniqueId() const override { return d_cconst('B', 'm', 'c', 'p'); }
 
     void initParameter(uint32_t index, Parameter& parameter) override

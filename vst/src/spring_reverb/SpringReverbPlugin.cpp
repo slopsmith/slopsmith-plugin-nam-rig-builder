@@ -349,11 +349,13 @@ public:
         const float transient = fastEnv > slowEnv ? fastEnv - slowEnv : 0.0f;
         const float transientSigned = x >= 0.0f ? transient : -transient;
 
-        const float dwell = 1.20f + 3.40f * depth;
-        float excited = std::tanh(x * dwell) * (0.72f + 0.28f * depth);
+        // Drive only the virtual tank. The first version pushed this hard and
+        // then clipped the full dry+wet output, which made clean rigs distort.
+        const float dwell = 0.70f + 1.55f * depth;
+        float excited = std::tanh(x * dwell) * (0.48f + 0.20f * depth);
         const float drip = (dripA.process(transientSigned) + 0.70f * dripB.process(transientSigned))
-            * (3.0f + 7.0f * depth);
-        float tankIn = excited * (0.78f + 1.35f * depth) + drip;
+            * (0.55f + 1.75f * depth);
+        float tankIn = excited * (0.58f + 0.82f * depth) + drip;
 
         for (int i = 0; i < 2; ++i)
             tankIn = allpasses[i].process(tankIn);
@@ -372,13 +374,14 @@ public:
 
         float wet = tankHp.process(tank);
         wet = tankLp.process(wet);
-        wet += drip * (0.055f + 0.055f * depth);
+        wet += drip * (0.026f + 0.030f * depth);
 
-        const float dryLevel = 1.0f - 0.82f * mix;
-        const float wetLevel = mix * (1.35f + 0.85f * depth);
+        // Rocksmith uses large Mix values on normal guitar tones, so this must
+        // behave like a pedal blend that keeps the dry guitar present.
+        const float dryLevel = 1.0f - 0.22f * mix;
+        const float wetLevel = mix * (0.54f + 0.48f * depth);
         float y = dry * dryLevel + wet * wetLevel;
-        y = std::tanh(y * 1.04f) * 0.98f;
-        return y;
+        return y * 0.96f;
     }
 };
 
@@ -416,7 +419,7 @@ protected:
     const char* getDescription() const override { return "Spring tank reverb"; }
     const char* getMaker() const override { return "RigBuilder"; }
     const char* getLicense() const override { return "ISC"; }
-    uint32_t getVersion() const override { return d_version(1, 0, 0); }
+    uint32_t getVersion() const override { return d_version(1, 0, 2); }
     int64_t getUniqueId() const override { return d_cconst('S', 'p', 'R', 'v'); }
 
     void initParameter(uint32_t index, Parameter& parameter) override

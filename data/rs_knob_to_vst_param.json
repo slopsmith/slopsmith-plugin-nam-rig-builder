@@ -93,6 +93,21 @@
   }
  },
  "Pedal_Chorus20": {
+  "chorus20": {
+   "Rate": {
+    "param": "Rate",
+    "scale": 0.1,
+    "_hint": "Rocksmith Chorus 2 Rate is stored as 0..10, so the bundled plugin receives Rate/10 and applies its BBD speed curve internally."
+   },
+   "Depth": {
+    "param": "Depth",
+    "scale": 0.01
+   },
+   "Mix": {
+    "param": "Mix",
+    "scale": 0.01
+   }
+  },
   "khs chorus": {
    "Rate": {
     "param": "Rate",
@@ -110,6 +125,31 @@
   }
  },
  "Pedal_DigitalChorus": {
+  "digitalchorus": {
+   "Rate": {
+    "param": "Rate",
+    "scale": 0.1,
+    "_hint": "Rocksmith Digital Chorus Rate is stored as a small 0..10-ish value, so the bundled plugin receives Rate/10 and applies its digital LFO curve internally."
+   },
+   "Depth": {
+    "param": "Depth",
+    "scale": 0.01
+   },
+   "LoFilter": {
+    "param": "LoFilter",
+    "scale": 0.01,
+    "_hint": "Higher RS LoFilter moves the digital chorus high-pass cutoff up, matching the schematic's low-filter cut control."
+   },
+   "HiFilter": {
+    "param": "HiFilter",
+    "scale": 0.01,
+    "_hint": "Higher RS HiFilter lowers the wet-path low-pass cutoff, matching the schematic's high-filter cut control."
+   },
+   "Mix": {
+    "param": "Mix",
+    "scale": 0.01
+   }
+  },
   "khs chorus": {
    "Rate": {
     "param": "Rate",
@@ -127,6 +167,21 @@
   }
  },
  "Pedal_VintageChorus": {
+  "analogchorus": {
+   "Rate": {
+    "param": "Rate",
+    "scale": 0.1,
+    "_hint": "Rocksmith Vintage/Analog Chorus Rate is stored around 1..2, so the bundled plugin receives Rate/10 and keeps the LFO in a slow analog range."
+   },
+   "Depth": {
+    "param": "Depth",
+    "scale": 0.01
+   },
+   "Mix": {
+    "param": "Mix",
+    "scale": 0.01
+   }
+  },
   "khs chorus": {
    "Rate": {
     "param": "Rate",
@@ -149,6 +204,24 @@
     "param": "Rate",
     "scale": 0.01,
     "_hint": "RS chorus Rate maps to kHs Chorus Rate slider POSITION directly: RS=4 → slider at 4%. Plugin's internal Rate-display conversion (log 0.05..10 Hz) does the rest. User-verified intent."
+   },
+   "Depth": {
+    "param": "Depth",
+    "scale": 0.01
+   },
+   "Mix": {
+    "param": "Mix",
+    "scale": 0.01
+   }
+  }
+ },
+ "Pedal_SendInTheClones": {
+  "sendintheclones": {
+   "Clones": {
+    "param": "Clones",
+    "scale": 0.01,
+    "offset": 0.1,
+    "_hint": "Rocksmith uses low Clones values like 1/11/35. Treat 1 as 'one audible clone' rather than 1%; the plugin's internal curve then turns larger values into more/spread-out voices."
    },
    "Depth": {
     "param": "Depth",
@@ -760,11 +833,11 @@
   }
  },
  "Pedal_AnalogueDelay": {
-  "khs delay": {
+  "analogdelay": {
    "Time": {
     "param": "Time",
     "scale": 0.0005,
-    "_hint": "RS 'Time' is ms (100-2000). KHS Time is 0-1 over ~2000ms max"
+    "_hint": "RS Time is milliseconds. AnalogDelay stores it as ms / 2000 and reconstructs the actual delay time internally."
    },
    "Feedback": {
     "param": "Feedback",
@@ -777,10 +850,11 @@
   }
  },
  "Pedal_ValveEcho": {
-  "khs delay": {
+  "valveecho": {
    "Time": {
     "param": "Time",
-    "scale": 0.0005
+    "scale": 0.0005,
+    "_hint": "RS Time is milliseconds. ValveEcho stores it as ms / 2000 and reconstructs a Binson-style multi-head delay internally."
    },
    "Feedback": {
     "param": "Feedback",
@@ -793,10 +867,11 @@
   }
  },
  "Pedal_NPNDelay": {
-  "khs delay": {
+  "npndelay": {
    "Time": {
     "param": "Time",
-    "scale": 0.0005
+    "scale": 0.0005,
+    "_hint": "RS Time is milliseconds. NpnDelay stores it as ms / 2000 and clamps internally to a DM-2 style 20-420 ms range so Rocksmith presets around 396 ms survive."
    },
    "Feedback": {
     "param": "Feedback",
@@ -809,10 +884,11 @@
   }
  },
  "Pedal_NoFiEcho": {
-  "khs delay": {
+  "nofiecho": {
    "Time": {
     "param": "Time",
-    "scale": 0.0005
+    "scale": 0.0005,
+    "_hint": "RS Time is milliseconds. NoFiEcho stores it as ms / 2000 and reconstructs the actual echo time internally."
    },
    "Feedback": {
     "param": "Feedback",
@@ -993,29 +1069,44 @@
   }
  },
  "Pedal_LineDrive": {
-  "khs distortion": {
+  "linedrive": {
    "Gain": {
-    "param": "Drive",
+    "param": "Gain",
     "scale": 0.01
    },
    "Tone": {
-    "param": "Bias",
+    "param": "Tone",
     "scale": 0.01,
-    "_hint": "RS Tone 0-100 → kHs Distortion Bias 0-1. Bias=0.5 (RS Tone 50) is symmetric clipping; <0.5 darker, >0.5 brighter character via asymmetric harmonics."
+    "_hint": "RS Tone 0-100 -> LineDrive Tone 0-1. Lower values are darker and thicker; higher values open the OS-2 style post-clipping tone network."
+   }
+  }
+ },
+ "Pedal_MarshallGuvnorPlus": {
+  "marshallguvnorplus": {
+   "Gain": {
+    "param": "Gain",
+    "scale": 0.01
    },
-   "_static": {
-    "Dynamics": 1.0,
-    "Type": 0.0
+   "Bass": {
+    "param": "Bass",
+    "scale": 0.01
    },
-   "Filter": {
-    "param": "Dynamics",
+   "Mid": {
+    "param": "Mid",
+    "scale": 0.01
+   },
+   "Middle": {
+    "param": "Mid",
     "scale": 0.01,
-    "_hint": "RS Filter 0-100 → kHs Dynamics 0-1. Overrides the _static Dynamics=1.0 pin when this gear exposes a Filter knob."
+    "_hint": "Alias for Rocksmith exports that spell the GV-2 middle control as Middle."
    },
-   "Blend": {
-    "param": "Mix",
-    "scale": 0.01,
-    "_hint": "RS Blend 0-100 → kHs Dry/Wet 0-1. Most distortion pedals don't expose Blend; Bass_Pedal_BassOverdrive does."
+   "Treble": {
+    "param": "Treble",
+    "scale": 0.01
+   },
+   "Deep": {
+    "param": "Deep",
+    "scale": 0.01
    }
   }
  },
@@ -1081,110 +1172,54 @@
   }
  },
  "Pedal_SuperDrive": {
-  "khs distortion": {
+  "superdrive": {
    "Gain": {
-    "param": "Drive",
+    "param": "Gain",
     "scale": 0.01
    },
-   "_static": {
-    "Dynamics": 1.0,
-    "Type": 0.0
-   },
    "Tone": {
-    "param": "Bias",
+    "param": "Tone",
     "scale": 0.01,
-    "_hint": "RS Tone 0-100 → kHs Distortion Bias 0-1. Bias=0.5 (RS Tone 50) is symmetric clipping; <0.5 darker, >0.5 brighter character via asymmetric harmonics."
-   },
-   "Filter": {
-    "param": "Dynamics",
-    "scale": 0.01,
-    "_hint": "RS Filter 0-100 → kHs Dynamics 0-1. Overrides the _static Dynamics=1.0 pin when this gear exposes a Filter knob."
-   },
-   "Blend": {
-    "param": "Mix",
-    "scale": 0.01,
-    "_hint": "RS Blend 0-100 → kHs Dry/Wet 0-1. Most distortion pedals don't expose Blend; Bass_Pedal_BassOverdrive does."
+    "_hint": "RS Tone 0-100 -> SuperDrive Tone 0-1. Lower values keep the SD-1 darker and mid-forward; higher values open the top end after clipping."
    }
   }
  },
  "Pedal_Distortion": {
-  "khs distortion": {
+  "standarddistortion": {
    "Gain": {
-    "param": "Drive",
+    "param": "Gain",
     "scale": 0.01
    },
-   "_static": {
-    "Dynamics": 1.0,
-    "Type": 0.8
-   },
    "Tone": {
-    "param": "Bias",
+    "param": "Tone",
     "scale": 0.01,
-    "_hint": "RS Tone 0-100 → kHs Distortion Bias 0-1. Bias=0.5 (RS Tone 50) is symmetric clipping; <0.5 darker, >0.5 brighter character via asymmetric harmonics."
-   },
-   "Filter": {
-    "param": "Dynamics",
-    "scale": 0.01,
-    "_hint": "RS Filter 0-100 → kHs Dynamics 0-1. Overrides the _static Dynamics=1.0 pin when this gear exposes a Filter knob."
-   },
-   "Blend": {
-    "param": "Mix",
-    "scale": 0.01,
-    "_hint": "RS Blend 0-100 → kHs Dry/Wet 0-1. Most distortion pedals don't expose Blend; Bass_Pedal_BassOverdrive does."
+    "_hint": "RS Tone 0-100 -> StandardDistortion Tone 0-1. Lower values are darker/thicker; higher values open the DS-1 style cutting top end."
    }
   }
  },
  "Pedal_VintageDistortion": {
-  "khs distortion": {
+  "vintagedistortion": {
    "Gain": {
-    "param": "Drive",
+    "param": "Gain",
     "scale": 0.01
    },
-   "_static": {
-    "Dynamics": 1.0,
-    "Type": 0.8
-   },
    "Tone": {
-    "param": "Bias",
+    "param": "Tone",
     "scale": 0.01,
-    "_hint": "RS Tone 0-100 → kHs Distortion Bias 0-1. Bias=0.5 (RS Tone 50) is symmetric clipping; <0.5 darker, >0.5 brighter character via asymmetric harmonics."
-   },
-   "Filter": {
-    "param": "Dynamics",
-    "scale": 0.01,
-    "_hint": "RS Filter 0-100 → kHs Dynamics 0-1. Overrides the _static Dynamics=1.0 pin when this gear exposes a Filter knob."
-   },
-   "Blend": {
-    "param": "Mix",
-    "scale": 0.01,
-    "_hint": "RS Blend 0-100 → kHs Dry/Wet 0-1. Most distortion pedals don't expose Blend; Bass_Pedal_BassOverdrive does."
+    "_hint": "RS Tone 0-100 -> VintageDistortion Tone 0-1. Lower values are darker and thicker; higher values open the DOD 250 style top end."
    }
   }
  },
  "Pedal_MetalDistortion": {
-  "khs distortion": {
+  "alloydistortion": {
    "Gain": {
-    "param": "Drive",
+    "param": "Gain",
     "scale": 0.01
    },
-   "_static": {
-    "Dynamics": 1.0,
-    "Type": 0.8
-   },
    "Tone": {
-    "param": "Bias",
+    "param": "Tone",
     "scale": 0.01,
-    "_hint": "RS Tone 0-100 → kHs Distortion Bias 0-1. Bias=0.5 (RS Tone 50) is symmetric clipping; <0.5 darker, >0.5 brighter character via asymmetric harmonics."
-   },
-   "Filter": {
-    "param": "Dynamics",
-    "scale": 0.01,
-    "_hint": "RS Filter 0-100 → kHs Dynamics 0-1. Overrides the _static Dynamics=1.0 pin when this gear exposes a Filter knob."
-   },
-   "Blend": {
-    "param": "Mix",
-    "scale": 0.01,
-    "_hint": "RS Blend 0-100 → kHs Dry/Wet 0-1. Most distortion pedals don't expose Blend; Bass_Pedal_BassOverdrive does."
+    "_hint": "RS Tone 0-100 -> AlloyDistortion Tone 0-1. Lower values emphasize the HM-2 low color; higher values add chainsaw high color."
    }
   }
  },
@@ -1324,6 +1359,17 @@
   }
  },
  "Pedal_BuzzToo": {
+  "buzztoo": {
+   "Gain": {
+    "param": "Gain",
+    "scale": 0.01
+   },
+   "Tone": {
+    "param": "Tone",
+    "scale": 0.01,
+    "_hint": "Continuous Big Muff V1 tone stack balance: lower is darker/thicker, higher is brighter and more scooped."
+   }
+  },
   "khs distortion": {
    "Gain": {
     "param": "Drive",
@@ -1601,6 +1647,40 @@
   }
  },
  "Pedal_AutoFilter": {
+  "autofilter": {
+   "FilterType": {
+    "param": "FilterType",
+    "scale": 0.5,
+    "_hint": "0/1/2 maps to Mu-Tron style low-pass / band-pass / high-pass."
+   },
+   "Res": {
+    "param": "Res",
+    "scale": 0.01,
+    "_hint": "Peak/resonance amount."
+   },
+   "Sens": {
+    "param": "Sens",
+    "scale": 0.01,
+    "_hint": "Input detector sensitivity and sweep range. The plugin keeps an internal floor so low RS values still sweep."
+   },
+   "Attack": {
+    "param": "Attack",
+    "scale": 0.001,
+    "_hint": "RS Attack is stored as a large raw time value; /1000 keeps it in normalized envelope range."
+   },
+   "Release": {
+    "param": "Release",
+    "scale": 0.001,
+    "_hint": "RS Release is stored as a large raw time value; /1000 keeps it in normalized envelope range."
+   },
+   "_static": {
+    "FilterType": 0.5,
+    "Res": 0.55,
+    "Sens": 0.45,
+    "Attack": 0.06,
+    "Release": 0.14
+   }
+  },
   "autosweep": {
    "FilterType": {
     "param": "FilterType",
@@ -1644,6 +1724,36 @@
   }
  },
  "Bass_Pedal_BassAutoFilter": {
+  "autosweep": {
+   "FilterType": {
+    "param": "FilterType",
+    "scale": 0.5,
+    "_hint": "0/1/2 maps to AutoSweep low-pass / band-pass / high-pass convention."
+   },
+   "Res": {
+    "param": "Res",
+    "scale": 0.01
+   },
+   "Sens": {
+    "param": "Sens",
+    "scale": 0.006,
+    "offset": 0.3,
+    "_hint": "Same AutoSweep sensitivity floor as guitar Auto Tone so low bass values still sweep."
+   },
+   "Attack": {
+    "param": "Attack",
+    "scale": 0.001
+   },
+   "Release": {
+    "param": "Release",
+    "scale": 0.001
+   },
+   "_static": {
+    "Range": 0.0,
+    "Mix": 0.55,
+    "Boost": 0.15
+   }
+  },
   "khs filter": {
    "Speed": {
     "param": "Cutoff",
@@ -2149,6 +2259,28 @@
   }
  },
  "Pedal_RingMod": {
+  "ringmod": {
+   "Depth": {
+    "param": "Depth",
+    "scale": 0.01,
+    "_hint": "RS Depth controls ring-mod wet amount and carrier injection."
+   },
+   "Waveform": {
+    "param": "Waveform",
+    "scale": 1.0,
+    "_hint": "RS Waveform values are selector-like. 0 is rounded sine/triangle, 1 is sharper square."
+   },
+   "Sensitivity": {
+    "param": "Sensitivity",
+    "scale": 0.01,
+    "_hint": "RS Sensitivity controls squelch/envelope sensitivity and carrier range."
+   },
+   "Attack": {
+    "param": "Attack",
+    "scale": 0.01,
+    "_hint": "RS Attack controls envelope and carrier slew time."
+   }
+  },
   "khs ring mod": {
    "Mix": {
     "param": "Mix",
@@ -2168,7 +2300,18 @@
   }
  },
  "Pedal_Limiter": {
-  "khs limiter": {}
+  "limiter": {
+   "Limit": {
+    "param": "Limit",
+    "scale": 0.01,
+    "_hint": "Rocksmith sends 0-100-ish limiter amount. The plugin uses an internal threshold curve so low library values still limit audibly."
+   },
+   "Rate": {
+    "param": "Rate",
+    "scale": 0.01,
+    "_hint": "Recovery speed; higher Rocksmith Rate recovers faster."
+   }
+  }
  },
  "Pedal_TremOle": {
   "mtremolo": {
@@ -2266,6 +2409,43 @@
     "param": "Rate",
     "scale": 0.01
    },
+   "Rate": {
+    "param": "Rate",
+    "scale": 0.01
+   },
+   "Depth": {
+    "param": "Depth",
+    "scale": 0.01
+   },
+   "Mix": {
+    "param": "Dry/Wet",
+    "scale": 0.01
+   }
+  }
+ },
+ "Pedal_BakedRotatoe": {
+  "bakedrotatoe": {
+   "Rate": {
+    "param": "Rate",
+    "scale": 0.01,
+    "_hint": "Target rotary speed. The plugin applies Leslie/LERA-style acceleration and braking internally."
+   },
+   "Depth": {
+    "param": "Depth",
+    "scale": 0.01,
+    "_hint": "Doppler, tremolo and cabinet motion intensity."
+   },
+   "Mix": {
+    "param": "Mix",
+    "scale": 0.01
+   },
+   "Balance": {
+    "param": "Balance",
+    "scale": 0.01,
+    "_hint": "Drum/horn balance: lower favors the low drum, higher favors the horn."
+   }
+  },
+  "khs chorus": {
    "Rate": {
     "param": "Rate",
     "scale": 0.01
@@ -2506,29 +2686,28 @@
   }
  },
  "Pedal_ShredZone": {
-  "khs distortion": {
-   "_static": {
-    "Dynamics": 1.0,
-    "Type": 0.8
-   },
+  "shredzone": {
    "Gain": {
-    "param": "Drive",
+    "param": "Gain",
     "scale": 0.01
    },
-   "Tone": {
-    "param": "Bias",
-    "scale": 0.01,
-    "_hint": "RS Tone 0-100 → kHs Distortion Bias 0-1. Bias=0.5 (RS Tone 50) is symmetric clipping; <0.5 darker, >0.5 brighter character via asymmetric harmonics."
+   "Bass": {
+    "param": "Bass",
+    "scale": 0.0714285714,
+    "offset": 0.5,
+    "_hint": "RS Bass uses roughly -7..+7. Map 0 to the plugin's neutral 0.5."
    },
-   "Filter": {
-    "param": "Dynamics",
-    "scale": 0.01,
-    "_hint": "RS Filter 0-100 → kHs Dynamics 0-1. Overrides the _static Dynamics=1.0 pin when this gear exposes a Filter knob."
+   "Mid": {
+    "param": "Mid",
+    "scale": 0.0714285714,
+    "offset": 0.5,
+    "_hint": "RS Mid uses roughly -7..+7. Map 0 to the plugin's neutral 0.5."
    },
-   "Blend": {
-    "param": "Mix",
-    "scale": 0.01,
-    "_hint": "RS Blend 0-100 → kHs Dry/Wet 0-1. Most distortion pedals don't expose Blend; Bass_Pedal_BassOverdrive does."
+   "Treble": {
+    "param": "Treble",
+    "scale": 0.0714285714,
+    "offset": 0.5,
+    "_hint": "RS Treble uses roughly -7..+7. Map 0 to the plugin's neutral 0.5."
    }
   }
  },

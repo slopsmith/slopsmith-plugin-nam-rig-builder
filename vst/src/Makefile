@@ -9,7 +9,9 @@ FILES_DSP = \
 FILES_UI = \
 	QTronUI.cpp
 
-include ../DPF/Makefile.plugins.mk
+DPF_PATH ?= ../DPF
+
+include $(DPF_PATH)/Makefile.plugins.mk
 
 # Only build VST3 (that's what the Slopsmith engine scans). AU added too in
 # case it's useful as a fallback format.

@@ -218,7 +218,7 @@ public:
         float x = inputHp.process(in);
         x = preLow.process(x);
 
-        const float drive = 1.20f + 5.60f * amount;
+        const float drive = 1.08f + 3.65f * amount;
         float driven = x * drive;
         const float diode = std::tanh(driven * (0.82f + 0.28f * amount));
         const float asym = std::tanh((driven + 0.10f * amount) * (1.45f + 0.55f * amount)) - 0.055f * amount;
@@ -229,10 +229,10 @@ public:
         filtered = hiStageA.process(filtered);
         filtered = hiStageB.process(filtered);
 
-        const float peak = bandPeak.process(driven) * (0.36f + 1.35f * amount);
-        float wet = filtered * (0.92f + 0.34f * amount) + peak;
+        const float peak = bandPeak.process(driven) * (0.28f + 0.82f * amount);
+        float wet = filtered * (0.76f + 0.22f * amount) + peak;
 
-        const float fold = std::sin(wet * (1.2f + 2.2f * amount)) * (0.08f + 0.20f * amount);
+        const float fold = std::sin(wet * (1.2f + 1.7f * amount)) * (0.05f + 0.13f * amount);
         wet = wet + fold;
 
         if (holdPeriod > 1)
@@ -245,12 +245,15 @@ public:
 
         // Low FilterType settings are intentionally darker and more choked;
         // high settings keep more dry edge for the Lofinator's bright band.
-        const float wetShare = 0.60f + 0.34f * amount;
-        const float dryLevel = (1.0f - wetShare) * (0.76f + 0.22f * t);
-        const float wetLevel = wetShare * (1.06f + 0.25f * amount);
+        // Rocksmith chains often place this pedal before clean amps, so the
+        // filter must not work like an output boost when Mix is high.
+        const float wetShare = 0.48f + 0.26f * amount;
+        const float dryLevel = (1.0f - 0.42f * wetShare) * (0.94f + 0.06f * t);
+        const float wetLevel = wetShare * (0.42f + 0.26f * amount);
         float y = in * dryLevel + wet * wetLevel;
         y = removeDc(y);
-        y = std::tanh(y * 1.10f) * 0.96f;
+        const float outputTrim = 0.82f / (1.0f + 0.18f * amount);
+        y = std::tanh(y * 0.92f) * outputTrim;
         return y;
     }
 };
@@ -285,7 +288,7 @@ protected:
     const char* getDescription() const override { return "Lo-fi resonant filter"; }
     const char* getMaker() const override { return "RigBuilder"; }
     const char* getLicense() const override { return "ISC"; }
-    uint32_t getVersion() const override { return d_version(1, 0, 0); }
+    uint32_t getVersion() const override { return d_version(1, 0, 1); }
     int64_t getUniqueId() const override { return d_cconst('L', 'f', 'F', 't'); }
 
     void initParameter(uint32_t index, Parameter& parameter) override
