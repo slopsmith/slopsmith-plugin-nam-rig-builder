@@ -620,6 +620,14 @@
  ],
  "Pedal_AmpEQ": [
   {
+   "name": "Amp EQ",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "bundled": "vst/AmpEQ.vst3",
+   "free": true,
+   "notes": "Bundled Fender '59 Bassman 5F6-A passive FMV tone stack (Yeh & Smith DAFx-06 model). Bass/Mid/Treble interact with the real mid scoop; BassFreq/MidShift/TrebleFreq scale the tone-stack caps."
+  },
+  {
    "name": "MEqualizer",
    "manufacturer": "MeldaProduction",
    "format": "VST3",

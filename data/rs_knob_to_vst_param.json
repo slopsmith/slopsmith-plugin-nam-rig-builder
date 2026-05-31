@@ -2009,6 +2009,38 @@
   }
  },
  "Pedal_AmpEQ": {
+  "ampeq": {
+   "Bass": {
+    "param": "Bass",
+    "scale": 0.01,
+    "_hint": "RS Bass pot 0-100 → tone-stack bass pot 0..1 (l). 50 = noon."
+   },
+   "Mid": {
+    "param": "Mid",
+    "scale": 0.01,
+    "_hint": "RS Mid pot 0-100 → tone-stack mid pot 0..1 (m). 50 = noon."
+   },
+   "Treble": {
+    "param": "Treble",
+    "scale": 0.01,
+    "_hint": "RS Treble pot 0-100 → tone-stack treble pot 0..1 (t). 50 = noon."
+   },
+   "BassFreq": {
+    "param": "BassFreq",
+    "scale": 0.5,
+    "_hint": "RS BassFreq (nominal 1.0) → VST 0.5 = stock bass cap. Scales C2 ±1 octave."
+   },
+   "MidShift": {
+    "param": "MidShift",
+    "scale": 0.5,
+    "_hint": "RS MidShift (nominal 1.0) → VST 0.5 = stock mid cap. Scales C3 to move the scoop ±1 octave."
+   },
+   "TrebleFreq": {
+    "param": "TrebleFreq",
+    "scale": 0.5,
+    "_hint": "RS TrebleFreq (nominal 1.0) → VST 0.5 = stock treble cap. Scales C1 ±1 octave."
+   }
+  },
   "mequalizer": {
    "Bass": {
     "param": "Gain 1 (EQ 1)",
