@@ -271,9 +271,13 @@ function rbApplyChainInputDrive(opts) {
 // asymmetry without a slider — the caller passes this to rbPreLoadMute
 // so the fade-in lands at the right level for whatever this chain has.
 //
-//   active amp + active cab IR → ×2.0 (compensate cab attenuation)
-//   active amp + no cab IR     → ×0.5 (knock the raw-amp spike down)
-//   no active amp / fallback   → ×1.0 (don't change anything)
+//   active amp + Rocksmith cab IR → ×2.0 (RS cabs are raw/quiet — boost +6 dB)
+//   active amp + non-RS cab IR    → ×1.0 (tone3000 IRs are already loudness-
+//                                         normalized — boosting them over-drove
+//                                         the output, the "too boosted/saturated
+//                                         without the Rocksmith cab" report)
+//   active amp + no cab IR        → ×0.5 (knock the raw-amp spike down)
+//   no active amp / fallback      → ×1.0 (don't change anything)
 function rbChainGainTargetFor(chainSpec) {
     // User "Chain volume" trim (chain_makeup, default 1.0) — the ONLY level
     // the engine respects (per-stage IR gain is ignored). Multiplies the
@@ -281,21 +285,27 @@ function rbChainGainTargetFor(chainSpec) {
     const makeup = (typeof window.__rbChainMakeup === 'number') ? window.__rbChainMakeup : 4.0;
     let base = 1.0;
     if (Array.isArray(chainSpec)) {
-        let hasActiveAmp = false, hasActiveCab = false, activeNamCount = 0;
+        let hasActiveAmp = false, hasRsCab = false, hasOtherCab = false, activeNamCount = 0;
         for (const stage of chainSpec) {
             if (!stage || stage.bypassed) continue;
             if (stage.type === 1) {
                 activeNamCount++;
                 if (stage.slot === 'amp') hasActiveAmp = true;
             }
-            // type 2 = IR; ANY active IR counts as a cab (rs_ir master_pre etc.).
-            if (stage.type === 2) hasActiveCab = true;
+            // type 2 = IR. A Rocksmith cab IR lives under nam_irs/rocksmith/ and
+            // is RAW (quiet → needs +6 dB). A tone3000 IR is already normalized
+            // (boosting it is what saturated non-RS-cab tones), so 0 dB.
+            if (stage.type === 2) {
+                if (String(stage.path || '').toLowerCase().includes('rocksmith')) hasRsCab = true;
+                else hasOtherCab = true;
+            }
         }
-        // Auto makeup (dB): +6 if a cab IR is active, -6 if amp-only; +2 per
-        // extra NAM beyond the first; capped at +18. (Each NAM loses ~2-3 dB;
-        // the cab IR ~6 dB.) Only when an amp is active — otherwise leave at 1.
+        // Auto makeup (dB): +6 for a Rocksmith cab, 0 for a non-RS (tone3000)
+        // cab, -6 if amp-only; +2 per extra NAM beyond the first; capped at +18.
+        // Only when an amp is active — otherwise leave at 1.
         if (hasActiveAmp) {
-            let dB = (hasActiveCab ? 6 : -6) + 2 * Math.max(0, activeNamCount - 1);
+            const cabDb = hasRsCab ? 6 : (hasOtherCab ? 0 : -6);
+            let dB = cabDb + 2 * Math.max(0, activeNamCount - 1);
             dB = Math.max(-12, Math.min(18, dB));
             base = Math.pow(10, dB / 20);
             base *= rbPostAmpMakeupForChain(chainSpec);
@@ -338,6 +348,22 @@ async function rbSetChainMakeup(v) {
     fetch(`${RB_API}/settings`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chain_makeup: val }),
+    }).catch(() => {});
+}
+
+// User "Amp drive" trim — the pre-NAM input gain for GUITAR amps (bass auto-
+// uses 1×). Default 8× (≈+18 dB); lower it if amp captures sound over-driven.
+// Persists to /settings (nam_chain_input_drive) and re-applies live through
+// rbApplyChainInputDrive (which keeps the bass/guitar branch correct).
+async function rbSetAmpDrive(v) {
+    const val = Math.max(0.1, Math.min(16.0, parseFloat(v) || 8.0));
+    window.__rbChainInputDrive = val;
+    const el = document.getElementById('rb-amp-drive-val');
+    if (el) el.textContent = val.toFixed(1) + '×';
+    rbApplyChainInputDrive();   // re-applies respecting bass detection
+    fetch(`${RB_API}/settings`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nam_chain_input_drive: val }),
     }).catch(() => {});
 }
 
@@ -2664,8 +2690,16 @@ function rbFilterVstParams(params) {
 async function rbTeardownVstEditor(api) {
     const slot = rbState._vstEditorSlot;
     rbState._vstEditorSlot = null;
-    if (slot == null || !api) return;
-    try { if (api.closePluginEditor) await api.closePluginEditor(slot); } catch (_) {}
+    if (!api) return;
+    // Close the prior editor's native window only if there was one…
+    if (slot != null) {
+        try { if (api.closePluginEditor) await api.closePluginEditor(slot); } catch (_) {}
+    }
+    // …but ALWAYS clear the chain. The earlier `slot == null` early-return
+    // skipped this when opening the editor with no prior editor slot — so a
+    // live "Listen" chain (loaded via loadPreset, which sets no editor slot)
+    // stayed loaded, and the subsequent loadVST stacked a SECOND copy of the
+    // pedal on top → the effect was applied twice ("Edit VST doubles the sound").
     try { if (api.clearChain) await api.clearChain(); } catch (_) {}
 }
 
@@ -7306,8 +7340,6 @@ async function rbLoadSettings() {
     }
     const megaCb = document.getElementById('rb-mega-chain-mode');
     if (megaCb) megaCb.checked = !!s.mega_chain_mode;
-    const bac = document.getElementById('rb-bypass-all-cabs');
-    if (bac) bac.checked = !!s.bypass_all_cabs;
     // Inverted-sense checkbox: the user opts OUT of curated-only by
     // ticking the box (= allow tone3000 fuzzy fallback). The persisted
     // setting is still `curated_only`; the UI just shows the opposite.
@@ -7322,6 +7354,11 @@ async function rbLoadSettings() {
     if (typeof s.nam_chain_input_drive === 'number') {
         window.__rbChainInputDrive = s.nam_chain_input_drive;
     }
+    const adv = (typeof s.nam_chain_input_drive === 'number') ? s.nam_chain_input_drive : 1.0;
+    const adSlider = document.getElementById('rb-amp-drive');
+    const adVal = document.getElementById('rb-amp-drive-val');
+    if (adSlider) adSlider.value = String(adv);
+    if (adVal) adVal.textContent = adv.toFixed(1) + '×';
     // Chain volume trim (user cab/chain makeup). Default 4.0.
     window.__rbChainMakeup = (typeof s.chain_makeup === 'number') ? s.chain_makeup : 4.0;
     const cmSlider = document.getElementById('rb-chain-makeup');
@@ -7392,12 +7429,10 @@ async function rbOauthDisconnect() {
 async function rbSaveSettings() {
     const megaCb = document.getElementById('rb-mega-chain-mode');
     const mega_chain_mode = megaCb ? !!megaCb.checked : false;
-    const bac = document.getElementById('rb-bypass-all-cabs');
-    const bypass_all_cabs = bac ? !!bac.checked : false;
     await fetch(`${RB_API}/settings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mega_chain_mode, bypass_all_cabs }),
+        body: JSON.stringify({ mega_chain_mode }),
     });
     // Mirror to the runtime so RbMegaChain picks it up without a restart.
     window.__rbMegaChainSetting = mega_chain_mode;

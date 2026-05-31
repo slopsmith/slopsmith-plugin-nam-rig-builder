@@ -386,15 +386,23 @@
         </div>
 
         <div class="bg-dark-700/50 border border-gray-800/50 rounded-xl p-5 mb-6">
-            <h3 class="text-white font-semibold mb-3">Cabinets</h3>
-            <label class="flex items-center gap-2 text-sm text-gray-300">
-                <input type="checkbox" id="rb-bypass-all-cabs" onchange="rbSaveSettings()" class="rounded">
-                Disable cabinets on all songs (bypass — raw amp, e.g. for your own cab sim)
-            </label>
-            <p class="text-[11px] text-gray-500 mt-2 leading-snug">Takes effect when you (re)open or replay a song.</p>
+            <h3 class="text-white font-semibold mb-3">Levels</h3>
+            <div class="mt-1">
+                <label class="flex items-center justify-between text-sm text-gray-300">
+                    <span>Amp drive (input into NAM)</span>
+                    <span id="rb-amp-drive-val" class="text-xs text-purple-300">1.0×</span>
+                </label>
+                <input type="range" id="rb-amp-drive" min="1" max="5" step="0.1" value="1"
+                       oninput="rbSetAmpDrive(this.value)"
+                       class="w-full mt-1 accent-purple-500">
+                <p class="text-[11px] text-gray-500 mt-1 leading-snug">
+                    Push into the amp NAM before it (guitar amps only — bass auto-uses 1×).
+                    Default <strong>1× = no boost</strong>. Raise it for more amp saturation. Applies live.
+                </p>
+            </div>
             <div class="mt-4">
                 <label class="flex items-center justify-between text-sm text-gray-300">
-                    <span>Chain volume (makeup)</span>
+                    <span>Chain volume (output makeup)</span>
                     <span id="rb-chain-makeup-val" class="text-xs text-purple-300">4.00×</span>
                 </label>
                 <input type="range" id="rb-chain-makeup" min="0.25" max="8" step="0.05" value="4"

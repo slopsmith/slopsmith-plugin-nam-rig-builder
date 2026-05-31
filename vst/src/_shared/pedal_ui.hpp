@@ -38,6 +38,14 @@
 #ifndef PEDAL_ACB
 #define PEDAL_ACB 240
 #endif
+// Optional separate knob value-arc colour (defaults to the body accent). Set
+// it when the body is very dark/black and the accent-coloured arc would vanish
+// — e.g. a black pedal wants a light/white arc.
+#ifndef PEDAL_ARCR
+#define PEDAL_ARCR PEDAL_ACR
+#define PEDAL_ARCG PEDAL_ACG
+#define PEDAL_ARCB PEDAL_ACB
+#endif
 
 START_NAMESPACE_DISTRHO
 
@@ -66,7 +74,7 @@ class PedalUI : public UI
         // value arc
         beginPath();
         for (int s = 0; s <= 36; ++s) { float t = n*s/36.f, a = angleFor(t); float x = cx + (R-2*f)*std::cos(a), y = cy + (R-2*f)*std::sin(a); if (s==0) moveTo(x,y); else lineTo(x,y); }
-        strokeColor(Color(PEDAL_ACR, PEDAL_ACG, PEDAL_ACB)); strokeWidth(3.5f*f); stroke();
+        strokeColor(Color(PEDAL_ARCR, PEDAL_ARCG, PEDAL_ARCB)); strokeWidth(3.5f*f); stroke();
         // pointer
         const float a = angleFor(n);
         beginPath(); moveTo(cx, cy); lineTo(cx + (R-8*f)*std::cos(a), cy + (R-8*f)*std::sin(a));

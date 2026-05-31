@@ -199,6 +199,28 @@
   }
  },
  "Bass_Pedal_BassChorus": {
+  "basschorus": {
+   "Rate": {
+    "param": "Rate",
+    "scale": 0.01,
+    "_hint": "RS Rate → LFO speed 0..1 (0.1..8 Hz)."
+   },
+   "Depth": {
+    "param": "Depth",
+    "scale": 0.01,
+    "_hint": "RS Depth → LFO mod depth 0..1."
+   },
+   "LoFilter": {
+    "param": "LoFilter",
+    "scale": 0.01,
+    "_hint": "RS LoFilter → wet high-pass 0..1 (keeps lows dry)."
+   },
+   "Mix": {
+    "param": "Mix",
+    "scale": 0.01,
+    "_hint": "RS Mix → dry/wet 0..1."
+   }
+  },
   "khs chorus": {
    "Rate": {
     "param": "Rate",
@@ -428,6 +450,28 @@
   }
  },
  "Bass_Pedal_BassFlanger": {
+  "bassflanger": {
+   "Rate": {
+    "param": "Rate",
+    "scale": 0.01,
+    "_hint": "RS Rate→LFO speed 0..1 (0.05..5 Hz)."
+   },
+   "Depth": {
+    "param": "Depth",
+    "scale": 0.01,
+    "_hint": "RS Depth→sweep width 0..1."
+   },
+   "Filter": {
+    "param": "Filter",
+    "scale": 0.01,
+    "_hint": "RS Filter→Resonance/feedback 0..1 (the jet)."
+   },
+   "Mix": {
+    "param": "Mix",
+    "scale": 0.01,
+    "_hint": "RS Mix→dry/wet 0..1."
+   }
+  },
   "khs flanger": {
    "Rate": {
     "param": "Rate",
@@ -1111,6 +1155,28 @@
   }
  },
  "Bass_Pedal_BassOverdrive": {
+  "bassoverdrive": {
+   "Blend": {
+    "param": "Blend",
+    "scale": 0.01,
+    "_hint": "RS Blend 0-100 → clean/dist mix 0..1."
+   },
+   "Gain": {
+    "param": "Gain",
+    "scale": 0.01,
+    "_hint": "RS Gain 0-100 → B3K Drive 0..1."
+   },
+   "Filter": {
+    "param": "Filter",
+    "scale": 0.01,
+    "_hint": "RS Filter 0-100 → B3K Grunt 0..1 (low end into the clipper)."
+   },
+   "Tone": {
+    "param": "Tone",
+    "scale": 0.01,
+    "_hint": "RS Tone 0-100 → B3K Attack 0..1 (treble of the distortion)."
+   }
+  },
   "khs distortion": {
    "Gain": {
     "param": "Drive",
@@ -1223,7 +1289,157 @@
    }
   }
  },
+ "Bass_Pedal_BassEnbig": {
+  "bassenbig": {
+   "Rate":   { "param": "Rate",   "scale": 0.01, "_hint": "RS Rate 0-100 → LFO wobble speed 0..1." },
+   "Depth":  { "param": "Depth",  "scale": 0.01, "_hint": "RS Depth 0-100 → sweep range 0..1." },
+   "Mix":    { "param": "Mix",    "scale": 0.01, "_hint": "RS Mix 0-100 → wet/dry 0..1." },
+   "Filter": { "param": "Filter", "scale": 0.01, "_hint": "RS Filter 0-100 → base centre frequency 0..1." }
+  }
+ },
+ "Bass_Pedal_BassFilterDelay": {
+  "bassfilterdelay": {
+   "Time":     { "param": "Time",     "scale": 0.01, "_hint": "RS Time 0-100 → 30..700 ms." },
+   "Feedback": { "param": "Feedback", "scale": 0.01, "_hint": "RS Feedback 0-100 → regeneration 0..1." },
+   "Mix":      { "param": "Mix",      "scale": 0.01, "_hint": "RS Mix 0-100 → wet/dry 0..1." },
+   "Filter":   { "param": "Filter",   "scale": 0.01, "_hint": "RS Filter 0-100 → repeat tone 0..1 (dark↔bright)." }
+  }
+ },
+ "Bass_Pedal_BassFilterEcho": {
+  "bassfilterecho": {
+   "Time":     { "param": "Time",     "scale": 0.01, "_hint": "RS Time 0-100 → 40..700 ms." },
+   "Feedback": { "param": "Feedback", "scale": 0.01, "_hint": "RS Feedback 0-100 → regeneration 0..1." },
+   "Mix":      { "param": "Mix",      "scale": 0.01, "_hint": "RS Mix 0-100 → wet/dry 0..1." },
+   "Filter":   { "param": "Filter",   "scale": 0.01, "_hint": "RS Filter 0-100 → repeat tone 0..1 (dark↔bright)." }
+  }
+ },
+ "Bass_Pedal_BassWah": {
+  "basswah": {
+   "Auto": {
+    "param": "Auto",
+    "scale": 1.0,
+    "_hint": "RS Auto switch 0/1 → auto-sweep toggle."
+   },
+   "Pedal": {
+    "param": "Pedal",
+    "scale": 0.01,
+    "_hint": "RS Pedal 0-100 → treadle/wah position 0..1."
+   },
+   "Sens": {
+    "param": "Sens",
+    "scale": 0.01,
+    "_hint": "RS Sens 0-100 → envelope sensitivity 0..1."
+   },
+   "Speed": {
+    "param": "Speed",
+    "scale": 0.01,
+    "_hint": "RS Speed 0-100 → auto-sweep LFO rate 0..1."
+   }
+  }
+ },
+ "Bass_Pedal_BassSubOctave": {
+  "basssuboctave": {
+   "Mix": {
+    "param": "Mix",
+    "scale": 0.01,
+    "_hint": "RS Mix 0-100 → dry/sub-octave blend 0..1."
+   },
+   "Tone": {
+    "param": "Tone",
+    "scale": 0.01,
+    "_hint": "RS Tone 0-100 → sub-octave low-pass 0..1 (dark↔open)."
+   }
+  }
+ },
+ "Bass_Pedal_BassPhase": {
+  "bassphase": {
+   "Rate": {
+    "param": "Rate",
+    "scale": 0.01,
+    "_hint": "RS Rate 0-100 → LFO speed 0..1."
+   },
+   "Depth": {
+    "param": "Depth",
+    "scale": 0.01,
+    "_hint": "RS Depth 0-100 → sweep depth + regeneration 0..1."
+   },
+   "Mix": {
+    "param": "Mix",
+    "scale": 0.01,
+    "_hint": "RS Mix 0-100 → dry/wet notch blend 0..1."
+   },
+   "Filter": {
+    "param": "Filter",
+    "scale": 0.01,
+    "_hint": "RS Filter 0-100 → sweep centre frequency 0..1."
+   }
+  }
+ },
+ "Bass_Pedal_EdenWTDI": {
+  "edenwtdi": {
+   "Bass": {
+    "param": "Bass",
+    "scale": 0.033333,
+    "offset": 0.5,
+    "_hint": "RS Bass ±15 dB → low-shelf gain 0..1 (0.5 = flat)."
+   },
+   "Mid": {
+    "param": "Mid",
+    "scale": 0.033333,
+    "offset": 0.5,
+    "_hint": "RS Mid ±15 dB → mid-peak gain 0..1 (0.5 = flat)."
+   },
+   "Treble": {
+    "param": "Treble",
+    "scale": 0.033333,
+    "offset": 0.5,
+    "_hint": "RS Treble ±15 dB → high-shelf gain 0..1 (0.5 = flat)."
+   },
+   "Gain": {
+    "param": "Gain",
+    "scale": 0.033,
+    "_hint": "RS Gain (e.g. 18) → preamp drive 0..1 (clamped)."
+   },
+   "Enhance": {
+    "param": "Enhance",
+    "scale": 0.1,
+    "_hint": "RS Enhance 0-10 → contour amount 0..1."
+   },
+   "Compression": {
+    "param": "Comp",
+    "scale": 0.1,
+    "_hint": "RS Compression 0-10 → compressor amount 0..1."
+   },
+   "LoShift": {
+    "param": "Bass Boost",
+    "scale": 1.0,
+    "_hint": "RS LoShift switch 0/1 → Bass Boost toggle (drops low corner + adds bottom)."
+   },
+   "MidShift": {
+    "param": "Mid Shift",
+    "scale": 1.0,
+    "_hint": "RS MidShift switch 0/1 → Mid Shift toggle (600 Hz → 1.2 kHz)."
+   }
+  }
+ },
  "Bass_Pedal_BassDistortion": {
+  "bassdistortion": {
+   "Gain": {
+    "param": "Gain",
+    "scale": 0.01,
+    "_hint": "RS Gain 0-100 → RAT Distortion (drive) 0..1."
+   },
+   "Tone": {
+    "param": "Tone",
+    "scale": 0.01,
+    "_hint": "RS Tone 0-100 → pre-clip brightness 0..1 (grit character)."
+   },
+   "Filter": {
+    "param": "Filter",
+    "scale": 0.01,
+    "_hint": "RS Filter 0-100 → RAT Filter low-pass 0..1 (dark↔bright)."
+   }
+  },
   "khs distortion": {
    "Gain": {
     "param": "Drive",
@@ -1248,8 +1464,8 @@
     "scale": 0.01,
     "_hint": "RS Blend 0-100 → kHs Dry/Wet 0-1. Most distortion pedals don't expose Blend; Bass_Pedal_BassOverdrive does."
    }
- }
-},
+  }
+ },
  "Pedal_FuzzWasHe": {
   "fuzzwashe": {
    "Gain": {
@@ -1285,8 +1501,8 @@
     "scale": 0.01,
     "_hint": "RS Blend 0-100 → kHs Dry/Wet 0-1. Most distortion pedals don't expose Blend; Bass_Pedal_BassOverdrive does."
    }
- }
-},
+  }
+ },
  "Pedal_CaptFuzzle": {
   "captainfuzzle": {
    "Gain": {
@@ -1397,6 +1613,23 @@
   }
  },
  "Bass_Pedal_BassFuzz": {
+  "bassfuzz": {
+   "Gain": {
+    "param": "Gain",
+    "scale": 0.01,
+    "_hint": "RS Gain (sustain) 0-100 → Big Muff drive 0..1."
+   },
+   "Tone": {
+    "param": "Tone",
+    "scale": 0.01,
+    "_hint": "RS Tone 0-100 → Big Muff tone stack 0..1 (LP↔HP, mid scoop at 0.5)."
+   },
+   "Filter": {
+    "param": "Filter",
+    "scale": 0.01,
+    "_hint": "RS Filter 0-100 → clean low-end blend 0..1 (the bass-specific dry/bass mix)."
+   }
+  },
   "khs distortion": {
    "Gain": {
     "param": "Drive",
@@ -1506,7 +1739,7 @@
    "Filter": {
     "param": "Filter",
     "scale": 0.0011235955056179776,
-    "offset": -0.12359550561797753,
+    "offset": -0.12359550561797752,
     "_hint": "RS Filter is the multiband crossover in Hz, observed 110-1000. BassMultiComp stores it normalized: (Hz - 110) / 890."
    },
    "Rate": {
@@ -1742,7 +1975,8 @@
    },
    "Attack": {
     "param": "Attack",
-    "scale": 0.001
+    "scale": 0.001,
+    "_hint": "RS Attack /1000 (RS 128 → 0.128 ≈ 2ms)"
    },
    "Release": {
     "param": "Release",
@@ -1752,6 +1986,11 @@
     "Range": 0.0,
     "Mix": 0.55,
     "Boost": 0.15
+   },
+   "Speed": {
+    "param": "Release",
+    "scale": 0.001,
+    "_hint": "RS Bass-AutoFilter Speed (if present) → envelope release."
    }
   },
   "khs filter": {
@@ -2724,6 +2963,12 @@
   }
  },
  "Rack_StudioChamber": {
+  "studiochamber": {
+   "Time":  { "param": "Time",  "scale": 0.01, "_hint": "RS Time 0-100 → decay 0..1." },
+   "Tone":  { "param": "Tone",  "scale": 0.01, "_hint": "RS Tone 0-100 → damping (dark↔bright)." },
+   "Depth": { "param": "Depth", "scale": 0.01, "_hint": "RS Depth 0-100 → wet tail modulation 0..1." },
+   "Mix":   { "param": "Mix",   "scale": 0.01, "_hint": "RS Mix 0-100 → wet/dry 0..1." }
+  },
   "khs reverb": {
    "Time": {
     "param": "Decay",
@@ -2748,6 +2993,15 @@
   }
  },
  "Rack_StudioChorus": {
+  "studiochorus": {
+   "Rate":     { "param": "Rate",      "scale": 0.16949, "offset": -0.01695, "_hint": "RS Rate in Hz (0.2..2.5) → normalized (plugin 0.1..6 Hz)." },
+   "Depth":    { "param": "Depth",     "scale": 0.01, "_hint": "RS Depth 0-100 → mod depth 0..1." },
+   "Mix":      { "param": "Mix",       "scale": 0.01, "_hint": "RS Mix 0-100 → wet/dry 0..1." },
+   "LoFilter": { "param": "Lo Filter", "scale": 0.01, "_hint": "RS LoFilter 0-100 → wet high-pass 0..1." },
+   "HiFilter": { "param": "Hi Filter", "scale": 0.01, "_hint": "RS HiFilter 0-100 → wet low-pass 0..1." },
+   "Stereo":   { "param": "Stereo",    "scale": 0.01, "_hint": "RS Stereo 0-100 → L/R spread 0..1." },
+   "Delay":    { "param": "Delay",     "scale": 0.01, "_hint": "RS Delay 0-100 → base delay 0..1." }
+  },
   "khs chorus": {
    "Rate": {
     "param": "Rate",
@@ -2774,6 +3028,13 @@
   }
  },
  "Rack_StudioDelay": {
+  "studiodelay": {
+   "TimeL":    { "param": "Time L",   "scale": 0.0014286, "_hint": "RS TimeL in ms (40..360) → 0..700 ms normalized." },
+   "TimeR":    { "param": "Time R",   "scale": 0.0014286, "_hint": "RS TimeR in ms → 0..700 ms normalized." },
+   "Feedback": { "param": "Feedback", "scale": 0.01 },
+   "Filter":   { "param": "Filter",   "scale": 0.01 },
+   "Mix":      { "param": "Mix",       "scale": 0.01 }
+  },
   "khs delay": {
    "TimeL": {
     "param": "Time",
@@ -2796,6 +3057,13 @@
   }
  },
  "Rack_StudioFlanger": {
+  "studioflanger": {
+   "Rate":  { "param": "Rate",  "scale": 0.16949, "offset": -0.01695, "_hint": "RS Rate in Hz (0.3..0.6) → normalized (plugin 0.1..6 Hz)." },
+   "Depth": { "param": "Depth", "scale": 0.01 },
+   "Regen": { "param": "Regen", "scale": 0.01 },
+   "Tone":  { "param": "Tone",  "scale": 0.01 },
+   "Mix":   { "param": "Mix",   "scale": 0.01 }
+  },
   "khs flanger": {
    "Rate": {
     "param": "Rate",
@@ -2817,6 +3085,12 @@
   }
  },
  "Rack_StudioPlate": {
+  "studioplate": {
+   "Time":  { "param": "Time",  "scale": 0.01, "_hint": "RS Time 0-100 → decay 0..1." },
+   "Tone":  { "param": "Tone",  "scale": 0.01, "_hint": "RS Tone 0-100 → damping (dark↔bright)." },
+   "Depth": { "param": "Depth", "scale": 0.01, "_hint": "RS Depth 0-100 → wet tail modulation 0..1." },
+   "Mix":   { "param": "Mix",   "scale": 0.01, "_hint": "RS Mix 0-100 → wet/dry 0..1." }
+  },
   "khs reverb": {
    "Time": {
     "param": "Time",
@@ -2837,6 +3111,12 @@
   }
  },
  "Rack_StudioVerb": {
+  "studioverb": {
+   "Time":  { "param": "Time",  "scale": 0.01, "_hint": "RS Time 0-100 → decay 0..1." },
+   "Tone":  { "param": "Tone",  "scale": 0.01, "_hint": "RS Tone 0-100 → damping (dark↔bright)." },
+   "Depth": { "param": "Depth", "scale": 0.01, "_hint": "RS Depth 0-100 → wet tail modulation 0..1." },
+   "Mix":   { "param": "Mix",   "scale": 0.01, "_hint": "RS Mix 0-100 → wet/dry 0..1." }
+  },
   "khs reverb": {
    "Time": {
     "param": "Decay",
@@ -2861,6 +3141,13 @@
   }
  },
  "Rack_TapeEcho": {
+  "tapeecho": {
+   "Time":     { "param": "Time",     "scale": 0.0014286, "_hint": "RS Time in ms (~110..120) → 0..700 ms normalized." },
+   "Feedback": { "param": "Feedback", "scale": 0.01 },
+   "Filter":   { "param": "Filter",   "scale": 0.01 },
+   "Stereo":   { "param": "Stereo",   "scale": 0.01 },
+   "Mix":      { "param": "Mix",       "scale": 0.01 }
+  },
   "khs delay": {
    "Time": {
     "param": "Time",
