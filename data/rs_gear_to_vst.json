@@ -885,6 +885,14 @@
  ],
  "Bass_Pedal_BassWah": [
   {
+   "name": "BassWah",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "bundled": "vst/BassWah.vst3",
+   "free": true,
+   "notes": "Bundled Cry Baby Bass Wah (105Q) model — resonant band-pass swept across 100 Hz-1.6 kHz by Pedal position, the input envelope (Sens) and an LFO (Speed) when Auto is on, with a little dry blend to keep bass body. Maps RS Auto/Pedal/Sens/Speed."
+  },
+  {
    "name": "kHs Filter",
    "manufacturer": "Kilohearts",
    "format": "VST3",

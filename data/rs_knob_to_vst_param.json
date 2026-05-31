@@ -1212,6 +1212,30 @@
    }
   }
  },
+ "Bass_Pedal_BassWah": {
+  "basswah": {
+   "Auto": {
+    "param": "Auto",
+    "scale": 1.0,
+    "_hint": "RS Auto switch 0/1 → auto-sweep toggle."
+   },
+   "Pedal": {
+    "param": "Pedal",
+    "scale": 0.01,
+    "_hint": "RS Pedal 0-100 → treadle/wah position 0..1."
+   },
+   "Sens": {
+    "param": "Sens",
+    "scale": 0.01,
+    "_hint": "RS Sens 0-100 → envelope sensitivity 0..1."
+   },
+   "Speed": {
+    "param": "Speed",
+    "scale": 0.01,
+    "_hint": "RS Speed 0-100 → auto-sweep LFO rate 0..1."
+   }
+  }
+ },
  "Bass_Pedal_BassSubOctave": {
   "basssuboctave": {
    "Mix": {
