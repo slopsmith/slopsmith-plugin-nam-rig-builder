@@ -449,6 +449,15 @@
  ],
  "Pedal_ModDelay": [
   {
+   "name": "ModDelay",
+   "manufacturer": "Rig Builder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/ModDelay.vst3",
+   "notes": "Bundled DLL10/DML10-style modulated delay using Rocksmith's Time, Feedback, Mix, Rate, and Depth knobs."
+  },
+  {
    "name": "kHs Delay",
    "manufacturer": "Kilohearts",
    "format": "VST3",
@@ -468,6 +477,15 @@
   }
  ],
  "Pedal_SpringReverb": [
+  {
+   "name": "SpringReverb",
+   "manufacturer": "Rig Builder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/SpringReverb.vst3",
+   "notes": "Bundled Holy Grail-style spring tank reverb using Rocksmith's Time, Mix, and Depth knobs."
+  },
   {
    "name": "kHs Reverb",
    "manufacturer": "Kilohearts",
@@ -806,6 +824,15 @@
   }
  ],
  "Pedal_LoFiFilter": [
+  {
+   "name": "LoFiFilter",
+   "manufacturer": "Rig Builder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/LoFiFilter.vst3",
+   "notes": "Bundled Lofinator-style lo-fi filter based on the local schematic, using Rocksmith's FilterType and Mix knobs."
+  },
   {
    "name": "kHs Filter",
    "manufacturer": "Kilohearts",

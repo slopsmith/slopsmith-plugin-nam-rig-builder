@@ -618,6 +618,22 @@
   }
  },
  "Pedal_SpringReverb": {
+  "springreverb": {
+   "Time": {
+    "param": "Time",
+    "scale": 0.01,
+    "_hint": "RS Time controls the spring tank decay."
+   },
+   "Mix": {
+    "param": "Mix",
+    "scale": 0.01
+   },
+   "Depth": {
+    "param": "Depth",
+    "scale": 0.01,
+    "_hint": "RS Depth controls dwell, transient drip, and resonant spring intensity."
+   }
+  },
   "khs reverb": {
    "Time": {
     "param": "Decay",
@@ -799,6 +815,31 @@
   }
  },
  "Pedal_ModDelay": {
+  "moddelay": {
+   "Time": {
+    "param": "Time",
+    "scale": 0.0011363636363636363,
+    "offset": -0.022727272727272728,
+    "_hint": "RS Time is observed 20-900 ms. ModDelay stores it normalized: (ms - 20) / 880."
+   },
+   "Feedback": {
+    "param": "Feedback",
+    "scale": 0.01
+   },
+   "Mix": {
+    "param": "Mix",
+    "scale": 0.01
+   },
+   "Rate": {
+    "param": "Rate",
+    "scale": 0.2857142857142857,
+    "_hint": "RS Rate is observed 0-3.5 Hz. ModDelay stores it normalized: Hz / 3.5."
+   },
+   "Depth": {
+    "param": "Depth",
+    "scale": 0.01
+   }
+  },
   "khs delay": {
    "Time": {
     "param": "Time",
@@ -1442,6 +1483,18 @@
   }
  },
  "Pedal_LoFiFilter": {
+  "lofifilter": {
+   "FilterType": {
+    "param": "FilterType",
+    "scale": 0.01,
+    "_hint": "RS FilterType moves the Lofinator-style Lo/Hi filter window."
+   },
+   "Mix": {
+    "param": "Mix",
+    "scale": 0.01,
+    "_hint": "RS Mix controls drive, resonance, lo-fi texture, and wet intensity."
+   }
+  },
   "khs filter": {
    "FilterType": {
     "param": "Cutoff",
