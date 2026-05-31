@@ -1237,6 +1237,14 @@
  ],
  "Bass_Pedal_BassSubOctave": [
   {
+   "name": "BassSubOctave",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "bundled": "vst/BassSubOctave.vst3",
+   "free": true,
+   "notes": "Bundled Boss OC-2 model — monophonic analog octaver: comparator + flip-flop frequency divider (one octave down), envelope-tracked, with a Tone low-pass and dry/sub Mix. Maps RS Mix/Tone."
+  },
+  {
    "name": "kHs Pitch Shifter",
    "manufacturer": "Kilohearts",
    "format": "VST3",

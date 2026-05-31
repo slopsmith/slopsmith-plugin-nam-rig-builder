@@ -1212,6 +1212,20 @@
    }
   }
  },
+ "Bass_Pedal_BassSubOctave": {
+  "basssuboctave": {
+   "Mix": {
+    "param": "Mix",
+    "scale": 0.01,
+    "_hint": "RS Mix 0-100 → dry/sub-octave blend 0..1."
+   },
+   "Tone": {
+    "param": "Tone",
+    "scale": 0.01,
+    "_hint": "RS Tone 0-100 → sub-octave low-pass 0..1 (dark↔open)."
+   }
+  }
+ },
  "Bass_Pedal_BassPhase": {
   "bassphase": {
    "Rate": {
