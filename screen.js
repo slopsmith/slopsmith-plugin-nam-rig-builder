@@ -2987,7 +2987,7 @@ function rbCanvasDisplayWidth(stem) {
     // Very wide (1U racks ≈ 4.4:1) need more width so the small labels stay
     // legible; moderate landscape (Eden/Q-Tron) scales with the aspect.
     // max-width:100% in the markup keeps it from overflowing a narrow panel.
-    if (aspect > 3) return 600;
+    if (aspect > 3) return 720;
     return Math.max(360, Math.min(440, Math.round(aspect * 256)));
 }
 
