@@ -14,7 +14,7 @@
 (function () {
   'use strict';
   const API = '/api/plugins/rig_builder';
-  const FONTS = { bebas: 'PKBebas', barlow: 'PKBarlow', anton: 'PKAnton', crete: 'PKCrete' };
+  const FONTS = { bebas: 'PKBebas', barlow: 'PKBarlow', anton: 'PKAnton', crete: 'PKCrete', graffiti: 'PKGraffiti' };
   let _fontsP = null;
   function ready() {
     if (_fontsP) return _fontsP;
@@ -366,31 +366,31 @@
       textC(d,.610*W,.835*H+R,F.barlow,11,rgb(225,210,175),'SENS');
       textC(d,.845*W,.835*H+R,F.barlow,11,rgb(225,210,175),'SPEED'); } };
 
-  // Bass Auto Filter — AutoSweep / QTron envelope filter. Cream Q-Tron-style
-  // stompbox (brand-free), 2 rows of black knobs. Param order:
-  // FilterType0 Attack1 Release2 Range3 Res(Peak)4 Mix5 Sens(Gain)6 Boost7.
-  P.autosweep = { w:340, h:480,
+  // Bass Auto Filter — AutoSweep / QTron envelope filter. EHX Q-Tron+ look: black
+  // landscape box, a row of 6 knobs, big two-colour graffiti 'Q-TRIX' logo (parody;
+  // Q orange + -TRIX purple). RS params (6 knobs): FilterType0 Res4 Sens6 Attack1
+  // Release2 Mix5.
+  P.autosweep = { w:560, h:340,
     knobs:[
-      {id:0,cx:.24,cy:.255,r:.083,style:'boss'},  // MODE  (FilterType)
-      {id:4,cx:.50,cy:.255,r:.083,style:'boss'},  // PEAK  (Res)
-      {id:6,cx:.76,cy:.255,r:.083,style:'boss'},  // GAIN  (Sens)
-      {id:1,cx:.24,cy:.495,r:.083,style:'boss'},  // ATTACK
-      {id:2,cx:.50,cy:.495,r:.083,style:'boss'},  // RELEASE
-      {id:5,cx:.76,cy:.495,r:.083,style:'boss'}], // MIX
-    ptr:rgb(240,240,244),
-    draw(d){ const {ctx:c,W,H}=d;
-      box(d,224,216,197);                                  // cream body + screws
-      const dk=rgb(40,36,30);
-      // dark logo strip near the top
-      rr(c, W*0.12, H*0.058, W*0.76, H*0.072, 5); c.fillStyle=rgb(26,24,22); c.fill();
-      textC(d, W*0.5, H*0.094, F.bebas, 22, rgb(230,224,206), 'AUTO FILTER');
-      // knob labels
-      const R=.083*W+13;
-      const lab=(cx,cy,t)=> textC(d, cx*W, cy*H+R, F.barlow, 11, dk, t);
-      lab(.24,.255,'MODE'); lab(.50,.255,'PEAK'); lab(.76,.255,'GAIN');
-      lab(.24,.495,'ATTACK'); lab(.50,.495,'RELEASE'); lab(.76,.495,'MIX');
-      ledDot(d, W*0.5, H*0.645, true, 224,60,52);
-      footRound(d, W*0.5, H*0.82, 22); } };
+      {id:0,cx:.105,cy:.26,r:.052,style:'boss'},  // MODE  (FilterType)
+      {id:4,cx:.262,cy:.26,r:.052,style:'boss'},  // PEAK  (Res)
+      {id:6,cx:.419,cy:.26,r:.052,style:'boss'},  // GAIN  (Sens)
+      {id:1,cx:.576,cy:.26,r:.052,style:'boss'},  // ATTACK
+      {id:2,cx:.733,cy:.26,r:.052,style:'boss'},  // RELEASE
+      {id:5,cx:.890,cy:.26,r:.052,style:'boss'}], // MIX
+    ptr:rgb(238,240,244),
+    draw(d){ const {ctx:c,W,H}=d; const w=rgb(228,230,236);
+      box(d,24,24,28);                                     // black body + screws
+      const names=['MODE','PEAK','GAIN','ATTACK','RELEASE','MIX'], cxs=[.105,.262,.419,.576,.733,.890];
+      cxs.forEach((cx,i)=> textC(d, cx*W, .26*H + .052*W + 12, F.barlow, 11, w, names[i]));
+      // two-colour graffiti logo: 'Q' orange + '-TRIX' purple, centred as a group
+      setFont(d, F.graffiti, 62); c.textBaseline='middle'; c.textAlign='left';
+      const q='Q', t='-TRIX', wq=c.measureText(q).width, wt=c.measureText(t).width;
+      let x=.5*W-(wq+wt)/2;
+      c.fillStyle=rgb(244,150,46); c.fillText(q, x, .60*H);
+      c.fillStyle=rgb(152,88,208); c.fillText(t, x+wq, .60*H);
+      ledDot(d, W*0.5, H*0.10, true, 255,80,70);
+      footRound(d, W*0.5, H*0.85, 18); } };
 
   // ── graphic-EQ faders (mirrors graphic_eq_ui.hpp) ─────────────────────────
   // Geometry in spec-units (W=spec.w, H=spec.h). Boss = portrait/tall,
