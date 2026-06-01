@@ -159,7 +159,10 @@
     rr(c,tx,tyTop,tw,tBot-tyTop,12*s); c.fillStyle=tg; c.fill();
     rr(c,tx,tyTop,tw,12*s,12*s); c.fillStyle='rgba(255,255,255,0.086)'; c.fill();
     rr(c,tx,tyTop,tw,tBot-tyTop,12*s); c.strokeStyle='rgba(0,0,0,0.47)'; c.lineWidth=1.6*s; c.stroke();
-    const padT=tyTop+(tBot-tyTop)*0.50; rr(c,tx+12*s,padT,tw-24*s,tBot-padT-9*s,9*s); c.fillStyle=rgb(20,20,22); c.fill();
+    const padT=tyTop+(tBot-tyTop)*0.50, padBot=tBot-9*s; rr(c,tx+12*s,padT,tw-24*s,padBot-padT,9*s); c.fillStyle=rgb(20,20,22); c.fill();
+    // brand badge on the black step pad (parody of Boss's logo)
+    setFont(d, FONTS.bebas, 17); c.fillStyle=rgb(216,218,222); c.textAlign='center'; c.textBaseline='middle';
+    c.fillText('CHIEF', W*0.5, (padT+padBot)/2);
   }
   function chiefName(d, n1, n2) { const {W,H}=d;
     if (n2){ textC(d, 0.31*W, 0.575*H, FONTS.crete, 42, rgb(16,16,20), n1);
@@ -216,8 +219,8 @@
       textC(d,.26*W,.355*H,F.barlow,11,gl,'GAIN');
       textC(d,.50*W,.355*H,F.barlow,11,gl,'TONE');
       textC(d,.74*W,.355*H,F.barlow,11,gl,'FILTER');
-      outlineText(d,.5*W,.64*H,F.anton,62,rgb(242,242,244),rgb(12,14,16),'FUZZ',7);
-      textC(d,.34*W,.485*H,F.crete,29,rgb(16,20,14),'bass');
+      textC(d,.5*W,.495*H,F.crete,30,rgb(16,20,14),'bass');
+      outlineText(d,.5*W,.645*H,F.anton,42,rgb(242,242,244),rgb(12,14,16),'BIG BUZZ',2);
       // LED at top-centre (above the knobs), clear of the FUZZ wordmark
       ledDot(d,W*.5,H*.105,true,224,60,52); footRound(d,W*.5,H*.81,21*s); } };
 
