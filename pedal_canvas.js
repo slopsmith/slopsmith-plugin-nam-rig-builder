@@ -581,33 +581,68 @@
       ledDot(d,d.W*.5,d.H*.77,true,210,70,58); footRound(d,d.W*.5,d.H*.88,23*d.s); } }; }
 
   // Bass Phase — MXR-style orange box (NYR parody, matches the Dyna Comp).
-  // RS params (4 knobs): Rate0 Depth1 Mix2 Filter3.
+  // 2x2 knobs; NYR logo centred with the LED above it; name below the footswitch.
+  // RS params: Rate0 Depth1 Mix2 Filter3.
   P.bassphase = { w:300,h:460,
     knobs:[
-      {id:0,cx:.155,cy:.175,r:.072,style:'davies'},  // RATE
-      {id:1,cx:.385,cy:.175,r:.072,style:'davies'},  // DEPTH
-      {id:2,cx:.615,cy:.175,r:.072,style:'davies'},  // MIX
-      {id:3,cx:.845,cy:.175,r:.072,style:'davies'}], // FILTER
+      {id:0,cx:.30,cy:.175,r:.088,style:'davies'},  // RATE
+      {id:1,cx:.70,cy:.175,r:.088,style:'davies'},  // DEPTH
+      {id:2,cx:.30,cy:.395,r:.088,style:'davies'},  // MIX
+      {id:3,cx:.70,cy:.395,r:.088,style:'davies'}], // FILTER
     tick:rgb(46,24,4), ptr:rgb(244,244,240),
     draw(d){ const {ctx:c,W,H,s}=d; const ink=rgb(42,22,6), m=7*s;
       c.fillStyle=rgb(10,8,6); c.fillRect(0,0,W,H);
       const g=c.createLinearGradient(0,m,0,H-m); g.addColorStop(0,rgb(240,134,32)); g.addColorStop(1,rgb(210,96,14));
       rr(c,m,m,W-2*m,H-2*m,13*s); c.fillStyle=g; c.fill();
       rr(c,m,m,W-2*m,H-2*m,13*s); c.strokeStyle='rgba(0,0,0,0.4)'; c.lineWidth=2*s; c.stroke();
-      textSpaced(d,.155*W,.285*H,F.barlow,9.5,ink,'RATE',0.4);
-      textSpaced(d,.385*W,.285*H,F.barlow,9.5,ink,'DEPTH',0.4);
-      textSpaced(d,.615*W,.285*H,F.barlow,9.5,ink,'MIX',0.4);
-      textSpaced(d,.845*W,.285*H,F.barlow,9,ink,'FILTER',0.3);
-      rr(c,W*.06,H*.735,W*.215,H*.155,8*s); c.strokeStyle=ink; c.lineWidth=2.6*s; c.stroke();
-      textC(d,W*.1675,H*.815,F.anton,30,ink,'NYR');
-      footRound(d,W*.50,H*.805,16*s);
-      textC(d,W*.755,H*.775,F.crete,24,ink,'bass');
-      textC(d,W*.755,H*.850,F.crete,24,ink,'phase'); } };
-  // Bass Filter Echo — Boss-compact (chief) echo, like the Bass Delay but tape
-  // 'Echo'. Roland Space Echo will be a rack, so this is the Boss-style pedal.
-  P.bassfilterecho = chiefSpec(300,480,[74,92,112],
-    [{id:0,cx:.205,lbl:'TIME'},{id:1,cx:.40,lbl:'FEEDBACK',lblPx:7.5},{id:2,cx:.595,lbl:'MIX'},{id:3,cx:.79,lbl:'FILTER',lblPx:8}],
-    'Bass','Echo','DM-3');
+      textSpaced(d,.30*W,.275*H,F.barlow,9.5,ink,'RATE',0.4);
+      textSpaced(d,.70*W,.275*H,F.barlow,9.5,ink,'DEPTH',0.4);
+      textSpaced(d,.30*W,.495*H,F.barlow,9.5,ink,'MIX',0.4);
+      textSpaced(d,.70*W,.495*H,F.barlow,9,ink,'FILTER',0.3);
+      ledDot(d,W*.50,H*.565,true,224,52,46);                    // LED above the NYR logo
+      const bw=W*.28,bh=H*.09,bx=W*.5-bw/2,by=H*.635-bh/2;
+      rr(c,bx,by,bw,bh,8*s); c.strokeStyle=ink; c.lineWidth=2.6*s; c.stroke();
+      textC(d,W*.5,H*.635,F.anton,30,ink,'NYR');
+      footRound(d,W*.50,H*.80,16*s);
+      textC(d,W*.50,H*.91,F.crete,24,ink,'bass phase'); } };  // name below the footswitch
+  // Bass Filter Echo — Boss/Roland Space Echo (RE-20): black twin pedal with a
+  // GREEN panel (RE-201 teal) holding the knobs + a 12-position MODE selector.
+  // RS params (4 knobs): Time0 Feedback1 Mix2 Filter3.
+  P.bassfilterecho = { w:560,h:300,
+    knobs:[
+      {id:0,cx:.155,cy:.335,r:.055,style:'boss'},  // TIME
+      {id:1,cx:.315,cy:.335,r:.055,style:'boss'},  // FEEDBACK
+      {id:2,cx:.475,cy:.335,r:.055,style:'boss'},  // MIX
+      {id:3,cx:.635,cy:.335,r:.055,style:'boss'}], // FILTER
+    ptr:rgb(238,240,244),
+    draw(d){ const {ctx:c,W,H}=d, m=8;
+      c.fillStyle=rgb(8,8,10); c.fillRect(0,0,W,H);
+      const bgg=c.createLinearGradient(0,m,0,H-m); bgg.addColorStop(0,rgb(34,34,38)); bgg.addColorStop(1,rgb(16,16,18));
+      rr(c,m,m,W-2*m,H-2*m,14); c.fillStyle=bgg; c.fill();
+      rr(c,m,m,W-2*m,H-2*m,14); c.strokeStyle='rgba(0,0,0,0.5)'; c.lineWidth=2; c.stroke();
+      // green RE-201 panel
+      const gx=W*.05,gy=H*.10,gw=W*.90,gh=H*.52;
+      const gp=c.createLinearGradient(0,gy,0,gy+gh); gp.addColorStop(0,rgb(62,152,126)); gp.addColorStop(1,rgb(40,120,98));
+      rr(c,gx,gy,gw,gh,8); c.fillStyle=gp; c.fill();
+      rr(c,gx,gy,gw,gh,8); c.strokeStyle='rgba(0,0,0,0.35)'; c.lineWidth=1.5; c.stroke();
+      const dk=rgb(18,40,32);
+      textC(d,gx+12,gy+H*.075,F.bebas,22,rgb(246,250,246),'SPACE ECHO','left');
+      textC(d,.155*W,.475*H,F.barlow,10,dk,'TIME');
+      textC(d,.315*W,.475*H,F.barlow,9,dk,'FEEDBACK');
+      textC(d,.475*W,.475*H,F.barlow,10,dk,'MIX');
+      textC(d,.635*W,.475*H,F.barlow,10,dk,'FILTER');
+      // 12-position MODE selector (decorative)
+      const mx=W*.84,my=H*.335,mr=W*.052;
+      c.beginPath(); c.arc(mx,my,mr,0,7); c.fillStyle=rgb(24,26,28); c.fill();
+      c.strokeStyle=rgb(232,236,230); c.lineWidth=1.2;
+      for(let i=0;i<12;i++){ const a=i/12*Math.PI*2-Math.PI/2; c.beginPath(); c.moveTo(mx+mr*0.9*Math.cos(a),my+mr*0.9*Math.sin(a)); c.lineTo(mx+mr*1.2*Math.cos(a),my+mr*1.2*Math.sin(a)); c.stroke(); }
+      const pa=2*Math.PI*0.2-Math.PI/2; c.beginPath(); c.moveTo(mx,my); c.lineTo(mx+mr*0.7*Math.cos(pa),my+mr*0.7*Math.sin(pa)); c.strokeStyle=rgb(240,240,244); c.lineWidth=2.6; c.stroke();
+      textC(d,mx,my+mr+14,F.barlow,9,dk,'MODE');
+      // bottom: brand + code + footswitches + LED
+      textC(d,W*.16,H*.78,F.bebas,18,rgb(232,234,238),'CHIEF');
+      textC(d,W*.16,H*.90,F.barlow,11,rgb(176,178,184),'RE-21');
+      ledDot(d,W*.42,H*.84,true,224,60,52);
+      footRound(d,W*.58,H*.84,17); footRound(d,W*.82,H*.84,17); } };
   P.bassenbig = boxSpec(320,470,[58,64,72],
     [{id:0,cx:.20,lbl:'RATE'},{id:1,cx:.40,lbl:'DEPTH'},{id:2,cx:.60,lbl:'MIX'},{id:3,cx:.80,lbl:'FILTER'}],
     'ENBIGGEN','MOD  FILTER',[110,210,224]);
