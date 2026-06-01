@@ -264,9 +264,9 @@
       {id:1,cx:.50,cy:.42,r:.072,style:'pointer',cap:[70,72,78]}],
     tick:rgb(96,98,104), ptr:rgb(30,32,36),
     draw(d){ box(d,150,152,158); const dk=rgb(40,42,46);
-      textC(d,.30*d.W,(.26+0.105*1.45+0.012)*d.H,F.barlow,11,dk,'COMPRESS');
-      textC(d,.70*d.W,(.26+0.105*1.45+0.012)*d.H,F.barlow,11,dk,'RATE');
-      textC(d,.50*d.W,(.42+0.072*1.45+0.012)*d.H,F.barlow,11,dk,'FILTER');
+      textC(d,.30*d.W,(.26+0.105*1.32+0.008)*d.H,F.barlow,11,dk,'COMPRESS');
+      textC(d,.70*d.W,(.26+0.105*1.32+0.008)*d.H,F.barlow,11,dk,'RATE');
+      textC(d,.50*d.W,(.42+0.072*1.32+0.008)*d.H,F.barlow,11,dk,'FILTER');
       textC(d,.5*d.W,.63*d.H,F.anton,46,rgb(36,38,42),'COMP');
       textC(d,.5*d.W,.71*d.H,F.barlow,10,rgb(80,82,88),'MULTI  COMPRESSOR');
       ledDot(d,d.W*.5,d.H*.79,true,210,70,58); footRound(d,d.W*.5,d.H*.88,23*d.s); } };
@@ -332,6 +332,31 @@
       textC(d,.375*W,.835*H+R,F.barlow,11,rgb(225,210,175),'PEDAL');
       textC(d,.610*W,.835*H+R,F.barlow,11,rgb(225,210,175),'SENS');
       textC(d,.845*W,.835*H+R,F.barlow,11,rgb(225,210,175),'SPEED'); } };
+
+  // Bass Auto Filter — AutoSweep / QTron envelope filter (mirrors QTronUI.cpp).
+  // Landscape taupe stompbox, one row of 6 knobs. Param order:
+  // FilterType0 Attack1 Release2 Range3 Res(Peak)4 Mix5 Sens(Gain)6 Boost7.
+  P.autosweep = { w:600, h:280,
+    knobs:[
+      {id:6,cx:.105,cy:.30,r:.052,style:'boss'},  // Sens
+      {id:1,cx:.263,cy:.30,r:.052,style:'boss'},  // Attack
+      {id:2,cx:.421,cy:.30,r:.052,style:'boss'},  // Release
+      {id:0,cx:.579,cy:.30,r:.052,style:'boss'},  // FilterType
+      {id:4,cx:.737,cy:.30,r:.052,style:'boss'},  // Res
+      {id:5,cx:.895,cy:.30,r:.052,style:'boss'}], // Mix
+    ptr:rgb(244,238,228),
+    draw(d){ const {ctx:c,W,H}=d, m=10;
+      c.fillStyle=rgb(14,13,12); c.fillRect(0,0,W,H);
+      const body=c.createLinearGradient(0,m,0,H-m); body.addColorStop(0,rgb(150,139,126)); body.addColorStop(1,rgb(60,54,48));
+      rr(c,m,m,W-2*m,H-2*m,18); c.fillStyle=body; c.fill();
+      rr(c,m,m,W-2*m,H-2*m,18); c.strokeStyle=rgb(40,35,30); c.lineWidth=2; c.stroke();
+      [2.4*m, W-2.4*m].forEach(x=>{ c.beginPath(); c.arc(x,H*0.30,4,0,7); c.fillStyle=rgb(40,36,32); c.fill(); });
+      ledDot(d, W*0.5, H*0.10, true, 255,80,70);
+      const names=['SENS','ATTACK','RELEASE','TYPE','RES','MIX'];
+      const cxs=[.105,.263,.421,.579,.737,.895];
+      cxs.forEach((cx,i)=> textC(d, cx*W, .30*H + .052*W + 13, F.barlow, 12, rgb(242,236,226), names[i]));
+      textC(d, W*0.5, H*0.66, F.bebas, 34, rgb(244,238,228), 'AUTO FILTER');
+      footRound(d, W*0.5, H*0.87, 18); } };
 
   // ── graphic-EQ faders (mirrors graphic_eq_ui.hpp) ─────────────────────────
   // Geometry in spec-units (W=spec.w, H=spec.h). Boss = portrait/tall,

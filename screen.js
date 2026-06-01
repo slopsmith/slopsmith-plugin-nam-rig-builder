@@ -2971,7 +2971,10 @@ function rbHasCanvasUI(piece) {
 // the markup keeps it from overflowing a narrow panel.
 function rbCanvasDisplayWidth(stem) {
     const sp = window.RBPedalCanvas && window.RBPedalCanvas.specs && window.RBPedalCanvas.specs[stem];
-    return (sp && sp.w > sp.h * 1.15) ? 400 : 240;
+    if (!sp || sp.w <= sp.h * 1.15) return 240;          // portrait
+    // Landscape: scale width with the aspect (wider pedals get more width so
+    // their lettering stays legible), capped so it can't overflow the panel.
+    return Math.max(360, Math.min(440, Math.round(sp.w / sp.h * 256)));
 }
 
 // Build the {key: value} map the canvas reads, keyed BOTH by numeric paramId
