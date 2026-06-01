@@ -209,23 +209,25 @@
       boxedLabel(d,.5,.55,.255,.092,F.anton,56,w,w,'MOUSE');
       ledDot(d,d.W*.5,d.H*.71,true,210,70,58); footRound(d,d.W*.5,d.H*.83,24*d.s); } };
 
-  // Bass Overdrive — Darkglass Microtubes B3K (params: Blend0 Drive1 Grunt2 Attack3).
-  // Faithful B3K layout: 2 knobs (Blend/Drive) + 2 three-way toggles (Grunt/Attack).
+  // Bass Overdrive — Darkglass Microtubes B3K look, RS params (4 knobs):
+  // Blend0 Drive1 Grunt2 Attack3. (Real B3K has Grunt/Attack as switches, but RS
+  // exposes them as continuous knobs, so we keep knobs.)
   P.bassoverdrive = { w:300,h:490,
     knobs:[
-      {id:0,cx:.30,cy:.30,r:.105,style:'boss'},   // BLEND
-      {id:1,cx:.70,cy:.30,r:.105,style:'boss'}],  // DRIVE
-    sw3:[ {id:2,cx:.30,cy:.565}, {id:3,cx:.70,cy:.565} ],   // GRUNT, ATTACK (3-way)
+      {id:0,cx:.30,cy:.285,r:.10,style:'boss'},   // BLEND
+      {id:1,cx:.70,cy:.285,r:.10,style:'boss'},   // DRIVE
+      {id:2,cx:.30,cy:.555,r:.10,style:'boss'},   // GRUNT
+      {id:3,cx:.70,cy:.555,r:.10,style:'boss'}],  // ATTACK
     ptr:rgb(238,239,242),
     draw(d){ box(d,18,18,20); const w=rgb(235,236,239), dim=rgb(150,151,154);
-      textSpaced(d,.5*d.W,.115*d.H,F.bebas,24,w,'BLACKBRASS',2);          // parody brand
-      textSpaced(d,.30*d.W,.42*d.H,F.barlow,11,w,'BLEND',1.4);
-      textSpaced(d,.70*d.W,.42*d.H,F.barlow,11,w,'DRIVE',1.4);
-      textSpaced(d,.30*d.W,.67*d.H,F.barlow,10,w,'GRUNT',1.4);
-      textSpaced(d,.70*d.W,.67*d.H,F.barlow,10,w,'ATTACK',1.4);
-      textSpaced(d,.5*d.W,.755*d.H,F.barlow,13,w,'MINITUBES B3X',2);      // parody model
-      textSpaced(d,.5*d.W,.795*d.H,F.barlow,8,dim,'CMOS BASS OVERDRIVE',1.4);
-      ledDot(d,d.W*.5,d.H*.85,true,196,72,60); footRound(d,d.W*.5,d.H*.93,18*d.s); } };
+      textSpaced(d,.5*d.W,.10*d.H,F.bebas,24,w,'BLACKBRASS',2);           // parody brand
+      textSpaced(d,.30*d.W,.40*d.H,F.barlow,11,w,'BLEND',1.4);
+      textSpaced(d,.70*d.W,.40*d.H,F.barlow,11,w,'DRIVE',1.4);
+      textSpaced(d,.30*d.W,.67*d.H,F.barlow,11,w,'GRUNT',1.4);
+      textSpaced(d,.70*d.W,.67*d.H,F.barlow,11,w,'ATTACK',1.4);
+      textSpaced(d,.5*d.W,.76*d.H,F.barlow,13,w,'MINITUBES B3X',2);       // parody model
+      textSpaced(d,.5*d.W,.80*d.H,F.barlow,8,dim,'CMOS BASS OVERDRIVE',1.4);
+      ledDot(d,d.W*.5,d.H*.86,true,196,72,60); footRound(d,d.W*.5,d.H*.93,18*d.s); } };
 
   P.bassfuzz = { w:320,h:400, knobs:[
       {id:0,cx:.26,cy:.225,r:.085,style:'davies'},{id:1,cx:.50,cy:.225,r:.085,style:'davies'},
