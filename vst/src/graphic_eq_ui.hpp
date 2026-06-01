@@ -34,19 +34,19 @@ class GraphicEqUI : public UI
     bool  fEditing = false;
     int   fName = -1, fLbl = -1;
 
-    float scale()  const { return getWidth() / 300.0f; }
-    // centred fader plate
-    float plateX() const { return getWidth()  * 0.085f; }
-    float plateW() const { return getWidth()  * 0.830f; }
-    float plateY() const { return getHeight() * 0.135f; }
-    float plateH() const { return getHeight() * (EQ_STYLE==1 ? 0.560f : 0.305f); }
+    float scale()  const { return getWidth() / (float)DISTRHO_UI_DEFAULT_WIDTH; }
+    // centred fader plate (Boss = portrait/tall; Mesa = landscape/wide)
+    float plateX() const { return getWidth()  * (EQ_STYLE==1 ? 0.195f : 0.085f); }
+    float plateW() const { return getWidth()  * (EQ_STYLE==1 ? 0.610f : 0.830f); }
+    float plateY() const { return getHeight() * (EQ_STYLE==1 ? 0.170f : 0.135f); }
+    float plateH() const { return getHeight() * (EQ_STYLE==1 ? 0.440f : 0.305f); }
     // fader columns sit to the right of the dB scale, inside the plate
     float faderL() const { return plateX() + getWidth() * 0.085f; }
     float faderW() const { return plateW() - getWidth() * 0.105f; }
     float colW()   const { return faderW() / (float)kEqBands; }
     float colX(int i) const { return faderL() + (i + 0.5f) * colW(); }
-    float trackTop()    const { return plateY() + getHeight() * 0.072f; }
-    float trackBottom() const { return plateY() + plateH() - getHeight() * 0.038f; }
+    float trackTop()    const { return plateY() + getHeight() * (EQ_STYLE==1 ? 0.095f : 0.072f); }
+    float trackBottom() const { return plateY() + plateH() - getHeight() * (EQ_STYLE==1 ? 0.055f : 0.038f); }
 
     float valToY(float v) const { return trackTop() + (1.0f - v) * (trackBottom() - trackTop()); }
     float yToVal(double y) const {
@@ -77,6 +77,19 @@ private:
         fontFaceId(fName >= 0 ? fName : fLbl); textAlign(ALIGN_CENTER | ALIGN_MIDDLE);
         fontSize(size*scale()); fillColor(c); text(getWidth()*cx, getHeight()*cy, s, NULL);
     }
+    // small decorative rotary knob (Mesa Output/Input level — cosmetic)
+    void miniKnob(float cx, float cy, const char* lab) {
+        const float f = scale(), R = getWidth()*0.050f;
+        beginPath(); circle(cx, cy, R*1.12f); fillColor(Color(13,13,15)); fill();
+        Paint cap = radialGradient(cx-R*0.3f, cy-R*0.4f, R*0.1f, R*1.1f, Color(56,57,62), Color(22,22,25));
+        beginPath(); circle(cx, cy, R); fillPaint(cap); fill();
+        beginPath(); circle(cx, cy, R); strokeColor(Color(0,0,0,160)); strokeWidth(1.2f*f); stroke();
+        const float a = (135.f + 0.6f*270.f) * 3.14159265f/180.f;
+        beginPath(); moveTo(cx, cy); lineTo(cx+R*0.78f*std::cos(a), cy+R*0.78f*std::sin(a));
+        strokeColor(Color(220,222,226)); strokeWidth(2*f); stroke();
+        fontFaceId(fLbl); textAlign(ALIGN_CENTER|ALIGN_TOP); fontSize(7*f); fillColor(Color(186,188,194));
+        text(cx, cy+R*1.35f, lab, NULL);
+    }
 protected:
     void parameterChanged(uint32_t index, float value) override {
         if (index < (uint32_t)kEqBands) { fValues[index] = value; repaint(); }
@@ -96,41 +109,40 @@ protected:
         text(W*0.10f, H*0.075f, "GRAPHIC  EQUALIZER", NULL);
         beginPath(); circle(W*0.90f, H*0.075f, 4.5f*f); fillColor(Color(224,70,58)); fill();
 
-        // recessed fader plate (dark on Boss, light silver channel on Mesa)
+        // fader plate
         beginPath(); roundedRect(plateX(), plateY(), plateW(), plateH(), 7*f);
-        fillColor(mesa ? Color(196,197,202) : Color(20,20,22)); fill();
+        fillColor(mesa ? Color(15,15,17) : Color(20,20,22)); fill();
         beginPath(); roundedRect(plateX(), plateY(), plateW(), plateH(), 7*f);
-        strokeColor(Color(0,0,0,mesa?90:140)); strokeWidth(1.5f*f); stroke();
+        strokeColor(mesa ? Color(78,80,86,150) : Color(0,0,0,140)); strokeWidth(1.4f*f); stroke();
 
         const float tT = trackTop(), tB = trackBottom(), midY = (tT + tB) * 0.5f;
-        const Color gridC = mesa ? Color(0,0,0,55) : Color(255,255,255,40);
-        const Color scaleC = mesa ? Color(70,72,78) : Color(160,162,170);
-        // horizontal dB grid lines (+EQ_DB .. -EQ_DB in 5 steps) + left scale labels
-        fontFaceId(fLbl); fontSize(8*f); textAlign(ALIGN_RIGHT | ALIGN_MIDDLE);
-        for (int s = 0; s <= 4; ++s) {
-            const float yy = tT + (tB - tT) * s / 4.f;
-            beginPath(); moveTo(faderL() - W*0.05f, yy); lineTo(faderL() + faderW(), yy);
-            strokeColor(gridC); strokeWidth(1.0f*f); stroke();
-        }
+        // dB scale (left)
         char dbt[8], dbb[8]; std::snprintf(dbt,sizeof(dbt),"+%.0f",(double)EQ_DB); std::snprintf(dbb,sizeof(dbb),"-%.0f",(double)EQ_DB);
-        fillColor(scaleC);
-        text(faderL() - W*0.058f, tT,   dbt, NULL);
-        text(faderL() - W*0.058f, midY, "0", NULL);
-        text(faderL() - W*0.058f, tB,   dbb, NULL);
+        fontFaceId(fLbl); fontSize(8*f); textAlign(ALIGN_RIGHT | ALIGN_MIDDLE);
+        fillColor(mesa ? Color(180,182,188) : Color(160,162,170));
+        text(faderL() - W*0.045f, tT,   dbt, NULL);
+        text(faderL() - W*0.045f, midY, "0", NULL);
+        text(faderL() - W*0.045f, tB,   dbb, NULL);
+        // Boss: faint white horizontal grid lines (Mesa uses its white slots instead)
+        if (!mesa) for (int s = 0; s <= 4; ++s) {
+            const float yy = tT + (tB - tT) * s / 4.f;
+            beginPath(); moveTo(faderL() - W*0.04f, yy); lineTo(faderL() + faderW(), yy);
+            strokeColor(Color(255,255,255,40)); strokeWidth(1.0f*f); stroke();
+        }
 
         for (int i = 0; i < kEqBands; ++i) {
-            const float cx = colX(i);
+            const float cx = colX(i), hy = valToY(fValues[i]);
             fontFaceId(fLbl); textAlign(ALIGN_CENTER | ALIGN_TOP); fontSize(8*f);
-            fillColor(mesa ? Color(74,76,82) : Color(182,184,192));
-            text(cx, plateY() + 4*f, kEqNames[i], NULL);   // freq INSIDE the plate top
-            beginPath(); roundedRect(cx - 2.0f*f, tT, 4.0f*f, tB - tT, 2.0f*f); fillColor(mesa?Color(150,151,156):Color(46,48,56)); fill();
-            const float hy = valToY(fValues[i]);
-            // fader cap: dark on Mesa's light channel, light on Boss's dark plate
+            fillColor(mesa ? Color(200,202,208) : Color(182,184,192));
+            text(cx, plateY() + 4*f, kEqNames[i], NULL);   // freq inside the plate top
             if (mesa) {
-                Paint cp = linearGradient(0, hy-6*f, 0, hy+6*f, Color(70,72,78), Color(28,29,33));
-                beginPath(); roundedRect(cx - 10*f, hy - 6*f, 20*f, 12*f, 2.5f*f); fillPaint(cp); fill();
-                beginPath(); rect(cx - 8*f, hy-0.6f*f, 16*f, 1.4f*f); fillColor(Color(150,152,158)); fill();
+                // white vertical slot + chunky black cap
+                beginPath(); roundedRect(cx - 3.5f*f, tT, 7*f, tB - tT, 3.5f*f); fillColor(Color(226,227,231)); fill();
+                beginPath(); roundedRect(cx - 11*f, hy - 7*f, 22*f, 14*f, 3*f); fillColor(Color(22,22,24)); fill();
+                beginPath(); roundedRect(cx - 11*f, hy - 7*f, 22*f, 14*f, 3*f); strokeColor(Color(0,0,0,170)); strokeWidth(1*f); stroke();
+                beginPath(); rect(cx - 9*f, hy - 0.8f*f, 18*f, 1.8f*f); fillColor(Color(150,152,158)); fill();
             } else {
+                beginPath(); roundedRect(cx - 2.0f*f, tT, 4.0f*f, tB - tT, 2.0f*f); fillColor(Color(46,48,56)); fill();
                 Paint cp = linearGradient(0, hy-6*f, 0, hy+6*f, Color(236,238,242), Color(150,153,160));
                 beginPath(); roundedRect(cx - 10*f, hy - 6*f, 20*f, 12*f, 2.5f*f); fillPaint(cp); fill();
                 beginPath(); roundedRect(cx - 10*f, hy - 6*f, 20*f, 12*f, 2.5f*f); strokeColor(Color(70,72,78)); strokeWidth(1*f); stroke();
@@ -139,11 +151,14 @@ protected:
         }
 
         if (mesa) {
-            // white nameplate at the bottom (no treadle)
-            beginPath(); roundedRect(W*0.16f, H*0.80f, W*0.68f, H*0.085f, 4*f); fillColor(Color(236,237,240)); fill();
-            engrave(0.5f, 0.842f, 21, EQ_PLUGIN_LABEL, Color(20,20,24));
-            beginPath(); circle(W*0.5f, H*0.945f, 13*f); fillColor(Color(150,153,159)); fill();
-            beginPath(); circle(W*0.5f, H*0.945f, 13*f); strokeColor(Color(90,92,98)); strokeWidth(2*f); stroke();
+            // two decorative rotary knobs at the top corners (Output / Input level)
+            miniKnob(W*0.095f, H*0.30f, "OUTPUT");
+            miniKnob(W*0.905f, H*0.30f, "INPUT");
+            // white nameplate + footswitch at the bottom
+            beginPath(); roundedRect(W*0.30f, H*0.66f, W*0.40f, H*0.135f, 5*f); fillColor(Color(236,237,240)); fill();
+            engrave(0.5f, 0.727f, 22, EQ_PLUGIN_LABEL, Color(20,20,24));
+            beginPath(); circle(W*0.5f, H*0.905f, 15*f); fillColor(Color(150,153,159)); fill();
+            beginPath(); circle(W*0.5f, H*0.905f, 15*f); strokeColor(Color(90,92,98)); strokeWidth(2*f); stroke();
         } else {
             const float tx = m+4*f, tw = W-2*m-8*f, tyTop = H*0.49f, tBot = H - m - 6*f;
             Paint tre = linearGradient(0, tyTop, 0, tBot, Color(cl(R-2),cl(G-2),cl(B-2)), Color(cl(R-14),cl(G-14),cl(B-14)));
