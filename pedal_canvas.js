@@ -67,6 +67,12 @@
     c.beginPath(); c.arc(cx,cy,R*0.78,0,7); c.fillStyle=rgb(150,153,159); c.fill();
     c.beginPath(); c.arc(cx-R*0.25,cy-R*0.3,R*0.34,0,7); c.fillStyle=rgb(255,255,255,0.27); c.fill(); }
 
+  // square red toggle switch (Eden Bass Boost / Mid Shift, Wah Auto, …)
+  function switchSquare(d, cx, cy, hs, on) { const c = d.ctx;
+    rr(c, cx-hs, cy-hs, hs*2, hs*2, 3); c.fillStyle = on ? rgb(208,40,36) : rgb(78,22,20); c.fill();
+    rr(c, cx-hs, cy-hs, hs*2, hs*2, 3); c.strokeStyle = rgb(20,12,10); c.lineWidth = 1.5; c.stroke();
+    if (on) { c.beginPath(); c.arc(cx, cy, hs*0.34, 0, 7); c.fillStyle = rgb(255,180,170); c.fill(); } }
+
   function setFont(d, family, px) { d.ctx.font = `${px*d.s}px ${family}, sans-serif`; }
   function textC(d, cx, cy, family, px, col, str, align) {
     const c=d.ctx; setFont(d,family,px); c.fillStyle=col; c.textAlign=align||'center'; c.textBaseline='middle';
@@ -206,10 +212,10 @@
       c.textAlign='right'; c.fillText('NORM',tx-12*s,ty);
       c.textAlign='left'; c.fillText('BASS BOOST',tx+12*s,ty-5*s); c.fillText('DRY',tx+12*s,ty+5*s);
       outlineText(d,.5*W,.64*H,F.anton,62,rgb(242,242,244),rgb(12,14,16),'FUZZ',7);
-      textC(d,.34*W,.55*H,F.crete,29,rgb(16,20,14),'bass');
+      textC(d,.34*W,.485*H,F.crete,29,rgb(16,20,14),'bass');
       ledDot(d,W*.52,H*.55,true,224,60,52); footRound(d,W*.5,H*.81,21*s); } };
 
-  function chiefSpec(w,h,col,knobIds,names,n1,n2){ return { w,h, knobs: knobIds.map(k=>({id:k.id,cx:k.cx,cy:.235,r:.072,style:'boss'})),
+  function chiefSpec(w,h,col,knobIds,n1,n2){ return { w,h, knobs: knobIds.map(k=>({id:k.id,cx:k.cx,cy:.235,r:.072,style:'boss'})),
     ptr:rgb(238,240,242), draw(d){ chiefBody(d,col[0],col[1],col[2]); const wc=rgb(238,240,242);
       knobIds.forEach(k=> textSpaced(d,k.cx*d.W,.135*d.H,F.barlow,k.lblPx||8.5,wc,k.lbl,0.2));
       chiefName(d,n1,n2); } }; }
@@ -220,7 +226,7 @@
   P.basssuboctave = { w:300,h:480, knobs:[{id:0,cx:.34,cy:.235,r:.088,style:'boss'},{id:1,cx:.66,cy:.235,r:.088,style:'boss'}],
     ptr:rgb(236,232,224), draw(d){ chiefBody(d,112,70,66); const w=rgb(236,232,224);
       textSpaced(d,.34*d.W,.12*d.H,F.barlow,9,w,'MIX',0.2); textSpaced(d,.66*d.W,.12*d.H,F.barlow,9,w,'TONE',0.2);
-      chiefName(d,'Sub','Octave'); } };
+      chiefName(d,'Bass','Suboctave'); } };
   P.bassfilterdelay = chiefSpec(300,480,[156,64,72],
     [{id:0,cx:.205,lbl:'TIME'},{id:1,cx:.40,lbl:'FEEDBACK',lblPx:7.5},{id:2,cx:.595,lbl:'MIX'},{id:3,cx:.79,lbl:'FILTER',lblPx:8}],
     'Bass','Delay');
@@ -258,6 +264,68 @@
       textC(d,.5*d.W,.63*d.H,F.anton,46,rgb(36,38,42),'COMP');
       textC(d,.5*d.W,.71*d.H,F.barlow,10,rgb(80,82,88),'MULTI  COMPRESSOR');
       ledDot(d,d.W*.5,d.H*.79,true,210,70,58); footRound(d,d.W*.5,d.H*.88,23*d.s); } };
+
+  // Eden WTDI — landscape gold-panel bass preamp (mirrors eden_wtdi/EdenWtdi_ui.cpp).
+  // Param order: Gain0 Enhance1 Comp2 Master3 Bass4 Mid5 Treble6 BassBoost7 MidShift8.
+  P.edenwtdi = { w:560, h:360,
+    knobs:[
+      {id:4,cx:.190,cy:.300,r:.058,style:'boss'}, {id:5,cx:.500,cy:.300,r:.058,style:'boss'}, {id:6,cx:.810,cy:.300,r:.058,style:'boss'},
+      {id:0,cx:.160,cy:.660,r:.058,style:'boss'}, {id:1,cx:.385,cy:.660,r:.058,style:'boss'},
+      {id:2,cx:.610,cy:.660,r:.058,style:'boss'}, {id:3,cx:.835,cy:.660,r:.058,style:'boss'}],
+    switches:[ {id:7,cx:.345,cy:.330,hs:.024}, {id:8,cx:.655,cy:.330,hs:.024} ],
+    ptr:rgb(238,240,244),
+    draw(d){ const {ctx:c,W,H}=d; const dark=rgb(40,28,12);
+      c.fillStyle=rgb(12,12,14); c.fillRect(0,0,W,H);
+      rr(c,10,8,W-20,H-16,14); c.fillStyle=rgb(24,22,20); c.fill();
+      const px=18,py=16,pw=W-36,ph=(H-16)*0.80;
+      const g=c.createLinearGradient(0,py,0,py+ph); g.addColorStop(0,rgb(214,178,96)); g.addColorStop(1,rgb(168,132,60));
+      rr(c,px,py,pw,ph,8); c.fillStyle=g; c.fill();
+      rr(c,px,py,pw,ph,8); c.strokeStyle=rgb(120,92,40); c.lineWidth=1.5; c.stroke();
+      // red logo box top-left (neutral mark, no brand) + title top-right
+      rr(c,px+8,py+8,56,30,4); c.strokeStyle=rgb(180,30,28); c.lineWidth=2; c.stroke();
+      textC(d,px+36,py+23,F.anton,17,rgb(180,30,28),'DI');
+      textC(d,px+pw-10,py+14,F.bebas,17,dark,'PREAMP','right');
+      textC(d,px+pw-10,py+30,F.barlow,9,rgb(70,52,28),'Bass Guitar Pre Amplifier','right');
+      // knob labels (drawn here; 'boss' knobs don't self-label)
+      const R=.058*W+13;
+      const lab=(cx,cy,t)=>textC(d,cx*W,cy*H+R,F.barlow,11,dark,t);
+      lab(.190,.300,'BASS'); lab(.500,.300,'MID'); lab(.810,.300,'TREBLE');
+      lab(.160,.660,'GAIN'); lab(.385,.660,'ENHANCE'); lab(.610,.660,'COMP'); lab(.835,.660,'MASTER');
+      // switch labels (two lines, below the squares)
+      const sl=(cx,a,b)=>{ const y=.330*H+.024*W+9; textC(d,cx*W,y,F.barlow,8,dark,a); textC(d,cx*W,y+9,F.barlow,8,dark,b); };
+      sl(.345,'BASS','BOOST'); sl(.655,'MID','SHIFT');
+      ledDot(d,px+pw*0.5,py+14,true,230,60,50);
+      footRound(d,W*0.5,H*0.90,17); } };
+
+  // Bass Wah — Cry-Baby-style brass treadle (mirrors bass_wah/BassWah_ui.cpp).
+  // Param order: Auto0 Pedal1 Sens2 Speed3. Treadle tilt follows Pedal.
+  P.basswah = { w:300, h:460,
+    knobs:[ {id:1,cx:.375,cy:.835,r:.072,style:'boss'}, {id:2,cx:.610,cy:.835,r:.072,style:'boss'}, {id:3,cx:.845,cy:.835,r:.072,style:'boss'} ],
+    switches:[ {id:0,cx:.135,cy:.835,hs:.045} ],
+    ptr:rgb(238,240,244),
+    draw(d,values){ const {ctx:c,W,H}=d;
+      c.fillStyle=rgb(12,11,9); c.fillRect(0,0,W,H);
+      const bx=10,by=8,bw=W-20,bh=H-16;
+      const brass=c.createLinearGradient(bx,by,bx+bw,by+bh); brass.addColorStop(0,rgb(150,120,70)); brass.addColorStop(1,rgb(96,74,42));
+      rr(c,bx,by,bw,bh,16); c.fillStyle=brass; c.fill();
+      rr(c,bx,by,bw,bh,16); c.strokeStyle=rgb(60,46,24); c.lineWidth=2; c.stroke();
+      // chrome-framed black ribbed rocker treadle
+      const tx=bx+26,ty=by+18,tw=bw-52,th=bh*0.60;
+      rr(c,tx-6,ty-6,tw+12,th+12,12); const chrome=c.createLinearGradient(0,ty-6,0,ty+th+6); chrome.addColorStop(0,rgb(225,228,232)); chrome.addColorStop(1,rgb(120,124,130)); c.fillStyle=chrome; c.fill();
+      rr(c,tx,ty,tw,th,9); c.fillStyle=rgb(24,24,26); c.fill();
+      const pedal=(values&&values[1]!=null)?values[1]:0.25, tilt=(pedal-0.5)*0.16;
+      c.strokeStyle=rgb(60,62,66); c.lineWidth=2;
+      for(let i=1;i<16;i++){ const yy=ty+th*i/16, dx=(yy-(ty+th*0.5))*tilt; c.beginPath(); c.moveTo(tx+6+dx,yy); c.lineTo(tx+tw-6+dx,yy); c.stroke(); }
+      textC(d,tx+tw*0.5,ty+th*0.5,F.bebas,20,rgb(150,120,70),'BASS WAH');
+      const on=(values&&values[0]!=null)?values[0]>0.5:true;
+      ledDot(d,W*0.5,by+bh*0.66,on,255,70,60);
+      // control panel + labels (Auto square drawn by drawSpec)
+      const py0=by+bh*0.70, pH=bh*0.28; rr(c,bx+10,py0,bw-20,pH,10); c.fillStyle=rgb(26,24,22); c.fill();
+      textC(d,.135*W,.835*H+.045*W+10,F.barlow,10,rgb(225,210,175),'Auto');
+      const R=.072*W+12;
+      textC(d,.375*W,.835*H+R,F.barlow,11,rgb(225,210,175),'PEDAL');
+      textC(d,.610*W,.835*H+R,F.barlow,11,rgb(225,210,175),'SENS');
+      textC(d,.845*W,.835*H+R,F.barlow,11,rgb(225,210,175),'SPEED'); } };
 
   // ── graphic-EQ faders (mirrors graphic_eq_ui.hpp) ─────────────────────────
   // Geometry in spec-units (W=spec.w, H=spec.h). Boss = portrait/tall,
@@ -394,6 +462,10 @@
            (k.cap || [40, 40, 44])[0], (k.cap || [40, 40, 44])[1], (k.cap || [40, 40, 44])[2],
            spec.tick, spec.ptr);
     });
+    (spec.switches || []).forEach(s => {
+      const on = (values && values[s.id] != null) ? values[s.id] > 0.5 : false;
+      switchSquare(d, s.cx * d.W, s.cy * d.H, s.hs * d.W, on);
+    });
   }
   function render(canvas, stem, values) {
     const spec = P[stem]; if (!spec) return false;
@@ -421,6 +493,15 @@
       if (spec.eq) { const i = hitFader(p.x, p.y); if (i < 0) return; drag = i;
         const v = G.yToVal(p.y); values[i] = v; drawSpec(canvas, spec, values);
         if (opts.onChange) opts.onChange(i, v); e.preventDefault(); return; }
+      // Switches: a click toggles 0↔1 (no drag).
+      for (const s of (spec.switches || [])) {
+        const hs = s.hs * spec.w + 5;
+        if (Math.abs(p.x - s.cx * spec.w) <= hs && Math.abs(p.y - s.cy * spec.h) <= hs) {
+          const nv = (values[s.id] > 0.5) ? 0 : 1; values[s.id] = nv;
+          drawSpec(canvas, spec, values); if (opts.onChange) opts.onChange(s.id, nv);
+          e.preventDefault(); return;
+        }
+      }
       const k = hitKnob(p.x, p.y); if (k < 0) return; drag = k; lastY = e.clientY;
       dv = (values[spec.knobs[k].id] != null) ? values[spec.knobs[k].id] : 0.5; e.preventDefault();
     });
