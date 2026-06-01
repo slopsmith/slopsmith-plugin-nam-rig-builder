@@ -196,7 +196,7 @@
       boxedLabel(d,.215,.135,.115,.028,F.barlow,12.5,w,w,'GAIN');
       boxedLabel(d,.500,.135,.110,.028,F.barlow,12.5,w,w,'TONE');
       boxedLabel(d,.785,.135,.125,.028,F.barlow,12.5,w,w,'FILTER');
-      boxedLabel(d,.5,.55,.34,.075,F.anton,44,w,w,'DISTORTION');
+      boxedLabel(d,.5,.55,.255,.092,F.anton,56,w,w,'MOUSE');
       ledDot(d,d.W*.5,d.H*.71,true,210,70,58); footRound(d,d.W*.5,d.H*.83,24*d.s); } };
 
   P.bassoverdrive = { w:300,h:490, knobs:[
