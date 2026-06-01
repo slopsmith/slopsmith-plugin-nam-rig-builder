@@ -91,6 +91,11 @@
     const c=d.ctx; setFont(d,family,px); c.fillStyle=col; c.textBaseline='middle';
     sp*=d.s; const ws=[...str].map(ch=>c.measureText(ch).width+sp); const tot=ws.reduce((a,b)=>a+b,0)-sp;
     let x=cx-tot/2; c.textAlign='left'; for(let i=0;i<str.length;i++){ c.fillText(str[i],x,cy); x+=ws[i]; } }
+  // centred text stretched horizontally by sx (wider/less-tall than the font)
+  function textWide(d, cx, cy, family, px, col, str, sx) {
+    const c=d.ctx; c.save(); c.translate(cx, cy); c.scale(sx, 1);
+    setFont(d,family,px); c.fillStyle=col; c.textAlign='center'; c.textBaseline='middle';
+    c.fillText(str, 0, 0); c.restore(); }
   function outlineText(d, cx, cy, family, px, fill, out, str, sp) {
     const c=d.ctx; setFont(d,family,px); c.textBaseline='middle'; const o=1.8*d.s;
     sp=(sp||0)*d.s; const ws=[...str].map(ch=>c.measureText(ch).width+sp); const tot=ws.reduce((a,b)=>a+b,0)-sp;
@@ -407,12 +412,12 @@
       textC(d,.22*W,.255*H+R,F.barlow,11,w,'COMPRESS');
       textC(d,.50*W,.255*H+R,F.barlow,11,w,'FILTER');
       textC(d,.78*W,.255*H+R,F.barlow,11,w,'RATE');
-      // stylised 'MultiComp': wide + bold — big C … P; MULTI (up top) + OM,
-      // letter-spaced to fill the gap between C and P
-      textSpaced(d,.50*W,.445*H,F.barlow,22,w,'MULTI',14);
-      textC(d,.22*W,.515*H,F.anton,92,w,'C');
-      textSpaced(d,.50*W,.540*H,F.anton,70,w,'OM',30);
-      textC(d,.78*W,.515*H,F.anton,92,w,'P');
+      // stylised 'MultiComp': letters stretched WIDE (less tall) — C … P with
+      // MULTI (up top) + OM filling the gap between C and P
+      textWide(d,.50*W,.445*H,F.barlow,20,w,'MULTI',1.3);
+      textWide(d,.22*W,.520*H,F.anton,70,w,'C',1.5);
+      textWide(d,.50*W,.545*H,F.anton,56,w,'OM',1.45);
+      textWide(d,.78*W,.520*H,F.anton,70,w,'P',1.5);
       // blue accent lines at the bottom — thick + short (behind EBX + footswitch)
       c.strokeStyle='rgba(46,124,228,0.92)'; c.lineWidth=8;
       for(let i=0;i<7;i++){ const y=(.63+i*0.05)*H; c.beginPath(); c.moveTo(W*0.18,y); c.lineTo(W*0.82,y); c.stroke(); }
