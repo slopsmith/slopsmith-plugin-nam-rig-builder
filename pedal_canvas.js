@@ -306,33 +306,11 @@
 
   // BZ-1 — Chief compact silicon fuzz face.
   // Param order: Gain0 Tone1.
-  P.bz1 = { w:300,h:480, knobs:[
-      {id:0,cx:.285,cy:.210,r:.086,style:'boss'},
-      {id:1,cx:.715,cy:.210,r:.086,style:'boss'}],
-    ptr:rgb(238,240,242),
-    draw(d){ const {ctx:c,W,H,s}=d; const ink=rgb(20,22,28);
-      c.fillStyle=rgb(10,10,12); c.fillRect(0,0,W,H);
-      const bx=W*.13, by=H*.035, bw=W*.74, bh=H*.92;
-      const body=c.createLinearGradient(0,by,0,by+bh);
-      body.addColorStop(0,rgb(218,221,222)); body.addColorStop(0.52,rgb(178,184,188)); body.addColorStop(1,rgb(128,136,144));
-      rr(c,bx,by,bw,bh,9*s); c.fillStyle=body; c.fill();
-      rr(c,bx,by,bw,bh,9*s); c.strokeStyle=rgb(76,82,90); c.lineWidth=2*s; c.stroke();
-      c.fillStyle=rgb(255,255,255,0.08);
-      for(let i=0;i<30;i++){ const x=bx+8*s+((i*53)%Math.floor(bw-16*s)); const y=by+8*s+((i*79)%Math.floor(bh-16*s));
-        c.fillRect(x,y,1.1*s,1.1*s); }
-      const splitY=H*.340; c.beginPath(); c.moveTo(bx+2*s,splitY); c.lineTo(bx+bw-2*s,splitY);
-      c.strokeStyle=rgb(88,94,102); c.lineWidth=1.6*s; c.stroke();
-      ledDot(d,W*.50,H*.105,true,224,42,35);
-      textSpaced(d,.285*W,.325*H,F.barlow,10.5,ink,'GAIN',0.8);
-      textSpaced(d,.715*W,.325*H,F.barlow,10.5,ink,'TONE',0.8);
-      textC(d,.44*W,.490*H,F.barlow,51,ink,'Fuzz','center');
-      textC(d,.690*W,.548*H,F.barlow,20,ink,'BZ-1','center');
-      const padX=bx+18*s, padY=H*.650, padW=bw-36*s, padH=H*.225;
-      rr(c,padX,padY,padW,padH,7*s); c.fillStyle=rgb(22,27,29); c.fill();
-      rr(c,padX,padY,padW,padH,7*s); c.strokeStyle=rgb(9,12,13); c.lineWidth=2*s; c.stroke();
-      textC(d,.50*W,padY+padH*.34,F.anton,34,rgb(10,14,16),'CHIEF');
-      textC(d,.50*W,padY+padH*.34-1*s,F.anton,34,rgb(42,47,49,0.34),'CHIEF');
-      footRound(d,W*.50,H*.930,10*s); } };
+  // BZ-1 — Chief (Boss-compact) silicon fuzz: same body/treadle/CHIEF-badge
+  // styling as the brother's chiefSpec pedals. 2 RS knobs: Gain0 Tone1.
+  P.bz1 = chiefSpec(300,480,[54,96,150],
+    [{id:0,cx:.33,lbl:'GAIN'},{id:1,cx:.67,lbl:'TONE'}],
+    'Fuzz',null,'BZ-1');
 
   // Buzz-Tone - gold wedge-style vintage two-knob fuzz face.
   // Param order: Gain0 Tone1.
@@ -439,6 +417,30 @@
       textC(d,.56*W,.665*H,F.crete,40,cream,'Compress');
       ledDot(d,W*.5,H*.775,true,224,60,50);
       footRound(d,W*.5,H*.885,23*s); } };
+
+  // Holy Spring — Holy Grail-style spring reverb. Bright chrome box + ornate
+  // serif logo (EHX-inspired, recreated brand-free). Params: Time0 Mix1 Depth2.
+  P.springreverb = { w:300, h:450, knobs:[
+      {id:0,cx:.25,cy:.225,r:.074,style:'pointer',cap:[24,24,26]},
+      {id:1,cx:.50,cy:.225,r:.074,style:'pointer',cap:[24,24,26]},
+      {id:2,cx:.75,cy:.225,r:.074,style:'pointer',cap:[24,24,26]}],
+    tick:rgb(120,122,128), ptr:rgb(238,240,244),
+    draw(d){ const {ctx:c,W,H,s}=d; box(d,198,201,207); const ink=rgb(28,30,36);
+      // vertical brushed-metal sheen across the panel
+      c.save(); rr(c,12*s,12*s,W-24*s,H-24*s,12*s); c.clip();
+      const sheen=c.createLinearGradient(0,0,W,0);
+      sheen.addColorStop(0,rgb(255,255,255,0)); sheen.addColorStop(.5,rgb(255,255,255,0.20)); sheen.addColorStop(1,rgb(255,255,255,0));
+      c.fillStyle=sheen; c.fillRect(0,0,W,H); c.restore();
+      const ly=(.225+0.074*1.5+0.015)*H;
+      textSpaced(d,.25*W,ly,F.barlow,10,ink,'TIME',0.8);
+      textSpaced(d,.50*W,ly,F.barlow,10,ink,'MIX',0.8);
+      textSpaced(d,.75*W,ly,F.barlow,9.5,ink,'DEPTH',0.5);
+      // Ornate serif logo, stacked + centred (Holy Grail vibe).
+      textC(d,.5*W,.510*H,F.crete,54,ink,'Holy');
+      textC(d,.5*W,.620*H,F.crete,54,ink,'Spring');
+      textSpaced(d,.5*W,.710*H,F.barlow,10,rgb(74,76,84),'SPRING  REVERB',2.6);
+      ledDot(d,W*.5,H*.775,true,224,60,50);
+      footRound(d,W*.5,H*.885,22*s); } };
 
   // Eden WTDI — landscape gold-panel bass preamp (mirrors eden_wtdi/EdenWtdi_ui.cpp).
   // Param order: Gain0 Enhance1 Comp2 Master3 Bass4 Mid5 Treble6 BassBoost7 MidShift8.

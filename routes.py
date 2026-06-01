@@ -377,6 +377,14 @@ def _get_conn() -> sqlite3.Connection:
             _migrate_output_gain_to_unity()
         except Exception:
             log.exception("output_gain unity migration failed")
+        # v2.0.1: point pedal/rack pieces at their BUNDLED VST primary. DBs
+        # mapped before the bundled effects existed (or before a pedal rename)
+        # still reference external plugins (kHs/Melda) or a removed bundle name,
+        # so the bundled DSP never loads. One-shot, sentinel-guarded.
+        try:
+            _migrate_assign_bundled_primary_once()
+        except Exception:
+            log.exception("bundled-primary migration failed")
         # NOTE: the auto gear-global consolidation was DISABLED — its
         # "most-recent VST wins, applied to every instance" rule flattened
         # per-song picks and mis-mapped gears (e.g. a comp pedal globbed onto
@@ -458,6 +466,76 @@ def _migrate_consolidate_gear_assignments_once() -> None:
     log.info("gear global consolidation: %d pieces across %d songs unified to "
              "a single assignment", report.get("rows_changed", 0),
              report.get("presets_affected", 0))
+
+
+def _migrate_assign_bundled_primary_once() -> None:
+    """One-shot: point pedal/rack pieces at their BUNDLED VST primary.
+
+    The 100 bundled effects are the default in rs_gear_to_vst.json, but DBs
+    mapped before they existed (or before a pedal rename) still point at
+    external plugins (kHs/Melda) or a now-removed bundle name — so the bundled
+    DSP never loads ("still getting kHs Chorus", "FuzzWasHe won't open"). This
+    reassigns every AUTO-assigned pedal/rack piece — plus any piece whose
+    current VST file no longer exists (e.g. a renamed bundle) — to the bundled
+    primary and recomputes its vst_state from the RS knobs. Amps and cabs are
+    left untouched (they keep their NAM/IR). A still-valid MANUAL pick is
+    preserved. Sentinel-guarded so it runs exactly once (later manual choices
+    stick). Backs the DB up first."""
+    conn = _conn
+    if conn is None:
+        return
+    marker_row = conn.execute(
+        "SELECT settings_json FROM presets WHERE name = ?",
+        ("__rig_builder_master_pre__",),
+    ).fetchone()
+    marker = json.loads(marker_row[0] or "{}") if marker_row else {}
+    if marker.get("bundled_primary_assigned_v1"):
+        return
+    if _db_path:
+        try:
+            shutil.copy2(_db_path, f"{_db_path}.pre-bundled-primary.bak")
+        except OSError:
+            log.exception("pre-bundled-primary backup failed; skipping")
+            return
+    known = _build_known_vst_lookup()
+    rows = conn.execute(
+        "SELECT id, rs_gear_type, params_json, vst_path, assigned_mode "
+        "FROM preset_pieces"
+    ).fetchall()
+    changed = 0
+    for pid, gear, pj, cur, mode in rows:
+        if not gear or _gear_category(gear) in ("amp", "cab"):
+            continue
+        pick = _pick_installed_primary_vst(gear, known)
+        if not pick:
+            continue
+        bundled = pick["vst_path"]
+        if cur == bundled:
+            continue
+        cur_broken = bool(cur) and not Path(cur).exists()
+        # Respect a deliberate manual pick that still resolves; reassign
+        # everything auto, and any broken VST path (e.g. a renamed bundle).
+        if mode == "manual" and not cur_broken:
+            continue
+        try:
+            knobs = json.loads(pj) if pj else {}
+        except (ValueError, TypeError):
+            knobs = {}
+        state = _compute_vst_state_for_piece(
+            gear, bundled, knobs if isinstance(knobs, dict) else {})
+        conn.execute(
+            "UPDATE preset_pieces SET kind='vst', file=NULL, "
+            "vst_path=?, vst_format=?, vst_state=? WHERE id=?",
+            (bundled, pick["vst_format"], state, pid),
+        )
+        changed += 1
+    mpid = _get_master_preset_id("pre")
+    if mpid is not None:
+        marker["bundled_primary_assigned_v1"] = True
+        conn.execute("UPDATE presets SET settings_json = ? WHERE id = ?",
+                     (json.dumps(marker), mpid))
+    conn.commit()
+    log.info("bundled-primary migration: reassigned %d pedal/rack pieces", changed)
 
 
 def _load_settings() -> dict:
