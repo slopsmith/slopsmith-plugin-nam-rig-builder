@@ -11,6 +11,6 @@
 #define RACK_ACB 205
 // enum order: Rate, Depth, Mix, LoFilter | HiFilter, Stereo, Delay
 #define RACK_KNOBS { \
-    {0.155f,0.38f,0.024f}, {0.265f,0.38f,0.024f}, {0.375f,0.38f,0.024f}, {0.485f,0.38f,0.024f}, \
-    {0.210f,0.72f,0.024f}, {0.320f,0.72f,0.024f}, {0.430f,0.72f,0.024f} }
+    {0.160f,0.40f,0.023f}, {0.265f,0.40f,0.023f}, {0.370f,0.40f,0.023f}, {0.475f,0.40f,0.023f}, \
+    {0.215f,0.72f,0.023f}, {0.320f,0.72f,0.023f}, {0.425f,0.72f,0.023f} }
 #include "../_shared/rack_ui.hpp"

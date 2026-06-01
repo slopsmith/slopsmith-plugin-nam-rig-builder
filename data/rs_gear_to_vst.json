@@ -1672,6 +1672,66 @@
    "notes": "Low drive + soft type for 'embiggen' saturation"
   }
  ],
+ "Rack_StereoPhaser": [
+  {
+   "name": "StereoPhaser",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "bundled": "vst/StereoPhaser.vst3",
+   "free": true,
+   "notes": "Bundled Stereo phaser. Maps RS Rate/Depth/Mix."
+  }
+ ],
+ "Rack_StudioWahFilter": [
+  {
+   "name": "StudioWahFilter",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "bundled": "vst/StudioWahFilter.vst3",
+   "free": true,
+   "notes": "Bundled Auto wah filter. Maps RS Sens/Attack/Release/Pedal/Auto."
+  }
+ ],
+ "Rack_SynthFilter": [
+  {
+   "name": "SynthFilter",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "bundled": "vst/SynthFilter.vst3",
+   "free": true,
+   "notes": "Bundled Envelope filterbank. Maps RS Sens/Attack/Release/FilterType/Mix."
+  }
+ ],
+ "Rack_RotaVibe": [
+  {
+   "name": "RotaVibe",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "bundled": "vst/RotaVibe.vst3",
+   "free": true,
+   "notes": "Bundled Rotary speaker. Maps RS Rate/Depth/Mix/Balance."
+  }
+ ],
+ "Rack_StereoTubeTrem": [
+  {
+   "name": "StereoTubeTrem",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "bundled": "vst/StereoTubeTrem.vst3",
+   "free": true,
+   "notes": "Bundled Tube tremolo. Maps RS Speed/Mix/Waveform."
+  }
+ ],
+ "Rack_StudioPitch": [
+  {
+   "name": "StudioPitch",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "bundled": "vst/StudioPitch.vst3",
+   "free": true,
+   "notes": "Bundled Pitch shifter. Maps RS Pitch/Tone/Mix/Pan."
+  }
+ ],
  "Bass_Pedal_BassEnbig": [
   {
    "name": "BassEnbig",
@@ -1719,6 +1779,14 @@
   }
  ],
  "Rack_StereoAnalogVibe": [
+  {
+   "name": "StereoAnalogVibe",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "bundled": "vst/StereoAnalogVibe.vst3",
+   "free": true,
+   "notes": "Bundled Univibe vibrato. Maps RS Speed/Waveform/Mix."
+  },
   {
    "name": "kHs Chorus",
    "manufacturer": "Kilohearts",

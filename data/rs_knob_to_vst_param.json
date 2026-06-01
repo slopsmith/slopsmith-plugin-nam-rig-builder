@@ -1644,6 +1644,54 @@
    }
   }
  },
+ "Rack_StereoPhaser": {
+  "stereophaser": {
+   "Rate": { "param": "Rate", "scale": 0.16949, "offset": -0.01695 },
+   "Depth": { "param": "Depth", "scale": 0.01 },
+   "Mix": { "param": "Mix", "scale": 0.01 }
+  }
+ },
+ "Rack_StudioWahFilter": {
+  "studiowahfilter": {
+   "Sens": { "param": "Sens", "scale": 0.01 },
+   "Attack": { "param": "Attack", "scale": 0.01 },
+   "Release": { "param": "Release", "scale": 0.01 },
+   "Pedal": { "param": "Pedal", "scale": 0.01 },
+   "Auto": { "param": "Auto", "scale": 1.0 }
+  }
+ },
+ "Rack_SynthFilter": {
+  "synthfilter": {
+   "Sens": { "param": "Sens", "scale": 0.01 },
+   "Attack": { "param": "Attack", "scale": 0.01 },
+   "Release": { "param": "Release", "scale": 0.01 },
+   "FilterType": { "param": "Type", "scale": 0.01 },
+   "Mix": { "param": "Mix", "scale": 0.01 }
+  }
+ },
+ "Rack_RotaVibe": {
+  "rotavibe": {
+   "Rate": { "param": "Rate", "scale": 0.01 },
+   "Depth": { "param": "Depth", "scale": 0.01 },
+   "Mix": { "param": "Mix", "scale": 0.01 },
+   "Balance": { "param": "Balance", "scale": 0.01 }
+  }
+ },
+ "Rack_StereoTubeTrem": {
+  "stereotubetrem": {
+   "Speed": { "param": "Speed", "scale": 0.01 },
+   "Mix": { "param": "Mix", "scale": 0.01 },
+   "Waveform": { "param": "Waveform", "scale": 0.01 }
+  }
+ },
+ "Rack_StudioPitch": {
+  "studiopitch": {
+   "Pitch": { "param": "Pitch", "scale": 0.01 },
+   "Tone": { "param": "Tone", "scale": 0.01 },
+   "Mix": { "param": "Mix", "scale": 0.01 },
+   "Pan": { "param": "Pan", "scale": 0.01 }
+  }
+ },
  "Bass_Pedal_BassEnbig": {
   "bassenbig": {
    "Rate":   { "param": "Rate",   "scale": 0.01, "_hint": "RS Rate 0-100 → LFO wobble speed 0..1." },
@@ -3382,6 +3430,11 @@
   }
  },
  "Rack_StereoAnalogVibe": {
+  "stereoanalogvibe": {
+   "Speed": { "param": "Speed", "scale": 0.01 },
+   "Waveform": { "param": "Waveform", "scale": 0.01 },
+   "Mix": { "param": "Mix", "scale": 0.01 }
+  },
   "khs chorus": {
    "Speed": {
     "param": "Rate",

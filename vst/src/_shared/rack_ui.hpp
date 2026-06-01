@@ -65,7 +65,7 @@ class RackUI : public UI
         beginPath(); moveTo(cx, cy); lineTo(cx + (R-3*f)*std::cos(a), cy + (R-3*f)*std::sin(a));
         strokeColor(Color(238, 240, 245)); strokeWidth(2.5f*f); stroke();
         textAlign(ALIGN_CENTER | ALIGN_TOP);
-        fontSize(9.5f*f); fillColor(Color(18, 19, 22)); text(cx, cy + R + 2*f, RACK_NAMES[i], NULL);
+        fontSize(8.0f*f); fillColor(Color(18, 19, 22)); text(cx, cy + R + 2*f, RACK_NAMES[i], NULL);
     }
     int knobAt(double px, double py) const {
         for (int i = 0; i < RACK_COUNT; ++i) {
