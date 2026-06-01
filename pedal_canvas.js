@@ -333,30 +333,31 @@
       textC(d,.610*W,.835*H+R,F.barlow,11,rgb(225,210,175),'SENS');
       textC(d,.845*W,.835*H+R,F.barlow,11,rgb(225,210,175),'SPEED'); } };
 
-  // Bass Auto Filter — AutoSweep / QTron envelope filter (mirrors QTronUI.cpp).
-  // Landscape taupe stompbox, one row of 6 knobs. Param order:
+  // Bass Auto Filter — AutoSweep / QTron envelope filter. Cream Q-Tron-style
+  // stompbox (brand-free), 2 rows of black knobs. Param order:
   // FilterType0 Attack1 Release2 Range3 Res(Peak)4 Mix5 Sens(Gain)6 Boost7.
-  P.autosweep = { w:600, h:280,
+  P.autosweep = { w:340, h:480,
     knobs:[
-      {id:6,cx:.105,cy:.30,r:.052,style:'boss'},  // Sens
-      {id:1,cx:.263,cy:.30,r:.052,style:'boss'},  // Attack
-      {id:2,cx:.421,cy:.30,r:.052,style:'boss'},  // Release
-      {id:0,cx:.579,cy:.30,r:.052,style:'boss'},  // FilterType
-      {id:4,cx:.737,cy:.30,r:.052,style:'boss'},  // Res
-      {id:5,cx:.895,cy:.30,r:.052,style:'boss'}], // Mix
-    ptr:rgb(244,238,228),
-    draw(d){ const {ctx:c,W,H}=d, m=10;
-      c.fillStyle=rgb(14,13,12); c.fillRect(0,0,W,H);
-      const body=c.createLinearGradient(0,m,0,H-m); body.addColorStop(0,rgb(150,139,126)); body.addColorStop(1,rgb(60,54,48));
-      rr(c,m,m,W-2*m,H-2*m,18); c.fillStyle=body; c.fill();
-      rr(c,m,m,W-2*m,H-2*m,18); c.strokeStyle=rgb(40,35,30); c.lineWidth=2; c.stroke();
-      [2.4*m, W-2.4*m].forEach(x=>{ c.beginPath(); c.arc(x,H*0.30,4,0,7); c.fillStyle=rgb(40,36,32); c.fill(); });
-      ledDot(d, W*0.5, H*0.10, true, 255,80,70);
-      const names=['SENS','ATTACK','RELEASE','TYPE','RES','MIX'];
-      const cxs=[.105,.263,.421,.579,.737,.895];
-      cxs.forEach((cx,i)=> textC(d, cx*W, .30*H + .052*W + 13, F.barlow, 12, rgb(242,236,226), names[i]));
-      textC(d, W*0.5, H*0.66, F.bebas, 34, rgb(244,238,228), 'AUTO FILTER');
-      footRound(d, W*0.5, H*0.87, 18); } };
+      {id:0,cx:.24,cy:.255,r:.083,style:'boss'},  // MODE  (FilterType)
+      {id:4,cx:.50,cy:.255,r:.083,style:'boss'},  // PEAK  (Res)
+      {id:6,cx:.76,cy:.255,r:.083,style:'boss'},  // GAIN  (Sens)
+      {id:1,cx:.24,cy:.495,r:.083,style:'boss'},  // ATTACK
+      {id:2,cx:.50,cy:.495,r:.083,style:'boss'},  // RELEASE
+      {id:5,cx:.76,cy:.495,r:.083,style:'boss'}], // MIX
+    ptr:rgb(240,240,244),
+    draw(d){ const {ctx:c,W,H}=d;
+      box(d,224,216,197);                                  // cream body + screws
+      const dk=rgb(40,36,30);
+      // dark logo strip near the top
+      rr(c, W*0.12, H*0.058, W*0.76, H*0.072, 5); c.fillStyle=rgb(26,24,22); c.fill();
+      textC(d, W*0.5, H*0.094, F.bebas, 22, rgb(230,224,206), 'AUTO FILTER');
+      // knob labels
+      const R=.083*W+13;
+      const lab=(cx,cy,t)=> textC(d, cx*W, cy*H+R, F.barlow, 11, dk, t);
+      lab(.24,.255,'MODE'); lab(.50,.255,'PEAK'); lab(.76,.255,'GAIN');
+      lab(.24,.495,'ATTACK'); lab(.50,.495,'RELEASE'); lab(.76,.495,'MIX');
+      ledDot(d, W*0.5, H*0.645, true, 224,60,52);
+      footRound(d, W*0.5, H*0.82, 22); } };
 
   // ── graphic-EQ faders (mirrors graphic_eq_ui.hpp) ─────────────────────────
   // Geometry in spec-units (W=spec.w, H=spec.h). Boss = portrait/tall,
