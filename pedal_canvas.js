@@ -480,10 +480,10 @@
       const g=c.createLinearGradient(0,py,0,py+ph); g.addColorStop(0,rgb(214,178,96)); g.addColorStop(1,rgb(168,132,60));
       rr(c,px,py,pw,ph,8); c.fillStyle=g; c.fill();
       rr(c,px,py,pw,ph,8); c.strokeStyle=rgb(120,92,40); c.lineWidth=1.5; c.stroke();
-      // red logo box top-left (neutral mark, no brand) + title top-right
-      rr(c,px+8,py+8,56,30,4); c.strokeStyle=rgb(180,30,28); c.lineWidth=2; c.stroke();
-      textC(d,px+36,py+23,F.anton,17,rgb(180,30,28),'DI');
-      textC(d,px+pw-10,py+14,F.bebas,17,dark,'PREAMP','right');
+      // red logo box top-left (parody brand) + model top-right
+      rr(c,px+8,py+8,98,30,4); c.strokeStyle=rgb(180,30,28); c.lineWidth=2; c.stroke();
+      textC(d,px+8+49,py+23,F.anton,16,rgb(180,30,28),'GARDEN');
+      textC(d,px+pw-10,py+14,F.bebas,18,dark,'WT-DX','right');
       textC(d,px+pw-10,py+30,F.barlow,9,rgb(70,52,28),'Bass Guitar Pre Amplifier','right');
       // knob labels (drawn here; 'boss' knobs don't self-label)
       const R=.058*W+13;
