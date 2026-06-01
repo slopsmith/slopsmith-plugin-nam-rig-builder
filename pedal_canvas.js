@@ -45,14 +45,15 @@
     c.beginPath(); c.moveTo(cx-r*0.55,cy-r*0.3); c.lineTo(cx+r*0.55,cy+r*0.3);
     c.strokeStyle=rgb(70,72,78); c.lineWidth=1.4*s; c.stroke(); }
 
-  function box(d, r, g, b) { const {ctx:c, W, H, s} = d; const m=8*s;
+  function box(d, r, g, b, screws) { const {ctx:c, W, H, s} = d; const m=8*s;
+    if (screws === undefined) screws = true;
     c.fillStyle=rgb(10,10,12); c.fillRect(0,0,W,H);
     const grad=c.createLinearGradient(0,m,0,H-m);
     grad.addColorStop(0,rgb(clamp(r+22,0,255),clamp(g+22,0,255),clamp(b+22,0,255)));
     grad.addColorStop(1,rgb(clamp(r-18,0,255),clamp(g-18,0,255),clamp(b-18,0,255)));
     rr(c,m,m,W-2*m,H-2*m,14*s); c.fillStyle=grad; c.fill();
     rr(c,m,m,W-2*m,H-2*m,14*s); c.strokeStyle='rgba(0,0,0,0.47)'; c.lineWidth=2*s; c.stroke();
-    const o=22*s; screw(d,m+o,m+o); screw(d,W-m-o,m+o); screw(d,m+o,H-m-o); screw(d,W-m-o,H-m-o); }
+    if (screws) { const o=22*s; screw(d,m+o,m+o); screw(d,W-m-o,m+o); screw(d,m+o,H-m-o); screw(d,W-m-o,H-m-o); } }
 
   function ledDot(d, cx, cy, on, r, g, b) { const c=d.ctx, s=d.s, R=4.6*s;
     if (on){ c.beginPath(); c.arc(cx,cy,R*2,0,7); c.fillStyle=rgb(r,g,b,0.24); c.fill(); }
@@ -323,7 +324,7 @@
       {id:1,cx:.500,cy:.305,r:.105,style:'pointer',cap:[26,26,28]},
       {id:2,cx:.785,cy:.305,r:.105,style:'pointer',cap:[26,26,28]}],
     tick:rgb(232,233,236), ptr:rgb(240,241,244),
-    draw(d){ box(d,18,18,20); const w=rgb(238,239,242);
+    draw(d){ box(d,18,18,20,false); const w=rgb(238,239,242);
       boxedLabel(d,.215,.135,.115,.028,F.barlow,12.5,w,w,'GAIN');
       boxedLabel(d,.500,.135,.110,.028,F.barlow,12.5,w,w,'TONE');
       boxedLabel(d,.785,.135,.125,.028,F.barlow,12.5,w,w,'FILTER');
@@ -340,7 +341,7 @@
       {id:2,cx:.30,cy:.555,r:.10,style:'boss'},   // GRUNT
       {id:3,cx:.70,cy:.555,r:.10,style:'boss'}],  // ATTACK
     ptr:rgb(238,239,242),
-    draw(d){ box(d,18,18,20); const w=rgb(235,236,239), dim=rgb(150,151,154);
+    draw(d){ box(d,18,18,20,false); const w=rgb(235,236,239), dim=rgb(150,151,154);
       textSpaced(d,.5*d.W,.10*d.H,F.bebas,24,w,'BLACKBRASS',2);           // parody brand
       textSpaced(d,.30*d.W,.40*d.H,F.barlow,11,w,'BLEND',1.4);
       textSpaced(d,.70*d.W,.40*d.H,F.barlow,11,w,'DRIVE',1.4);
