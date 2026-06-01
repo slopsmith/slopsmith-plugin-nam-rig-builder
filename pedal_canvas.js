@@ -439,9 +439,9 @@
   // Holy Spring — Holy Grail-style spring reverb. Bright chrome box + ornate
   // serif logo (EHX-inspired, recreated brand-free). Params: Time0 Mix1 Depth2.
   P.springreverb = { w:300, h:470, knobs:[
-      {id:0,cx:.215,cy:.150,r:.058,style:'pointer',cap:[26,26,28]},
-      {id:1,cx:.500,cy:.150,r:.058,style:'pointer',cap:[26,26,28]},
-      {id:2,cx:.785,cy:.150,r:.058,style:'pointer',cap:[26,26,28]}],
+      {id:0,cx:.215,cy:.155,r:.078,style:'pointer',cap:[26,26,28]},
+      {id:1,cx:.500,cy:.155,r:.078,style:'pointer',cap:[26,26,28]},
+      {id:2,cx:.785,cy:.155,r:.078,style:'pointer',cap:[26,26,28]}],
     tick:rgb(120,122,128), ptr:rgb(238,240,244),
     draw(d){ const {ctx:c,W,H,s}=d; box(d,196,199,205);
       const blue=rgb(38,150,216), dk=rgb(40,42,48);
@@ -458,9 +458,9 @@
       textSpaced(d,.50*W,.050*H,F.barlow,7.5,dk,'9V 500mA',0.4);
       textSpaced(d,.80*W,.050*H,F.barlow,7.5,dk,'INPUT',0.4);
       // knob labels
-      textSpaced(d,.215*W,.250*H,F.barlow,9,dk,'TIME',0.4);
-      textSpaced(d,.500*W,.250*H,F.barlow,9,dk,'MIX',0.4);
-      textSpaced(d,.785*W,.250*H,F.barlow,8.5,dk,'DEPTH',0.3);
+      textSpaced(d,.215*W,.272*H,F.barlow,9,dk,'TIME',0.4);
+      textSpaced(d,.500*W,.272*H,F.barlow,9,dk,'MIX',0.4);
+      textSpaced(d,.785*W,.272*H,F.barlow,8.5,dk,'DEPTH',0.3);
       // blue swoosh across the upper-middle
       c.save(); c.lineCap='round';
       c.beginPath(); c.moveTo(W*.10,H*.340); c.quadraticCurveTo(W*.46,H*.300,W*.92,H*.352);
@@ -477,10 +477,41 @@
       word(.450,'HOLY',54); word(.560,'SPRING',54);
       // 'reverb' wordmark + footswitch
       textSpaced(d,.5*W,.650*H,F.bebas,26,blue,'REVERB',2);
-      footRound(d,W*.5,H*.760,24*s);
-      // bottom legends (brand-free)
-      textC(d,.31*W,.905*H,F.crete,15,dk,'rig builder');
-      textSpaced(d,.74*W,.905*H,F.barlow,7,dk,'MADE WITH LOVE',0.3); } };
+      footRound(d,W*.5,H*.760,24*s); } };
+
+  // Deja Chorus — Fulltone Deja'Vibe-style: matte-black landscape box, white
+  // pinstripe border + script logo, two top knobs + two mode toggles, a big
+  // offset knob + BYPASS stomp + blue LED. Recreated brand-free. Rate0 Depth1 Mix2.
+  P.chorus20 = { w:480, h:300, knobs:[
+      {id:0,cx:.155,cy:.205,r:.066,style:'boss'},
+      {id:1,cx:.430,cy:.205,r:.066,style:'boss'},
+      {id:2,cx:.825,cy:.560,r:.110,style:'boss'}],
+    ptr:rgb(236,238,242),
+    draw(d){ const {ctx:c,W,H,s}=d; box(d,26,26,28); const wt=rgb(232,234,238);
+      // white pinstripe border + a divider under the top knob strip
+      c.save(); rr(c,16*s,16*s,W-32*s,H-32*s,10*s); c.strokeStyle=rgb(214,216,222); c.lineWidth=1.8*s; c.stroke(); c.restore();
+      c.beginPath(); c.moveTo(22*s,H*.415); c.lineTo(W-22*s,H*.415); c.strokeStyle=rgb(214,216,222); c.lineWidth=1.3*s; c.stroke();
+      // two decorative mode toggles between the top knobs (Modern/Vintage, Vibrato/Chorus)
+      const tog=(tx,ty,up)=>{ const w0=9*s,h0=20*s;
+        rr(c,tx-w0/2,ty-h0/2,w0,h0,3*s); c.fillStyle=rgb(16,16,18); c.fill();
+        rr(c,tx-w0/2,ty-h0/2,w0,h0,3*s); c.strokeStyle=rgb(6,6,8); c.lineWidth=1*s; c.stroke();
+        const ly=ty+(up?-1:1)*h0*0.18;
+        const g=c.createLinearGradient(tx-4*s,ly-6*s,tx+4*s,ly+6*s); g.addColorStop(0,rgb(228,230,236)); g.addColorStop(1,rgb(150,153,160));
+        rr(c,tx-4*s,ly-6*s,8*s,12*s,2*s); c.fillStyle=g; c.fill();
+        rr(c,tx-4*s,ly-6*s,8*s,12*s,2*s); c.strokeStyle=rgb(70,72,78); c.lineWidth=0.8*s; c.stroke(); };
+      tog(.270*W,.205*H,false); tog(.330*W,.205*H,true);
+      // top knob labels
+      textSpaced(d,.155*W,.370*H,F.barlow,8.5,wt,'RATE',0.6);
+      textSpaced(d,.430*W,.370*H,F.barlow,8.5,wt,'DEPTH',0.5);
+      // white script logo + parody model code
+      textC(d,.375*W,.560*H,F.crete,40,wt,"Deja Chorus");
+      textC(d,.585*W,.655*H,F.barlow,12,wt,'DC-1');
+      // big MIX knob label + blue status LED
+      textSpaced(d,.825*W,.815*H,F.barlow,9,wt,'MIX',0.6);
+      ledDot(d,W*.655,H*.610,true,70,150,234);
+      // bypass footswitch
+      footRound(d,W*.205,H*.730,20*s);
+      textSpaced(d,.205*W,.910*H,F.barlow,8,wt,'BYPASS',0.6); } };
 
   // Eden WTDI — landscape gold-panel bass preamp (mirrors eden_wtdi/EdenWtdi_ui.cpp).
   // Param order: Gain0 Enhance1 Comp2 Master3 Bass4 Mid5 Treble6 BassBoost7 MidShift8.
