@@ -308,7 +308,7 @@
   // Param order: Gain0 Tone1.
   // BZ-1 — Chief (Boss-compact) silicon fuzz: same body/treadle/CHIEF-badge
   // styling as the brother's chiefSpec pedals. 2 RS knobs: Gain0 Tone1.
-  P.bz1 = chiefSpec(300,480,[54,96,150],
+  P.bz1 = chiefSpec(300,480,[188,191,196],
     [{id:0,cx:.33,lbl:'GAIN'},{id:1,cx:.67,lbl:'TONE'}],
     'Fuzz',null,'BZ-1');
 
@@ -420,27 +420,49 @@
 
   // Holy Spring — Holy Grail-style spring reverb. Bright chrome box + ornate
   // serif logo (EHX-inspired, recreated brand-free). Params: Time0 Mix1 Depth2.
-  P.springreverb = { w:300, h:450, knobs:[
-      {id:0,cx:.25,cy:.225,r:.074,style:'pointer',cap:[24,24,26]},
-      {id:1,cx:.50,cy:.225,r:.074,style:'pointer',cap:[24,24,26]},
-      {id:2,cx:.75,cy:.225,r:.074,style:'pointer',cap:[24,24,26]}],
+  P.springreverb = { w:300, h:470, knobs:[
+      {id:0,cx:.215,cy:.150,r:.058,style:'pointer',cap:[26,26,28]},
+      {id:1,cx:.500,cy:.150,r:.058,style:'pointer',cap:[26,26,28]},
+      {id:2,cx:.785,cy:.150,r:.058,style:'pointer',cap:[26,26,28]}],
     tick:rgb(120,122,128), ptr:rgb(238,240,244),
-    draw(d){ const {ctx:c,W,H,s}=d; box(d,198,201,207); const ink=rgb(28,30,36);
-      // vertical brushed-metal sheen across the panel
-      c.save(); rr(c,12*s,12*s,W-24*s,H-24*s,12*s); c.clip();
+    draw(d){ const {ctx:c,W,H,s}=d; box(d,196,199,205);
+      const blue=rgb(38,150,216), dk=rgb(40,42,48);
+      // brushed-metal: vertical sheen + faint horizontal brush lines up top
+      c.save(); rr(c,10*s,10*s,W-20*s,H-20*s,12*s); c.clip();
       const sheen=c.createLinearGradient(0,0,W,0);
-      sheen.addColorStop(0,rgb(255,255,255,0)); sheen.addColorStop(.5,rgb(255,255,255,0.20)); sheen.addColorStop(1,rgb(255,255,255,0));
-      c.fillStyle=sheen; c.fillRect(0,0,W,H); c.restore();
-      const ly=(.225+0.074*1.5+0.015)*H;
-      textSpaced(d,.25*W,ly,F.barlow,10,ink,'TIME',0.8);
-      textSpaced(d,.50*W,ly,F.barlow,10,ink,'MIX',0.8);
-      textSpaced(d,.75*W,ly,F.barlow,9.5,ink,'DEPTH',0.5);
-      // Ornate serif logo, stacked + centred (Holy Grail vibe).
-      textC(d,.5*W,.510*H,F.crete,54,ink,'Holy');
-      textC(d,.5*W,.620*H,F.crete,54,ink,'Spring');
-      textSpaced(d,.5*W,.710*H,F.barlow,10,rgb(74,76,84),'SPRING  REVERB',2.6);
-      ledDot(d,W*.5,H*.775,true,224,60,50);
-      footRound(d,W*.5,H*.885,22*s); } };
+      sheen.addColorStop(0,rgb(255,255,255,0)); sheen.addColorStop(.5,rgb(255,255,255,0.22)); sheen.addColorStop(1,rgb(255,255,255,0));
+      c.fillStyle=sheen; c.fillRect(0,0,W,H);
+      c.strokeStyle=rgb(150,153,160,0.16); c.lineWidth=1;
+      for(let y=H*.04;y<H*.30;y+=3*s){ c.beginPath(); c.moveTo(14*s,y); c.lineTo(W-14*s,y); c.stroke(); }
+      c.restore();
+      // top-edge I/O labels (parody of the EHX jack legends)
+      textSpaced(d,.20*W,.050*H,F.barlow,7.5,dk,'OUTPUT',0.4);
+      textSpaced(d,.50*W,.050*H,F.barlow,7.5,dk,'9V 500mA',0.4);
+      textSpaced(d,.80*W,.050*H,F.barlow,7.5,dk,'INPUT',0.4);
+      // knob labels
+      textSpaced(d,.215*W,.250*H,F.barlow,9,dk,'TIME',0.4);
+      textSpaced(d,.500*W,.250*H,F.barlow,9,dk,'MIX',0.4);
+      textSpaced(d,.785*W,.250*H,F.barlow,8.5,dk,'DEPTH',0.3);
+      // blue swoosh across the upper-middle
+      c.save(); c.lineCap='round';
+      c.beginPath(); c.moveTo(W*.10,H*.340); c.quadraticCurveTo(W*.46,H*.300,W*.92,H*.352);
+      c.strokeStyle=blue; c.lineWidth=5.5*s; c.stroke();
+      c.beginPath(); c.moveTo(W*.12,H*.356); c.quadraticCurveTo(W*.46,H*.318,W*.90,H*.368);
+      c.strokeStyle=rgb(38,150,216,0.4); c.lineWidth=2*s; c.stroke();
+      c.restore();
+      // status LED + label (right side, under the swoosh)
+      ledDot(d,W*.815,H*.405,true,224,60,50);
+      textSpaced(d,.815*W,.445*H,F.barlow,6.5,dk,'STATUS',0.3);
+      // bold slanted blue wordmark (light outline) — HOLY / SPRING
+      const word=(y,str,px)=>{ c.save(); c.translate(W*.5,H*y); c.transform(1,0,-0.16,1,0,0);
+        outlineText(d,0,0,F.anton,px,blue,rgb(246,249,252),str,2); c.restore(); };
+      word(.450,'HOLY',54); word(.560,'SPRING',54);
+      // 'reverb' wordmark + footswitch
+      textSpaced(d,.5*W,.650*H,F.bebas,26,blue,'REVERB',2);
+      footRound(d,W*.5,H*.760,24*s);
+      // bottom legends (brand-free)
+      textC(d,.31*W,.905*H,F.crete,15,dk,'rig builder');
+      textSpaced(d,.74*W,.905*H,F.barlow,7,dk,'MADE WITH LOVE',0.3); } };
 
   // Eden WTDI — landscape gold-panel bass preamp (mirrors eden_wtdi/EdenWtdi_ui.cpp).
   // Param order: Gain0 Enhance1 Comp2 Master3 Bass4 Mid5 Treble6 BassBoost7 MidShift8.
