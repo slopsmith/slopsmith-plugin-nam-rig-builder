@@ -5,6 +5,9 @@ NAME = MultiPitch
 FILES_DSP = \
 	MultiPitchPlugin.cpp
 
+FILES_UI = \
+	MultiPitch_ui.cpp
+
 DPF_PATH ?= ../DPF
 
 include $(DPF_PATH)/Makefile.plugins.mk

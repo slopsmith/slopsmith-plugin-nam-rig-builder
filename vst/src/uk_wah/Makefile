@@ -8,6 +8,9 @@ FILES_DSP = \
 FILES_UI = \
 	UKWah_ui.cpp
 
+FILES_UI = \
+	DSL100_ui.cpp
+
 DPF_PATH ?= ../DPF
 
 include $(DPF_PATH)/Makefile.plugins.mk

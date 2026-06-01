@@ -8,6 +8,9 @@ FILES_DSP = \
 FILES_UI = \
 	Swole_ui.cpp
 
+FILES_UI = \
+	DualRect_ui.cpp
+
 DPF_PATH ?= ../DPF
 
 include $(DPF_PATH)/Makefile.plugins.mk

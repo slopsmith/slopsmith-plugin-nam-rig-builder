@@ -5,6 +5,9 @@ NAME = PlanePhase
 FILES_DSP = \
 	PlanePhasePlugin.cpp
 
+FILES_UI = \
+	PlanePhase_ui.cpp
+
 DPF_PATH ?= ../DPF
 
 include $(DPF_PATH)/Makefile.plugins.mk

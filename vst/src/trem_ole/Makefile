@@ -8,6 +8,9 @@ FILES_DSP = \
 FILES_UI = \
 	TremOle_ui.cpp
 
+FILES_UI = \
+	TW22_ui.cpp
+
 DPF_PATH ?= ../DPF
 
 include $(DPF_PATH)/Makefile.plugins.mk

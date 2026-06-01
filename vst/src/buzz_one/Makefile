@@ -5,6 +5,9 @@ NAME = BuzzOne
 FILES_DSP = \
 	BuzzOnePlugin.cpp
 
+FILES_UI = \
+	BuzzOne_ui.cpp
+
 DPF_PATH ?= ../DPF
 
 include $(DPF_PATH)/Makefile.plugins.mk
