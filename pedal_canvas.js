@@ -402,14 +402,14 @@
       textC(d,.22*W,.255*H+R,F.barlow,11,w,'COMPRESS');
       textC(d,.50*W,.255*H+R,F.barlow,11,w,'FILTER');
       textC(d,.78*W,.255*H+R,F.barlow,11,w,'RATE');
-      // stylised 'MultiComp': big C … P, MULTI over OM in the middle (reads C-OM-P)
-      textC(d,.50*W,.475*H,F.barlow,13,w,'MULTI');
-      textC(d,.30*W,.515*H,F.anton,52,w,'C');
-      textC(d,.50*W,.540*H,F.anton,32,w,'OM');
-      textC(d,.70*W,.515*H,F.anton,52,w,'P');
-      // blue accent lines from the bottom up to where the logo ends (behind EBX + footswitch)
-      c.strokeStyle='rgba(46,124,228,0.9)'; c.lineWidth=2.5;
-      for(let i=0;i<7;i++){ const y=(.60+i*0.05)*H; c.beginPath(); c.moveTo(W*0.10,y); c.lineTo(W*0.90,y); c.stroke(); }
+      // stylised 'MultiComp': big C … P hugging a stacked MULTI/OM (reads C-OM-P)
+      textC(d,.50*W,.465*H,F.barlow,17,w,'MULTI');
+      textC(d,.38*W,.520*H,F.anton,66,w,'C');
+      textC(d,.50*W,.545*H,F.anton,42,w,'OM');
+      textC(d,.62*W,.520*H,F.anton,66,w,'P');
+      // blue accent lines at the bottom — thick + short (behind EBX + footswitch)
+      c.strokeStyle='rgba(46,124,228,0.9)'; c.lineWidth=4.5;
+      for(let i=0;i<7;i++){ const y=(.60+i*0.05)*H; c.beginPath(); c.moveTo(W*0.18,y); c.lineTo(W*0.82,y); c.stroke(); }
       textC(d,.50*W,.685*H,F.anton,26,w,'EBX');
       footRound(d,W*0.5,H*0.84,22); } };
 
