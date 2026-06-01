@@ -604,45 +604,39 @@
       rr(c,bx,by,bw,bh,8*s); c.strokeStyle=ink; c.lineWidth=2.6*s; c.stroke();
       textC(d,W*.5,H*.635,F.anton,30,ink,'NYR');
       footRound(d,W*.50,H*.80,16*s);
-      textC(d,W*.50,H*.91,F.crete,24,ink,'bass phase'); } };  // name below the footswitch
-  // Bass Filter Echo — Boss/Roland Space Echo (RE-20): black twin pedal with a
-  // GREEN panel (RE-201 teal) holding the knobs + a 12-position MODE selector.
-  // RS params (4 knobs): Time0 Feedback1 Mix2 Filter3.
-  P.bassfilterecho = { w:560,h:300,
+      textC(d,W*.50,H*.91,F.crete,24,ink,'phase 99'); } };  // name below the footswitch
+  // Bass Filter Echo — Boss RE-2 Space Echo: a normal Boss-compact pedal with a
+  // GREEN knob plate (CHECK LED + 4 knobs in a row) over a black treadle with
+  // 'Space Echo' / RE-3 / CHIEF. RS params (4 knobs): Time0 Feedback1 Mix2 Filter3.
+  P.bassfilterecho = { w:300,h:480,
     knobs:[
-      {id:0,cx:.155,cy:.335,r:.055,style:'boss'},  // TIME
-      {id:1,cx:.315,cy:.335,r:.055,style:'boss'},  // FEEDBACK
-      {id:2,cx:.475,cy:.335,r:.055,style:'boss'},  // MIX
-      {id:3,cx:.635,cy:.335,r:.055,style:'boss'}], // FILTER
-    ptr:rgb(238,240,244),
-    draw(d){ const {ctx:c,W,H}=d, m=8;
+      {id:0,cx:.19,cy:.205,r:.061,style:'boss'},  // TIME
+      {id:1,cx:.39,cy:.205,r:.061,style:'boss'},  // FEEDBACK
+      {id:2,cx:.59,cy:.205,r:.061,style:'boss'},  // MIX
+      {id:3,cx:.79,cy:.205,r:.061,style:'boss'}], // FILTER
+    ptr:rgb(238,240,242),
+    draw(d){ const {ctx:c,W,H,s}=d, m=7*s;
       c.fillStyle=rgb(8,8,10); c.fillRect(0,0,W,H);
-      const bgg=c.createLinearGradient(0,m,0,H-m); bgg.addColorStop(0,rgb(34,34,38)); bgg.addColorStop(1,rgb(16,16,18));
-      rr(c,m,m,W-2*m,H-2*m,14); c.fillStyle=bgg; c.fill();
-      rr(c,m,m,W-2*m,H-2*m,14); c.strokeStyle='rgba(0,0,0,0.5)'; c.lineWidth=2; c.stroke();
-      // green RE-201 panel
-      const gx=W*.05,gy=H*.10,gw=W*.90,gh=H*.52;
-      const gp=c.createLinearGradient(0,gy,0,gy+gh); gp.addColorStop(0,rgb(62,152,126)); gp.addColorStop(1,rgb(40,120,98));
-      rr(c,gx,gy,gw,gh,8); c.fillStyle=gp; c.fill();
-      rr(c,gx,gy,gw,gh,8); c.strokeStyle='rgba(0,0,0,0.35)'; c.lineWidth=1.5; c.stroke();
-      const dk=rgb(18,40,32);
-      textC(d,gx+12,gy+H*.075,F.bebas,22,rgb(246,250,246),'SPACE ECHO','left');
-      textC(d,.155*W,.475*H,F.barlow,10,dk,'TIME');
-      textC(d,.315*W,.475*H,F.barlow,9,dk,'FEEDBACK');
-      textC(d,.475*W,.475*H,F.barlow,10,dk,'MIX');
-      textC(d,.635*W,.475*H,F.barlow,10,dk,'FILTER');
-      // 12-position MODE selector (decorative)
-      const mx=W*.84,my=H*.335,mr=W*.052;
-      c.beginPath(); c.arc(mx,my,mr,0,7); c.fillStyle=rgb(24,26,28); c.fill();
-      c.strokeStyle=rgb(232,236,230); c.lineWidth=1.2;
-      for(let i=0;i<12;i++){ const a=i/12*Math.PI*2-Math.PI/2; c.beginPath(); c.moveTo(mx+mr*0.9*Math.cos(a),my+mr*0.9*Math.sin(a)); c.lineTo(mx+mr*1.2*Math.cos(a),my+mr*1.2*Math.sin(a)); c.stroke(); }
-      const pa=2*Math.PI*0.2-Math.PI/2; c.beginPath(); c.moveTo(mx,my); c.lineTo(mx+mr*0.7*Math.cos(pa),my+mr*0.7*Math.sin(pa)); c.strokeStyle=rgb(240,240,244); c.lineWidth=2.6; c.stroke();
-      textC(d,mx,my+mr+14,F.barlow,9,dk,'MODE');
-      // bottom: brand + code + footswitches + LED
-      textC(d,W*.16,H*.78,F.bebas,18,rgb(232,234,238),'CHIEF');
-      textC(d,W*.16,H*.90,F.barlow,11,rgb(176,178,184),'RE-21');
-      ledDot(d,W*.42,H*.84,true,224,60,52);
-      footRound(d,W*.58,H*.84,17); footRound(d,W*.82,H*.84,17); } };
+      const grad=c.createLinearGradient(0,m,0,H-m); grad.addColorStop(0,rgb(36,36,40)); grad.addColorStop(1,rgb(16,16,18));
+      rr(c,m,m,W-2*m,H-2*m,12*s); c.fillStyle=grad; c.fill();
+      rr(c,m,m,W-2*m,H-2*m,12*s); c.strokeStyle='rgba(0,0,0,0.5)'; c.lineWidth=2*s; c.stroke();
+      // green knob plate (RE-2 upper section)
+      const px=m+8*s, py=H*.055, pw=W-2*m-16*s, ph=H*.275;
+      const gp=c.createLinearGradient(0,py,0,py+ph); gp.addColorStop(0,rgb(80,134,72)); gp.addColorStop(1,rgb(54,104,52));
+      rr(c,px,py,pw,ph,6*s); c.fillStyle=gp; c.fill();
+      rr(c,px,py,pw,ph,6*s); c.strokeStyle='rgba(0,0,0,0.4)'; c.lineWidth=1.2*s; c.stroke();
+      const lg=rgb(232,238,226);
+      textC(d,W*.5,py+11*s,F.barlow,8,lg,'CHECK'); ledDot(d,W*.5,py+24*s,true,224,52,46);
+      // knob labels above the knobs (RS names)
+      textC(d,.19*W,.135*H,F.barlow,8.5,lg,'TIME');
+      textC(d,.39*W,.135*H,F.barlow,7.5,lg,'FEEDBACK');
+      textC(d,.59*W,.135*H,F.barlow,8.5,lg,'MIX');
+      textC(d,.79*W,.135*H,F.barlow,8.5,lg,'FILTER');
+      // treadle: Space Echo + RE-3 + CHIEF (BOSS spot)
+      textC(d,W*.45,H*.50,F.crete,38,rgb(238,240,244),'Space Echo');
+      textC(d,W*.80,H*.515,F.barlow,16,rgb(224,226,230),'RE-3');
+      outlineText(d,W*.5,H*.80,F.bebas,26,rgb(20,20,22),rgb(0,0,0),'CHIEF',12);
+      footRound(d,W*.5,H*.885,18*s); } };
   P.bassenbig = boxSpec(320,470,[58,64,72],
     [{id:0,cx:.20,lbl:'RATE'},{id:1,cx:.40,lbl:'DEPTH'},{id:2,cx:.60,lbl:'MIX'},{id:3,cx:.80,lbl:'FILTER'}],
     'ENBIGGEN','MOD  FILTER',[110,210,224]);
