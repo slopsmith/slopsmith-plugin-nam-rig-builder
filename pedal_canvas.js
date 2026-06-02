@@ -2650,11 +2650,11 @@
   // plate, cursive script logo, black knobs w/ MIN-MAX scales, red CHORUS/VIBRATO
   // slider, red jewel lamp, bottom jack row + POWER SW. Parody "Astro-Vibe".
   // RS params (3 knobs): Speed0 Waveform1 Mix2.
-  P.stereoanalogvibe = { w:900, h:290,
+  P.stereoanalogvibe = { w:900, h:340,
     knobs:[
-      {id:0,cx:.140,cy:.43,r:.044,style:'davies'},  // Speed
-      {id:1,cx:.440,cy:.43,r:.044,style:'davies'},  // Waveform
-      {id:2,cx:.580,cy:.43,r:.044,style:'davies'}], // Mix
+      {id:0,cx:.140,cy:.43,r:.037,style:'davies'},  // Speed
+      {id:1,cx:.440,cy:.43,r:.037,style:'davies'},  // Waveform
+      {id:2,cx:.580,cy:.43,r:.037,style:'davies'}], // Mix
     tick:rgb(150,150,150), ptr:rgb(226,226,222),
     draw(d){ const {ctx:c,W,H}=d, m=7;
       // grey metal chassis
@@ -2670,16 +2670,16 @@
       // cursive script logo (parody)
       textC(d,.42*W,.185*H,F.ink,32,wt,'Astro-Vibe');
       // knob MIN-MAX tick scales
-      [.140,.440,.580].forEach(cx=>{ const KX=cx*W, KY=.43*H, R=.044*W*1.5;
+      [.140,.440,.580].forEach(cx=>{ const KX=cx*W, KY=.43*H, R=.037*W*1.5;
         c.strokeStyle=dim; c.lineWidth=1;
         for(let i=0;i<=10;i++){ const an=(135+i/10*270)*Math.PI/180;
           c.beginPath(); c.moveTo(KX+Math.cos(an)*R,KY+Math.sin(an)*R); c.lineTo(KX+Math.cos(an)*(R+5),KY+Math.sin(an)*(R+5)); c.stroke(); }
         const aMin=135*Math.PI/180, aMax=405*Math.PI/180;
         textC(d,KX+Math.cos(aMin)*(R+15),KY+Math.sin(aMin)*(R+15)+3,F.barlow,8,dim,'MIN');
         textC(d,KX+Math.cos(aMax)*(R+15),KY+Math.sin(aMax)*(R+15)+3,F.barlow,8,dim,'MAX'); });
-      textC(d,.140*W,.69*H,F.barlow,13.5,wt,'SPEED');
-      textC(d,.440*W,.69*H,F.barlow,13.5,wt,'WAVEFORM');
-      textC(d,.580*W,.69*H,F.barlow,13.5,wt,'MIX');
+      textC(d,.140*W,.635*H,F.barlow,18,wt,'SPEED');
+      textC(d,.440*W,.635*H,F.barlow,18,wt,'WAVEFORM');
+      textC(d,.580*W,.635*H,F.barlow,18,wt,'MIX');
       // CHORUS / VIBRATO red slider
       const swx=.290*W, swy=.41*H;
       rr(c,swx-.024*W,swy-.016*H,.048*W,.032*H,3); c.fillStyle=rgb(42,42,44); c.fill();
