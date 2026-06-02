@@ -84,6 +84,17 @@
     rr(c, cx-5, ly-7, 10, 14, 3); c.fillStyle = g; c.fill();
     rr(c, cx-5, ly-7, 10, 14, 3); c.strokeStyle = rgb(70,72,78); c.lineWidth = 1; c.stroke(); }
 
+  // horizontal slider/fader (Maestro-style): recessed track + draggable cap with
+  // a white indicator line. val 0..1 left→right. Wired via spec.sliders in attach().
+  function hSlider(d, x0, x1, y, val) { const c = d.ctx, s = d.s;
+    rr(c, x0, y-2.5*s, x1-x0, 5*s, 2.5*s); c.fillStyle = rgb(18,18,20); c.fill();
+    rr(c, x0, y-2.5*s, x1-x0, 5*s, 2.5*s); c.strokeStyle = rgb(64,66,70); c.lineWidth = 0.8*s; c.stroke();
+    const cx = x0 + clamp(val,0,1)*(x1-x0), cw = 13*s, ch = 22*s;
+    const g = c.createLinearGradient(cx-cw/2, y-ch/2, cx+cw/2, y+ch/2); g.addColorStop(0, rgb(48,48,52)); g.addColorStop(1, rgb(18,18,20));
+    rr(c, cx-cw/2, y-ch/2, cw, ch, 3*s); c.fillStyle = g; c.fill();
+    rr(c, cx-cw/2, y-ch/2, cw, ch, 3*s); c.strokeStyle = rgb(8,8,10); c.lineWidth = 1*s; c.stroke();
+    c.beginPath(); c.moveTo(cx, y-ch/2+3*s); c.lineTo(cx, y+ch/2-3*s); c.strokeStyle = rgb(228,230,234); c.lineWidth = 1.4*s; c.stroke(); }
+
   function setFont(d, family, px) { d.ctx.font = `${px*d.s}px ${family}, sans-serif`; }
   function textC(d, cx, cy, family, px, col, str, align) {
     const c=d.ctx; setFont(d,family,px); c.fillStyle=col; c.textAlign=align||'center'; c.textBaseline='middle';
@@ -591,6 +602,22 @@
     [{id:0,cx:.33,lbl:'TONE'},{id:1,cx:.67,lbl:'MIX'}],
     'Octave',null,'OC-5');
 
+  // Shred Zone — Boss MT-2 Metal Zone-style: custom Chief in MT-2 gunmetal with
+  // ORANGE name + labels (black knobs, like the real MT-2). RS knob names.
+  // 4 RS knobs: Gain0 Bass1 Mid2 Treble3.
+  P.shredzone = { w:300,h:480, knobs:[
+      {id:0,cx:.205,cy:.235,r:.072,style:'boss'},
+      {id:1,cx:.40,cy:.235,r:.072,style:'boss'},
+      {id:2,cx:.595,cy:.235,r:.072,style:'boss'},
+      {id:3,cx:.79,cy:.235,r:.072,style:'boss'}],
+    ptr:rgb(238,240,242),
+    draw(d){ chiefBody(d,60,62,68); const or=rgb(240,132,42);
+      textSpaced(d,.205*d.W,.135*d.H,F.barlow,8.5,or,'GAIN',0.2);
+      textSpaced(d,.40*d.W,.135*d.H,F.barlow,8.5,or,'BASS',0.2);
+      textSpaced(d,.595*d.W,.135*d.H,F.barlow,8.5,or,'MID',0.2);
+      textSpaced(d,.79*d.W,.135*d.H,F.barlow,8,or,'TREBLE',0.2);
+      chiefName(d,'Metal','Zone','MT-2',0,0,or); } };
+
   // Vintage Chorus — MXR Stereo Chorus-style: yellow landscape box, three black
   // knobs in outlined cells, the parody 'NYR' logo box + 'stereo chorus' tag,
   // round footswitch, side jack legends. RS knob names. Rate0 Depth1 Mix2.
@@ -764,6 +791,158 @@
       // side jack legends (rotated)
       c.save(); c.translate(W*.105,H*.42); c.rotate(-Math.PI/2); textSpaced(d,0,0,F.barlow,6,wt,'STEREO OUT',0.2); c.restore();
       c.save(); c.translate(W*.895,H*.42); c.rotate(-Math.PI/2); textSpaced(d,0,0,F.barlow,6.5,wt,'INPUT',0.2); c.restore(); } };
+
+  // Bit Cruncher — Parasit Studio Beverly Bitcrusher-style: matte-black box, silver
+  // knobs, a small delta insignia, bold white wordmark + LED + stomp. Parody
+  // (virustudio / Rockford Bit Crusher). RS knob names.
+  // Attack0 FilterType1 Mix2 Release3 Sens4.
+  P.bitcruncher = { w:280,h:470, knobs:[
+      {id:0,cx:.21,cy:.215,r:.072,style:'knurled'},
+      {id:1,cx:.50,cy:.215,r:.072,style:'knurled'},
+      {id:2,cx:.79,cy:.215,r:.072,style:'knurled'},
+      {id:3,cx:.34,cy:.410,r:.072,style:'knurled'},
+      {id:4,cx:.66,cy:.410,r:.072,style:'knurled'}],
+    tick:rgb(90,92,98), ptr:rgb(30,30,32),
+    draw(d){ const {ctx:c,W,H,s}=d; const m=8*s, wt=rgb(232,234,238);
+      c.fillStyle=rgb(8,8,9); c.fillRect(0,0,W,H);
+      const bg=c.createLinearGradient(0,m,0,H-m); bg.addColorStop(0,rgb(34,34,36)); bg.addColorStop(1,rgb(20,20,22));
+      rr(c,m,m,W-2*m,H-2*m,12*s); c.fillStyle=bg; c.fill();
+      rr(c,m,m,W-2*m,H-2*m,12*s); c.strokeStyle='rgba(0,0,0,0.5)'; c.lineWidth=2*s; c.stroke();
+      // brand + delta insignia
+      const dx=.315*W, dy=.062*H;
+      c.beginPath(); c.moveTo(dx,dy-7*s); c.quadraticCurveTo(dx+6*s,dy+5*s,dx,dy+4*s); c.quadraticCurveTo(dx-6*s,dy+5*s,dx,dy-7*s); c.closePath(); c.fillStyle=wt; c.fill();
+      textSpaced(d,.56*W,.062*H,F.barlow,8.5,wt,'VIRUSTUDIO',0.5);
+      // knob labels (RS names)
+      textSpaced(d,.21*W,.300*H,F.barlow,7,wt,'ATTACK',0.2);
+      textSpaced(d,.50*W,.300*H,F.barlow,6,wt,'FILTER TYPE',0.1);
+      textSpaced(d,.79*W,.300*H,F.barlow,7.5,wt,'MIX',0.2);
+      textSpaced(d,.34*W,.495*H,F.barlow,7,wt,'RELEASE',0.2);
+      textSpaced(d,.66*W,.495*H,F.barlow,7.5,wt,'SENS',0.2);
+      // wordmark
+      textSpaced(d,.50*W,.595*H,F.anton,30,wt,'ROCKFORD',1.0);
+      textSpaced(d,.50*W,.660*H,F.anton,22,wt,'BIT CRUSHER',1.5);
+      // LED + footswitch
+      ledDot(d,W*.50,H*.745,true,120,200,255);
+      footRound(d,W*.50,H*.855,20*s); } };
+
+  // Ring Mod — Maestro Ring Modulator-style: silver wedge, black control panel,
+  // colour-triangle mark + waveform wordmark, four functional horizontal sliders
+  // over silver scales, a PITCH RANGE toggle, footswitch + pedal jacks. Parody
+  // (Jefe). RS knob names on the sliders. Depth0 Waveform1 Sensitivity2 Attack3.
+  P.ringmod = { w:560,h:340, knobs:[],
+    sliders:[
+      {id:0,x0:.33,x1:.92,y:.30},
+      {id:1,x0:.33,x1:.92,y:.42},
+      {id:2,x0:.33,x1:.92,y:.54},
+      {id:3,x0:.33,x1:.92,y:.66}],
+    ptr:rgb(238,240,244),
+    draw(d){ const {ctx:c,W,H,s}=d; const m=8*s, wt=rgb(232,234,238);
+      c.fillStyle=rgb(8,8,9); c.fillRect(0,0,W,H);
+      const bg=c.createLinearGradient(0,m,0,H-m); bg.addColorStop(0,rgb(206,208,212)); bg.addColorStop(1,rgb(170,172,178));
+      rr(c,m,m,W-2*m,H-2*m,12*s); c.fillStyle=bg; c.fill();
+      rr(c,m,m,W-2*m,H-2*m,12*s); c.strokeStyle='rgba(0,0,0,0.4)'; c.lineWidth=2*s; c.stroke();
+      // black control panel
+      rr(c,W*.035,H*.05,W*.93,H*.66,8*s); c.fillStyle=rgb(22,22,24); c.fill();
+      // colour-triangle mark + 'Jefe' + RING MODULATOR + waveform
+      const lx=.065*W, ly=.135*H;
+      c.fillStyle=rgb(214,52,52); c.beginPath(); c.moveTo(lx,ly+9*s); c.lineTo(lx+9*s,ly-8*s); c.lineTo(lx+18*s,ly+9*s); c.closePath(); c.fill();
+      c.fillStyle=rgb(232,192,40); c.beginPath(); c.moveTo(lx+8*s,ly+9*s); c.lineTo(lx+17*s,ly-8*s); c.lineTo(lx+26*s,ly+9*s); c.closePath(); c.fill();
+      c.fillStyle=rgb(64,170,210); c.beginPath(); c.moveTo(lx+16*s,ly+9*s); c.lineTo(lx+25*s,ly-8*s); c.lineTo(lx+34*s,ly+9*s); c.closePath(); c.fill();
+      textSpaced(d,.155*W,.135*H,F.crete,15,wt,'Jefe',0.2);
+      textSpaced(d,.40*W,.095*H,F.anton,18,wt,'RING MODULATOR',0.5);
+      c.strokeStyle=wt; c.lineWidth=1.4*s; c.beginPath();
+      for(let i=0;i<=30;i++){ const x=.31*W+i*(.20*W/30), y=.155*H+Math.sin(i*0.8)*3.5*s*(0.4+i/30); i?c.lineTo(x,y):c.moveTo(x,y); } c.stroke();
+      // PITCH RANGE HIGH/LOW toggle (decorative)
+      const tx=.905*W, ty=.135*H, tw=8*s, th=18*s; rr(c,tx-tw/2,ty-th/2,tw,th,3*s); c.fillStyle=rgb(150,153,160); c.fill();
+      rr(c,tx-tw/2,ty-th/2,tw,th,3*s); c.strokeStyle=rgb(70,72,78); c.lineWidth=0.8*s; c.stroke();
+      c.beginPath(); c.arc(tx,ty-th*0.22,2.4*s,0,7); c.fillStyle=rgb(232,234,238); c.fill();
+      textSpaced(d,.905*W,.052*H,F.barlow,6,wt,'HIGH',0.2); textSpaced(d,.905*W,.215*H,F.barlow,6,wt,'LOW',0.2);
+      textSpaced(d,.795*W,.135*H,F.barlow,6,wt,'PITCH RANGE',0.1);
+      // silver scale strips behind each slider (engine draws the sliders on top)
+      [.30,.42,.54,.66].forEach(y=>{ rr(c,.33*W,(y-0.045)*H,.59*W,.09*H,4*s); c.fillStyle=rgb(182,184,190); c.fill();
+        c.strokeStyle=rgb(64,66,70); c.lineWidth=0.8*s; for(let i=0;i<=10;i++){ const xx=.33*W+i*(.59*W/10); c.beginPath(); c.moveTo(xx,(y-0.028)*H); c.lineTo(xx,(y+0.028)*H); c.stroke(); } });
+      // slider labels (RS names)
+      [['DEPTH',.30],['WAVEFORM',.42],['SENSITIVITY',.54],['ATTACK',.66]].forEach(p=> textC(d,.305*W,p[1]*H,F.barlow,8,wt,p[0],'right'));
+      // footswitch + pedal jacks on the silver
+      footRound(d,W*.18,H*.85,18*s);
+      textSpaced(d,.18*W,.965*H,F.barlow,7,rgb(30,30,32),'MODULATE',0.3);
+      const jack=(jx)=>{ const jy=H*.85, R=9*s; const g2=c.createRadialGradient(jx-R*.3,jy-R*.3,R*.1,jx,jy,R); g2.addColorStop(0,rgb(210,212,216)); g2.addColorStop(1,rgb(120,122,128));
+        c.beginPath(); c.arc(jx,jy,R,0,7); c.fillStyle=g2; c.fill(); c.strokeStyle=rgb(70,72,78); c.lineWidth=1.2*s; c.stroke();
+        c.beginPath(); c.arc(jx,jy,R*0.42,0,7); c.fillStyle=rgb(20,20,22); c.fill(); };
+      jack(.50*W); jack(.74*W);
+      textSpaced(d,.50*W,.955*H,F.barlow,6.5,rgb(30,30,32),'PITCH PEDAL IN',0.2);
+      textSpaced(d,.74*W,.955*H,F.barlow,6,rgb(30,30,32),'MODULATION PEDAL IN',0.1); } };
+
+  // Swole — Aphex Punch Factory-style optical compressor: orange box, black top
+  // banner, dB gain-reduction meter, two scaled knobs, distressed wordmark + LED
+  // + stomp. Parody (Beta Fist Factory). RS knob names. Smash0 Rate1.
+  P.swole = { w:460,h:330, knobs:[
+      {id:0,cx:.16,cy:.55,r:.070,style:'pointer',cap:[26,26,28]},
+      {id:1,cx:.80,cy:.32,r:.070,style:'pointer',cap:[26,26,28]}],
+    tick:rgb(40,30,20), ptr:rgb(238,240,244),
+    draw(d){ const {ctx:c,W,H,s}=d; const m=8*s, ink=rgb(24,20,16), wt=rgb(240,240,242);
+      c.fillStyle=rgb(8,7,6); c.fillRect(0,0,W,H);
+      const bg=c.createLinearGradient(0,m,0,H-m); bg.addColorStop(0,rgb(238,116,40)); bg.addColorStop(1,rgb(214,92,26));
+      rr(c,m,m,W-2*m,H-2*m,12*s); c.fillStyle=bg; c.fill();
+      rr(c,m,m,W-2*m,H-2*m,12*s); c.strokeStyle='rgba(0,0,0,0.4)'; c.lineWidth=2*s; c.stroke();
+      // black top banner + 'Optical Compressor'
+      c.save(); rr(c,m,m,W-2*m,H-2*m,12*s); c.clip();
+      c.beginPath(); c.moveTo(m,H*.055); c.lineTo(W-m,H*.035); c.lineTo(W-m,H*.195); c.lineTo(m,H*.235); c.closePath(); c.fillStyle=rgb(18,18,20); c.fill();
+      c.restore();
+      textSpaced(d,.40*W,.130*H,F.crete,20,wt,'Optical Compressor',0.2);
+      // dB gain-reduction meter
+      const mx=.38*W, my=.30*H, mw=W*.045, mh=H*.34;
+      rr(c,mx,my,mw,mh,4*s); c.fillStyle=rgb(20,16,12); c.fill();
+      for(let i=0;i<9;i++){ const segY=my+mh-(i+1)*(mh/9)+1.2*s; rr(c,mx+2*s,segY,mw-4*s,mh/9-2.4*s,1.5*s); c.fillStyle=(i<5)?rgb(255,182,62):rgb(72,52,32); c.fill(); }
+      textSpaced(d,.335*W,.275*H,F.barlow,8,ink,'dB',0.2);
+      ['2','6','10','14','20'].forEach((n,i)=> textSpaced(d,.335*W,(.345+i*.062)*H,F.barlow,5.5,ink,n,0.1));
+      // knob labels (RS names)
+      textSpaced(d,.16*W,.705*H,F.barlow,9,ink,'SMASH',0.3);
+      textSpaced(d,.80*W,.475*H,F.barlow,9,ink,'RATE',0.3);
+      // distressed wordmark + model
+      textSpaced(d,.43*W,.725*H,F.anton,26,wt,'Beta Fist',0.5);
+      outlineText(d,.43*W,.825*H,F.anton,34,rgb(18,18,20),rgb(250,250,250),'FACTORY',2);
+      textSpaced(d,.43*W,.925*H,F.barlow,8,ink,'Model 1404',0.3);
+      // LED + footswitch
+      ledDot(d,W*.80,H*.555,true,224,40,40);
+      footRound(d,W*.80,H*.705,20*s); } };
+
+  // Enbiggenator — TC Electronic Mimiq Doubler-style: cream box, three black
+  // knobs, a DUBS 1/2/3 toggle, big grey block wordmark, true-bypass stomp,
+  // side jacks. Parody (LC Quimical / Mime). RS knob names. Rate0 Depth1 Mix2.
+  P.enbiggenator = { w:280,h:470, knobs:[
+      {id:0,cx:.55,cy:.155,r:.066,style:'davies'},
+      {id:1,cx:.34,cy:.335,r:.066,style:'davies'},
+      {id:2,cx:.68,cy:.335,r:.066,style:'davies'}],
+    ptr:rgb(238,240,242),
+    draw(d){ const {ctx:c,W,H,s}=d; const m=8*s, ink=rgb(58,58,62), gry=rgb(150,150,156);
+      c.fillStyle=rgb(8,8,8); c.fillRect(0,0,W,H);
+      const bg=c.createLinearGradient(0,m,0,H-m); bg.addColorStop(0,rgb(228,224,212)); bg.addColorStop(1,rgb(206,202,190));
+      rr(c,m,m,W-2*m,H-2*m,12*s); c.fillStyle=bg; c.fill();
+      rr(c,m,m,W-2*m,H-2*m,12*s); c.strokeStyle='rgba(0,0,0,0.3)'; c.lineWidth=2*s; c.stroke();
+      // DUBS 1/2/3 toggle (decorative)
+      const tx=.20*W, ty=.165*H, tw=8*s, th=24*s;
+      rr(c,tx-tw/2,ty-th/2,tw,th,3*s); c.fillStyle=rgb(40,40,44); c.fill();
+      rr(c,tx-tw/2,ty-th/2,tw,th,3*s); c.strokeStyle=rgb(10,10,12); c.lineWidth=0.8*s; c.stroke();
+      const lg=c.createLinearGradient(tx-4*s,ty-th*0.32,tx+4*s,ty-th*0.12); lg.addColorStop(0,rgb(228,230,234)); lg.addColorStop(1,rgb(150,153,160));
+      rr(c,tx-3.5*s,ty-th*0.40,7*s,9*s,2*s); c.fillStyle=lg; c.fill();
+      textSpaced(d,.295*W,.095*H,F.barlow,7,ink,'DUBS',0.3);
+      ['1','2','3'].forEach((n,i)=> textSpaced(d,.285*W,(.128+i*.034)*H,F.barlow,6,ink,n,0.1));
+      // knob labels (RS names)
+      textSpaced(d,.55*W,.072*H,F.barlow,8,ink,'RATE',0.3);
+      textSpaced(d,.34*W,.252*H,F.barlow,8,ink,'DEPTH',0.3);
+      textSpaced(d,.68*W,.252*H,F.barlow,8,ink,'MIX',0.3);
+      // LED + grey block wordmark + DOUBLER
+      ledDot(d,W*.50,H*.445,true,224,56,46);
+      textSpaced(d,.50*W,.545*H,F.anton,48,gry,'MIME',2);
+      textSpaced(d,.50*W,.615*H,F.barlow,11,ink,'DOUBLER',2.5);
+      // true-bypass footswitch + label
+      footRound(d,W*.42,H*.760,20*s);
+      textSpaced(d,.71*W,.745*H,F.barlow,8,ink,'true',0.3); textSpaced(d,.71*W,.778*H,F.barlow,8,ink,'bypass',0.3);
+      // brand + side jack legends
+      textSpaced(d,.50*W,.905*H,F.barlow,9,ink,'LC QUIMICAL',1.0);
+      c.save(); c.translate(W*.07,H*.40); c.rotate(-Math.PI/2); textSpaced(d,0,0,F.barlow,5.5,ink,'STEREO OUT MONO',0.1); c.restore();
+      c.save(); c.translate(W*.93,H*.40); c.rotate(-Math.PI/2); textSpaced(d,0,0,F.barlow,5.5,ink,'STEREO IN MONO',0.1); c.restore(); } };
 
   function chiefSpec(w,h,col,knobIds,n1,n2,code,plate){
     const lum=0.299*col[0]+0.587*col[1]+0.114*col[2], ink=lum>120?rgb(16,16,20):rgb(232,234,238);
@@ -2611,6 +2790,10 @@
       const v = (values && values[s.id] != null) ? values[s.id] : 0.5;
       switch3(d, s.cx * d.W, s.cy * d.H, v);
     });
+    (spec.sliders || []).forEach(sl => {
+      const v = (values && values[sl.id] != null) ? values[sl.id] : 0.5;
+      hSlider(d, sl.x0 * d.W, sl.x1 * d.W, sl.y * d.H, v);
+    });
   }
   function render(canvas, stem, values) {
     const spec = P[stem]; if (!spec) return false;
@@ -2624,7 +2807,7 @@
     drawSpec(canvas, spec, values);
     if (!opts.interactive) return true;
     const G = spec.eq ? eqGeom(spec) : null;
-    let drag = -1, lastY = 0, dv = 0;
+    let drag = -1, sdrag = -1, lastY = 0, dv = 0;
     const toSpec = (clientX, clientY) => { const rect = canvas.getBoundingClientRect();
       const sx = spec.w / canvas.clientWidth, sy = spec.h / (canvas.clientHeight || 1);
       return { x: (clientX - rect.left) * sx, y: (clientY - rect.top) * sy }; };
@@ -2656,6 +2839,15 @@
           e.preventDefault(); return;
         }
       }
+      // Horizontal sliders: click/drag along the track sets value by x position.
+      for (let i = 0; i < (spec.sliders || []).length; i++) {
+        const sl = spec.sliders[i], sx0 = sl.x0 * spec.w, sx1 = sl.x1 * spec.w, sy = sl.y * spec.h;
+        if (p.x >= sx0 - 12 && p.x <= sx1 + 12 && Math.abs(p.y - sy) <= 16) {
+          sdrag = i; const v = clamp((p.x - sx0) / (sx1 - sx0), 0, 1); values[sl.id] = v;
+          drawSpec(canvas, spec, values); if (opts.onChange) opts.onChange(sl.id, v);
+          e.preventDefault(); return;
+        }
+      }
       const k = hitKnob(p.x, p.y); if (k < 0) return;
       const kn = spec.knobs[k];
       // Selector knob (e.g. MODE): a click steps through `select` discrete
@@ -2671,6 +2863,9 @@
       dv = (values[kn.id] != null) ? values[kn.id] : 0.5; e.preventDefault();
     });
     window.addEventListener('mousemove', e => {
+      if (sdrag >= 0) { const p = toSpec(e.clientX, e.clientY); const sl = spec.sliders[sdrag];
+        const sx0 = sl.x0 * spec.w, sx1 = sl.x1 * spec.w; const v = clamp((p.x - sx0) / (sx1 - sx0), 0, 1);
+        values[sl.id] = v; drawSpec(canvas, spec, values); if (opts.onChange) opts.onChange(sl.id, v); return; }
       if (drag < 0) return;
       if (spec.eq) { const p = toSpec(e.clientX, e.clientY); const v = G.yToVal(p.y);
         values[drag] = v; drawSpec(canvas, spec, values); if (opts.onChange) opts.onChange(drag, v); return; }
@@ -2678,7 +2873,7 @@
       const id = spec.knobs[drag].id; values[id] = dv;
       drawSpec(canvas, spec, values); if (opts.onChange) opts.onChange(id, dv);
     });
-    window.addEventListener('mouseup', () => { drag = -1; });
+    window.addEventListener('mouseup', () => { drag = -1; sdrag = -1; });
     return true;
   }
   function dataURL(stem, values) {
