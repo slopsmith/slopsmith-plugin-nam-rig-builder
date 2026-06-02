@@ -1,3 +1,33 @@
+# Rig Builder 2.1.0 — Rocksmith cab volume fix + per-cab loudness match (2026-06-02)
+
+**The Rocksmith-cab "volume drop" is fixed.** Many extracted cab IRs had
+sample peaks up to **2.0**, but the native convolver assumes the standard
+**±1.0** range — so those over-unity samples saturated and tripped the
+engine's post-IR limiter, dropping output **10–20 dB** and squashing the
+low end (the "cabs sound quiet / thin / no punch" report). The extractor's
+IR peak cap is now **0.95** (−0.45 dBFS) instead of 2.0, so IRs stay
+clip-safe. Existing installs can re-flatten their IRs in place from
+Settings → *Normalize existing Rocksmith IRs* (idempotent, keeps a
+`.unnormalized.bak`); the fix only changes **level**, never the cab's tone.
+
+**Cabs are now loudness-matched to each other.** A cab IR's broadband gain
+is its L2 norm (output RMS = input RMS × ‖IR‖₂), and after the clip-safe
+cap the peakiest IRs sit lower than the rest — so swapping cab or mic used
+to change the volume. Rig Builder now measures each Rocksmith cab IR's L2
+and applies a per-cab makeup in the chain gain so **every cab/mic imparts
+the same output RMS** — the same loudness-match the amp/pedal NAMs already
+get. Measured cab-to-cab spread dropped from **8 dB to 0 dB**. (A cab that
+still sounds thin is using a genuinely bright mic position — Edge/Off-axis;
+switch its mic to *Cone (close)* for full low end. That's faithful to
+Rocksmith, not a bug.)
+
+**Pedals.** The 100 bundled effects now use legally-distinct **parody
+names** with ES/EN type search, and per-tone pedal edits now happen **in
+the live chain** instead of as an isolated solo VST, with instant
+re-leveling (auto makeup) on knob changes.
+
+---
+
 # Rig Builder 2.0.1 — Windows binaries for the bundled effects + parody pedal UIs (2026-06-01)
 
 **Windows support for the bundled effects.** The 100 bundled VST3 effects now
