@@ -1824,34 +1824,34 @@
       c.strokeStyle=rgb(96,100,106); c.lineWidth=1.2;
       for(const xx of [.180,.375]){ c.beginPath(); c.moveTo(xx*W,.52*H); c.lineTo(xx*W,.84*H); c.stroke(); }
       // section labels (+ underline)
-      const sec=(cx,t)=>{ textC(d,cx*W,.50*H,F.barlow,11,wt,t);
-        c.strokeStyle=blu; c.lineWidth=1.4; const hw=t.length*3.0;
-        c.beginPath(); c.moveTo(cx*W-hw,.555*H); c.lineTo(cx*W+hw,.555*H); c.stroke(); };
+      const sec=(cx,t)=>{ textC(d,cx*W,.50*H,F.barlow,13,wt,t);
+        c.strokeStyle=blu; c.lineWidth=1.4; const hw=t.length*3.6;
+        c.beginPath(); c.moveTo(cx*W-hw,.560*H); c.lineTo(cx*W+hw,.560*H); c.stroke(); };
       sec(.120,'PRE DELAY'); sec(.270,'MODULATION'); sec(.540,'EFFECT');
       // knob sub-labels
       [[.120,'TIME'],[.230,'RATE'],[.310,'DEPTH'],[.420,'LO FILTER'],[.500,'HI FILTER'],[.580,'STEREO'],[.660,'MIX']]
-        .forEach(p=> textC(d,p[0]*W,.815*H,F.barlow,8.5,dim,p[1]));
+        .forEach(p=> textC(d,p[0]*W,.815*H,F.barlow,10,dim,p[1]));
       // slide switch helper
       const slide=(cx,cy)=>{ rr(c,cx-.011*W,cy-.05*H,.022*W,.10*H,3); c.fillStyle=rgb(26,27,29); c.fill();
         rr(c,cx-.011*W,cy-.05*H,.022*W,.10*H,3); c.strokeStyle=rgb(70,72,75); c.lineWidth=1; c.stroke();
         rr(c,cx-.0085*W,cy-.045*H,.017*W,.045*H,2); c.fillStyle=rgb(150,152,156); c.fill(); };
       // EFFECT on/off (left) + LED
       ledDot(d,.040*W,.50*H,true,210,52,42);
-      slide(.040*W,.66*H); textC(d,.040*W,.80*H,F.barlow,8,dim,'EFFECT');
-      textC(d,.040*W,.855*H,F.barlow,6.5,dim,'ON / OFF');
+      slide(.040*W,.66*H); textC(d,.040*W,.80*H,F.barlow,9.5,dim,'EFFECT');
+      textC(d,.040*W,.858*H,F.barlow,7.5,dim,'ON / OFF');
       // right logo block
       const rx=.815*W;
-      c.beginPath(); c.moveTo(rx-.085*W,.48*H); c.lineTo(rx-.072*W,.45*H); c.lineTo(rx-.072*W,.51*H); c.closePath();
+      c.beginPath(); c.moveTo(rx-.090*W,.48*H); c.lineTo(rx-.076*W,.45*H); c.lineTo(rx-.076*W,.51*H); c.closePath();
       c.fillStyle=blu; c.fill();
-      textC(d,rx-.045*W,.485*H,F.bebas,15,blu,'CHIEF','left');
-      textC(d,rx,.575*H,F.bebas,20,cyn,'DIGITAL');
-      textC(d,rx,.645*H,F.bebas,15,blu,'CHORUS');
-      textC(d,rx,.695*H,F.bebas,15,blu,'ENSEMBLE');
-      textC(d,rx,.775*H,F.bebas,24,blu,'RCE-12');
+      textC(d,rx-.048*W,.485*H,F.bebas,17,blu,'CHIEF','left');
+      textC(d,rx,.575*H,F.bebas,22,cyn,'DIGITAL');
+      textC(d,rx,.648*H,F.bebas,17,blu,'CHORUS');
+      textC(d,rx,.700*H,F.bebas,17,blu,'ENSEMBLE');
+      textC(d,rx,.782*H,F.bebas,26,blu,'CE-12');
       // POWER (far right) + LED
       ledDot(d,.935*W,.52*H,true,210,52,42);
-      slide(.935*W,.66*H); textC(d,.935*W,.80*H,F.barlow,8,dim,'POWER');
-      textC(d,.935*W,.855*H,F.barlow,6.5,dim,'ON / OFF'); } };
+      slide(.935*W,.66*H); textC(d,.935*W,.80*H,F.barlow,9.5,dim,'POWER');
+      textC(d,.935*W,.858*H,F.barlow,7.5,dim,'ON / OFF'); } };
   // Studio Comp — dbx 160 look: walnut sides, brushed-silver rails, black face,
   // silver knurled knobs, big amber VU meter, "HZX 165 COMPRESSOR/LIMITER" logo.
   // RS params (5 knobs): Threshold0 Ratio1 Attack2 Release3 Output4.
