@@ -403,21 +403,40 @@ async function rbPreLoadMute(chainLen, targetGain) {
     const audio = window.slopsmithDesktop && window.slopsmithDesktop.audio;
     if (!audio) { _rbMuteInFlight = false; return; }
     const target = pendingTarget;   // was 4 — chains can need ~20×
+    // Hold the chain muted until the WHOLE chain has loaded AND the post-load
+    // VST-param / input-drive re-apply has settled — otherwise the un-mute
+    // races the stage-by-stage NAM/VST init and the user hears the load peaks
+    // ("se escucha cómo carga cada NAM y VST"). The old `100 + 50·stages` un-
+    // muted at ~350 ms while the re-apply walk (`reapplyDelay`, computed in the
+    // fetch interceptor) fires at ~400 ms, so its setParameter transients leaked
+    // through. This generous estimate stays AHEAD of that re-apply + a settle
+    // margin and scales with stage count (NAM loads dominate). Override:
+    // `window.__rbMutePreLoadHold`.
     const hold = (typeof window.__rbMutePreLoadHold === 'number')
         ? Math.max(20, window.__rbMutePreLoadHold | 0)
-        : 100 + 50 * Math.max(1, chainLen | 0);
+        : 250 + 120 * Math.max(1, chainLen | 0);
+    // During load we want the player to hear ONLY the clean dry guitar/bass,
+    // not the chain forming. chain gain 0 kills the wet path (and its load
+    // peaks); leaving the input monitor UN-muted lets the dry signal through so
+    // it's "clean guitar while it loads", then the effects fade in once loaded.
+    // Kill-switch for the dry behaviour: `window.__rbDryDuringLoad = false`
+    // (falls back to the old full-silence mute).
+    const dryDuringLoad = window.__rbDryDuringLoad !== false;
     let wasMuted = false;
     try { if (typeof audio.isMonitorMuted === 'function') wasMuted = !!(await audio.isMonitorMuted()); } catch (_) {}
     try {
         // `chain` = post-NAM, pre-output. Setting to 0 silences the guitar
-        // signal path without touching the song's backing track.
+        // signal path (and the loading stages' peaks) without touching the
+        // song's backing track.
         if (typeof audio.setGain === 'function') await audio.setGain('chain', 0);
-        if (typeof audio.setMonitorMute === 'function') await audio.setMonitorMute(true);
+        if (typeof audio.setMonitorMute === 'function')
+            await audio.setMonitorMute(dryDuringLoad ? false : true);
     } catch (_) {}
     setTimeout(async () => {
         try {
-            // Un-mute the monitor immediately (it's a hard mute, no transient).
-            if (!wasMuted && typeof audio.setMonitorMute === 'function') await audio.setMonitorMute(false);
+            // Restore the monitor to whatever it was before the load (dry mode
+            // forced it on; put it back so normal play isn't doubled).
+            if (typeof audio.setMonitorMute === 'function') await audio.setMonitorMute(wasMuted);
             // Fade chain gain 0 → target over ~24 ms in 4 steps so the
             // restore doesn't click. Final value is the smart target,
             // not a fixed 1.0 — that's how we normalise across "amp +
