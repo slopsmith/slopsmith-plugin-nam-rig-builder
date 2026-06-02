@@ -296,6 +296,7 @@ function rbChainGainTargetFor(chainSpec) {
     let base = 1.0;
     if (Array.isArray(chainSpec)) {
         let hasActiveAmp = false, hasRsCab = false, hasOtherCab = false, activeNamCount = 0;
+        let rsCabMakeup = 1.0;
         for (const stage of chainSpec) {
             if (!stage || stage.bypassed) continue;
             if (stage.type === 1) {
@@ -306,8 +307,16 @@ function rbChainGainTargetFor(chainSpec) {
             // is RAW (quiet → needs +6 dB). A tone3000 IR is already normalized
             // (boosting it is what saturated non-RS-cab tones), so 0 dB.
             if (stage.type === 2) {
-                if (String(stage.path || '').toLowerCase().includes('rocksmith')) hasRsCab = true;
-                else hasOtherCab = true;
+                if (String(stage.path || '').toLowerCase().includes('rocksmith')) {
+                    hasRsCab = true;
+                    // Per-cab RMS-match factor from the backend (target_L2 / ‖IR‖₂).
+                    // Equalizes broadband output RMS across cabs/mics so the
+                    // peakiest IRs (pulled ~8 dB down by the clip-safe peak cap)
+                    // don't play quieter than the rest. Last active RS cab wins.
+                    if (typeof stage.cab_rms_makeup === 'number' && stage.cab_rms_makeup > 0) {
+                        rsCabMakeup = stage.cab_rms_makeup;
+                    }
+                } else hasOtherCab = true;
             }
         }
         // Auto makeup (dB): +6 for a Rocksmith cab, 0 for a non-RS (tone3000)
@@ -318,6 +327,10 @@ function rbChainGainTargetFor(chainSpec) {
             let dB = cabDb + 2 * Math.max(0, activeNamCount - 1);
             dB = Math.max(-12, Math.min(18, dB));
             base = Math.pow(10, dB / 20);
+            // Apply the per-cab RMS match OUTSIDE the dB clamp above (which caps
+            // the multi-NAM stack, a different axis) so the level equalization is
+            // never clipped. rbClampChainGainTarget still bounds the final target.
+            if (hasRsCab) base *= rsCabMakeup;
             base *= rbPostAmpMakeupForChain(chainSpec);
         }
     }

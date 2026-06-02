@@ -2988,6 +2988,80 @@ def _nam_stage(path, *, bypassed, input_level=1.0, output_drive=None,
 _RS_IR_MAKEUP = 1.0
 
 
+# Per-cab RMS matching. A cab IR's broadband convolution gain — i.e. how much
+# output RMS it imparts (output_RMS = input_RMS × ‖IR‖₂ for broadband input) —
+# is exactly its L2 norm. After the ±1.0 clip-safe peak cap, IRs no longer all
+# share an L2 (the peakiest get pulled down ~8 dB), so different cabs/mics play
+# at different loudness. We compute each RS cab IR's L2 and surface a makeup
+# factor (target_L2 / L2) on the stage dict; the engine ignores per-IR gain, so
+# screen.js (rbChainGainTargetFor) folds it into the chain gain. Result: every
+# cab imparts the same output RMS — the same loudness-match the NAM loudness
+# normalizer (`_nam_normalized_output_level`) gives amps/pedals.
+_IR_REF_L2 = 2.4          # common broadband gain (matches tone3000 cab IRs)
+_IR_MAKEUP_MAX = 2.818    # +9 dB cap — covers the ~8 dB L2 spread with headroom
+_ir_l2_cache: dict[tuple, float | None] = {}
+_ir_l2_lock = threading.Lock()
+
+
+def _read_ir_l2(path: Path) -> float | None:
+    """L2 norm (sqrt of total energy) of a mono float32 cab IR. Returns None
+    when the file is unreadable or not the mono-float32 shape we ship."""
+    try:
+        blob = path.read_bytes()
+    except OSError:
+        return None
+    if blob[:4] != b"RIFF" or blob[8:12] != b"WAVE":
+        return None
+    pos = 12
+    fmt_tag = ch = bps = None
+    data_off = data_size = None
+    while pos < len(blob) - 8:
+        cid = blob[pos:pos + 4]
+        csize = struct.unpack("<I", blob[pos + 4:pos + 8])[0]
+        if cid == b"fmt ":
+            fmt_tag, ch, _sr, _, _, bps = struct.unpack(
+                "<HHIIHH", blob[pos + 8:pos + 8 + 16])
+        elif cid == b"data":
+            data_off, data_size = pos + 8, csize
+        pos += 8 + csize + (csize & 1)
+    if (fmt_tag, bps) != (3, 32) or data_off is None or ch != 1:
+        return None
+    n = data_size // 4
+    if n == 0:
+        return None
+    total = sum(v * v for v in struct.unpack(
+        "<%df" % n, blob[data_off:data_off + data_size]))
+    return total ** 0.5
+
+
+def _ir_l2_for_path(path: Path) -> float | None:
+    """Cached `_read_ir_l2`. Keyed by (path, mtime, size) so the value is
+    recomputed if the IR is rewritten (e.g. the normalize endpoint)."""
+    try:
+        st = path.stat()
+        key = (str(path), st.st_mtime_ns, st.st_size)
+    except OSError:
+        return None
+    with _ir_l2_lock:
+        if key in _ir_l2_cache:
+            return _ir_l2_cache[key]
+    val = _read_ir_l2(path)
+    with _ir_l2_lock:
+        _ir_l2_cache[key] = val
+    return val
+
+
+def _ir_rms_makeup(path: Path) -> float:
+    """Linear makeup that brings this cab IR's broadband gain to `_IR_REF_L2`
+    so every cab imparts the same output RMS. Clamped to [1.0, _IR_MAKEUP_MAX]
+    — we only ever lift quiet IRs toward the common target, never cut (the
+    target equals the loudest IRs' L2). Falls back to 1.0 when L2 is unknown."""
+    l2 = _ir_l2_for_path(path)
+    if not l2 or l2 <= 0.0:
+        return 1.0
+    return max(1.0, min(_IR_MAKEUP_MAX, _IR_REF_L2 / l2))
+
+
 def _ir_stage(ir_path, *, bypassed, gain=1.0,
               slot=None, rs_gear=None, tone_key=None) -> dict:
     """Build a type-2 (cab IR) chain stage. `gain` is unity by default — the
@@ -3002,6 +3076,12 @@ def _ir_stage(ir_path, *, bypassed, gain=1.0,
         stage["rs_gear"] = rs_gear
     if tone_key is not None:
         stage["tone_key"] = tone_key
+    # Per-cab RMS-match factor for screen.js (engine ignores it, like slot/
+    # rs_gear). Only RS cab IRs vary in L2 after the clip-safe peak cap; other
+    # IRs (tone3000) are already loudness-normalized, so we leave them alone.
+    p = Path(ir_path)
+    if "rocksmith" in p.as_posix().lower():
+        stage["cab_rms_makeup"] = round(_ir_rms_makeup(p), 4)
     stage["state"] = _state_b64({"irPath": str(ir_path), "gain": gain})
     return stage
 
