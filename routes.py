@@ -589,8 +589,10 @@ def _migrate_assign_bundled_primary_once() -> None:
     DSP never loads ("still getting kHs Chorus", "FuzzWasHe won't open"). This
     reassigns every AUTO-assigned pedal/rack piece — plus any piece whose
     current VST file no longer exists (e.g. a renamed bundle) — to the bundled
-    primary and recomputes its vst_state from the RS knobs. Amps and cabs are
-    left untouched (they keep their NAM/IR). A still-valid MANUAL pick is
+    primary and recomputes its vst_state from the RS knobs. Amps flip too when
+    a bundled VST is installed for them (rs_gear_to_vst.json, e.g. BT880B ->
+    FreddyKrueger800BR); amps without one and cabs keep their NAM/IR. A
+    still-valid MANUAL pick is
     preserved. Sentinel-guarded so it runs exactly once (later manual choices
     stick). Backs the DB up first."""
     conn = _conn
@@ -601,11 +603,11 @@ def _migrate_assign_bundled_primary_once() -> None:
         ("__rig_builder_master_pre__",),
     ).fetchone()
     marker = json.loads(marker_row[0] or "{}") if marker_row else {}
-    if marker.get("bundled_primary_assigned_v1"):
+    if marker.get("bundled_primary_assigned_v2"):
         return
     if _db_path:
         try:
-            shutil.copy2(_db_path, f"{_db_path}.pre-bundled-primary.bak")
+            shutil.copy2(_db_path, f"{_db_path}.pre-bundled-primary-v2.bak")
         except OSError:
             log.exception("pre-bundled-primary backup failed; skipping")
             return
@@ -616,8 +618,11 @@ def _migrate_assign_bundled_primary_once() -> None:
     ).fetchall()
     changed = 0
     for pid, gear, pj, cur, mode in rows:
-        if not gear or _gear_category(gear) in ("amp", "cab"):
+        if not gear or _gear_category(gear) == "cab":
             continue
+        # Amps flip to a bundled VST only when one is actually installed for
+        # the gear (rs_gear_to_vst.json); _pick_installed_primary_vst returns
+        # None for amps without a bundled VST, so they keep their NAM below.
         pick = _pick_installed_primary_vst(gear, known)
         if not pick:
             continue
@@ -643,11 +648,11 @@ def _migrate_assign_bundled_primary_once() -> None:
         changed += 1
     mpid = _get_master_preset_id("pre")
     if mpid is not None:
-        marker["bundled_primary_assigned_v1"] = True
+        marker["bundled_primary_assigned_v2"] = True
         conn.execute("UPDATE presets SET settings_json = ? WHERE id = ?",
                      (json.dumps(marker), mpid))
     conn.commit()
-    log.info("bundled-primary migration: reassigned %d pedal/rack pieces", changed)
+    log.info("bundled-primary migration: reassigned %d pedal/rack/amp pieces", changed)
 
 
 def _load_settings() -> dict:
@@ -3319,6 +3324,25 @@ def _resolve_gear_assignment(rs_gear: str, level: str | None,
                     "tone3000_id": None,
                     "vst_path": None, "vst_format": None, "vst_state": None}
         return None
+
+    # ── Amp bundled-VST preference (amps-vst branch) ───────────
+    # An amp that ships an installed bundled VST (rs_gear_to_vst.json) plays
+    # that VST instead of a NAM capture — the whole point of shipping amp
+    # VSTs (e.g. BT880B = GK 800RB -> FreddyKrueger800BR.vst3). Scoped to
+    # amps: pedals/racks get their bundled VST via the batch/migration paths
+    # and may legitimately resolve to an external plugin below, and only the
+    # amps we actually built VSTs for appear in rs_gear_to_vst.json, so other
+    # amps fall straight through to their gain_variants/NAM as before.
+    if category == "amp":
+        amp_vst = _pick_installed_primary_vst(rs_gear, _build_known_vst_lookup())
+        if amp_vst and amp_vst.get("vst_path"):
+            return {"kind": "vst",
+                    "file": None,
+                    "tone3000_id": None,
+                    "vst_path": amp_vst["vst_path"],
+                    "vst_format": amp_vst.get("vst_format") or "VST3",
+                    "vst_state": _compute_vst_state_for_piece(
+                        rs_gear, amp_vst["vst_path"], None)}
 
     # ── Amp / pedal / rack branch: NAMs ────────────────────────
     # Step 1 — curated gain_variants (amps with clean/crunch/dist
