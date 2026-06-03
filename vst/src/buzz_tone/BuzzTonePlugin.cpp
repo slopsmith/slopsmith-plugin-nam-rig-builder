@@ -142,7 +142,6 @@ public:
         float y = x * (3.4f + 17.5f * fuzz) * starvation;
         y -= 0.055f + 0.030f * fuzz;
         y = asymClip(y, 1.75f + 2.90f * fuzz, 0.72f + 1.65f * fuzz);
-        const float q2 = y;
 
         // Q3 cue: fixed recovery/output transistor with more low-voltage
         // flattening. This is the main "Buzz-Tone" splat.
@@ -150,12 +149,16 @@ public:
         const float sagged = 1.0f - 0.10f * clamp01(sagEnv);
         y = y * (2.0f + 7.5f * fuzz) * sagged + 0.035f;
         y = asymClip(y, 1.40f + 2.20f * fuzz, 0.95f + 1.90f * fuzz);
-        y = y * (0.88f + 0.12f * sagged) + q2 * (0.090f + 0.060f * fuzz) + x * 0.026f;
+        // Output comes only from the final stage (Q3). The earlier mix of the
+        // Q2 and Q1 taps back into the output summed signals taken at different
+        // points of a non-linear cascade, whose level-dependent group delay was
+        // audible as a slow phaser — the real series circuit has no such path.
+        y = y * (0.88f + 0.12f * sagged);
 
         // The real low-voltage circuit has more sustain than a literal gatey
         // starve model. Lift the note tail when the envelope relaxes, but keep
         // the first hit controlled so this still feels like a fuzz, not a boost.
-        const float tailLift = 1.0f + 0.78f * fuzz * (1.0f - clamp01(sagEnv * 1.85f));
+        const float tailLift = 1.0f + 0.50f * fuzz * (1.0f - clamp01(sagEnv * 1.85f));
         y *= tailLift;
 
         // The 0.01 uF output cap into the volume control thins the fuzz before
@@ -174,8 +177,7 @@ class BuzzTonePlugin : public Plugin
 {
     BuzzToneCore left;
     BuzzToneCore right;
-    RBAutoMakeup makeupL;
-    RBAutoMakeup makeupR;
+    RBAutoMakeup makeup;
     float params[kParamCount];
 
     void applyAll()
@@ -194,8 +196,7 @@ public:
             params[i] = kBuzzToneDef[i];
         left.setSampleRate((float)getSampleRate());
         right.setSampleRate((float)getSampleRate());
-        makeupL.setSampleRate((float)getSampleRate());
-        makeupR.setSampleRate((float)getSampleRate());
+        makeup.setSampleRate((float)getSampleRate());
         applyAll();
     }
 
@@ -230,16 +231,14 @@ protected:
             return;
         params[index] = clamp01(value);
         applyAll();
-        makeupL.snap();
-        makeupR.snap();
+        makeup.snap();
     }
 
     void sampleRateChanged(double newSampleRate) override
     {
         left.setSampleRate((float)newSampleRate);
         right.setSampleRate((float)newSampleRate);
-        makeupL.setSampleRate((float)newSampleRate);
-        makeupR.setSampleRate((float)newSampleRate);
+        makeup.setSampleRate((float)newSampleRate);
         applyAll();
     }
 
@@ -253,8 +252,7 @@ protected:
         {
             // Auto makeup-gain: match output loudness to the dry input so the
             // drive's controls change only the amount of clip, not the level.
-            outL[i] = makeupL.process(inL[i], left.process(inL[i]));
-            outR[i] = makeupR.process(inR[i], right.process(inR[i]));
+            makeup.processStereo(inL[i], inR[i], left.process(inL[i]), right.process(inR[i]), outL[i], outR[i]);
         }
     }
 

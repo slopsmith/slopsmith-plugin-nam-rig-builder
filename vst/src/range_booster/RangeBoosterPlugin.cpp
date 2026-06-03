@@ -50,9 +50,13 @@ class RangeBoosterCore
     {
         const float dt = 1.0f / sampleRate;
 
-        // 5nF input cap into the Rangemaster bias network: intentionally
-        // high-passed, but not so thin that low guitar notes disappear.
-        const float inputHpHz = 180.0f + 610.0f * boost;
+        // 5nF input cap into the Rangemaster bias network: a FIXED treble-booster
+        // high-pass. The cap does not change with the gain control (that is the
+        // emitter pot), so the corner stays put — the old boost-dependent corner
+        // turned the pedal into a full-range boost at low settings, which a
+        // Rangemaster never is. The gain↔brightness interaction lives in the
+        // bright network below instead.
+        const float inputHpHz = 700.0f;
         const float inputHpRc = 1.0f / (2.0f * 3.14159265359f * inputHpHz);
         inputHpA = inputHpRc / (inputHpRc + dt);
 
@@ -132,9 +136,10 @@ public:
         y = outputHighPass(y);
         y = lowPass(y, topY, topA);
 
-        // Rocksmith does not expose output level here. Keep the pedal close to
-        // unity and let Boost mostly change the emphasized frequency range.
-        const float level = 0.70f + 0.40f * boost;
+        // Rocksmith does not expose output level. A Rangemaster IS a booster, so
+        // let Boost raise the level as well as the treble emphasis — but keep it
+        // bounded (tanh-limited upstream) so it never slams the next stage.
+        const float level = 0.72f + 0.55f * boost;
         return y * level;
     }
 };

@@ -177,6 +177,9 @@ class ShredZoneCore
 
         inputHp.setHighPass(sampleRate, 76.0f + 120.0f * gain, 0.70f);
         preLowTight.setHighPass(sampleRate, 118.0f + 190.0f * g, 0.74f);
+        // The MT-2 is deliberately MID-HEAVY ("huge mids and lows... like a stack
+        // of overdriven amps", per the schematic), not scooped — the player scoops
+        // with the semi-parametric Mid knob. So keep the mid-forward pre-emphasis.
         preMidPush.setPeaking(sampleRate, 980.0f + 420.0f * gain, 0.82f,
                               3.0f + 5.0f * g);
         clipRollOff.setLowPass(sampleRate, 6400.0f - 2300.0f * g + 900.0f * treble, 0.68f);
@@ -185,8 +188,10 @@ class ShredZoneCore
         // Rocksmith exposes Mid but not MT-2 Mid Freq. Move the center a bit
         // with the control so cuts scoop lower and boosts focus upper mids.
         midEq.setPeaking(sampleRate, 720.0f + 720.0f * mid, 0.72f, midDb);
-        biteEq.setPeaking(sampleRate, 2300.0f + 900.0f * treble, 0.68f,
-                          1.6f + 3.8f * treble + 1.2f * g);
+        // Fixed presence bump only — the Treble knob lives in trebleShelf below.
+        // biteEq used to track Treble as well, stacking a second boost on the same
+        // band as the high shelf (a harsh ~+20 dB pile-up when Treble was up).
+        biteEq.setPeaking(sampleRate, 2700.0f, 0.70f, 1.6f + 1.2f * g);
         trebleShelf.setHighShelf(sampleRate, 2600.0f + 1500.0f * treble, 0.74f, trebleDb);
         outputLp.setLowPass(sampleRate, 3600.0f + 7800.0f * treble, 0.62f);
     }
@@ -274,8 +279,7 @@ class ShredZonePlugin : public Plugin
 {
     ShredZoneCore left;
     ShredZoneCore right;
-    RBAutoMakeup makeupL;
-    RBAutoMakeup makeupR;
+    RBAutoMakeup makeup;
     float params[kParamCount];
 
     void applyAll()
@@ -298,8 +302,7 @@ public:
             params[i] = kShredZoneDef[i];
         left.setSampleRate((float)getSampleRate());
         right.setSampleRate((float)getSampleRate());
-        makeupL.setSampleRate((float)getSampleRate());
-        makeupR.setSampleRate((float)getSampleRate());
+        makeup.setSampleRate((float)getSampleRate());
         applyAll();
     }
 
@@ -334,16 +337,14 @@ protected:
             return;
         params[index] = clamp01(value);
         applyAll();
-        makeupL.snap();
-        makeupR.snap();
+        makeup.snap();
     }
 
     void sampleRateChanged(double newSampleRate) override
     {
         left.setSampleRate((float)newSampleRate);
         right.setSampleRate((float)newSampleRate);
-        makeupL.setSampleRate((float)newSampleRate);
-        makeupR.setSampleRate((float)newSampleRate);
+        makeup.setSampleRate((float)newSampleRate);
         applyAll();
     }
 
@@ -357,8 +358,7 @@ protected:
         {
             // Auto makeup-gain: match output loudness to the dry input so the
             // drive's controls change only the amount of clip, not the level.
-            outL[i] = makeupL.process(inL[i], left.process(inL[i]));
-            outR[i] = makeupR.process(inR[i], right.process(inR[i]));
+            makeup.processStereo(inL[i], inR[i], left.process(inL[i]), right.process(inR[i]), outL[i], outR[i]);
         }
     }
 

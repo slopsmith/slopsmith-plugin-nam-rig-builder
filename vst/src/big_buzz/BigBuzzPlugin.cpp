@@ -239,9 +239,12 @@ public:
         const float low = toneLow.process(y);
         const float highBase = toneHighCut.process(y);
         const float high = y - 0.72f * highBase;
+        // Passive Muff tone stack = strictly the low and high branches crossfaded
+        // (no flat full-range path). The earlier extra "+ y*k" branch summed an
+        // unfiltered copy whose phase combed against the filtered branches, a
+        // static notch the real pedal does not have.
         y = low * (1.28f - 0.92f * tone)
-          + high * (0.24f + 1.42f * tone)
-          + y * (0.12f + 0.10f * (1.0f - tone));
+          + high * (0.24f + 1.42f * tone);
         y = toneScoop.process(y);
 
         // Q1 recovery/volume stage. There is no RS volume knob, so compensate
@@ -260,8 +263,7 @@ class BigBuzzPlugin : public Plugin
 {
     BigBuzzCore left;
     BigBuzzCore right;
-    RBAutoMakeup makeupL;
-    RBAutoMakeup makeupR;
+    RBAutoMakeup makeup;
     float params[kParamCount];
 
     void applyAll()
@@ -280,8 +282,7 @@ public:
             params[i] = kBigBuzzDef[i];
         left.setSampleRate((float)getSampleRate());
         right.setSampleRate((float)getSampleRate());
-        makeupL.setSampleRate((float)getSampleRate());
-        makeupR.setSampleRate((float)getSampleRate());
+        makeup.setSampleRate((float)getSampleRate());
         applyAll();
     }
 
@@ -316,16 +317,14 @@ protected:
             return;
         params[index] = clamp01(value);
         applyAll();
-        makeupL.snap();
-        makeupR.snap();
+        makeup.snap();
     }
 
     void sampleRateChanged(double newSampleRate) override
     {
         left.setSampleRate((float)newSampleRate);
         right.setSampleRate((float)newSampleRate);
-        makeupL.setSampleRate((float)newSampleRate);
-        makeupR.setSampleRate((float)newSampleRate);
+        makeup.setSampleRate((float)newSampleRate);
         applyAll();
     }
 
@@ -339,8 +338,7 @@ protected:
         {
             // Auto makeup-gain: match output loudness to the dry input so the
             // drive's controls change only the amount of clip, not the level.
-            outL[i] = makeupL.process(inL[i], left.process(inL[i]));
-            outR[i] = makeupR.process(inR[i], right.process(inR[i]));
+            makeup.processStereo(inL[i], inR[i], left.process(inL[i]), right.process(inR[i]), outL[i], outR[i]);
         }
     }
 

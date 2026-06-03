@@ -148,6 +148,124 @@ public:
     }
 };
 
+// Passive Marshall (TMB) tone stack. Models the real interacting Bass/Mid/
+// Treble network as the 3rd-order continuous-time transfer function of
+// Yeh & Smith (DAFx-06, "Discretization of the '59 Fender Bassman Tone Stack";
+// the FMV / Bassman / Marshall networks differ only by component values),
+// discretized with the bilinear transform (c = 2*fs). Unlike three independent
+// shelving/peaking filters, the controls here share RC nodes and INTERACT, so
+// changing one knob shifts the others' bands -- the genuine Marshall behaviour
+// (mid scoop, treble affecting the midrange, bass shifting the scoop).
+class MarshallToneStack
+{
+    // Standard MARSHALL (JCM800-era) component values, in the symbol convention
+    // of Yeh & Smith Fig. 1: R1 = treble pot total, R4 = slope resistor,
+    // R2 = bass pot total, R3 = mid pot total, C1 = treble cap, C2 = bass cap,
+    // C3 = mid cap.
+    static constexpr double R1 = 250.0e3;   // treble pot
+    static constexpr double R2 = 1.0e6;     // bass pot
+    static constexpr double R3 = 25.0e3;    // mid pot
+    static constexpr double R4 = 33.0e3;    // slope resistor (Marshall 33k)
+    static constexpr double C1 = 0.47e-9;   // treble cap 470 pF
+    static constexpr double C2 = 22.0e-9;   // bass cap   22 nF
+    static constexpr double C3 = 22.0e-9;   // mid cap    22 nF
+
+    float  sr     = 48000.0f;
+    double makeup = 2.0;    // fixed +6 dB makeup (the passive stack has
+                            // insertion loss; RBAutoMakeup re-levels anyway).
+
+    // Direct-form-II transposed, 3rd order, double-precision state.
+    double b0 = 1.0, b1 = 0.0, b2 = 0.0, b3 = 0.0;
+    double a1 = 0.0, a2 = 0.0, a3 = 0.0;
+    double z1 = 0.0, z2 = 0.0, z3 = 0.0;
+
+    static double clampPot(double v)
+    {
+        if (v < 0.001) v = 0.001;     // keep pot resistances strictly nonzero
+        if (v > 0.999) v = 0.999;
+        return v;
+    }
+
+public:
+    void setSampleRate(float s) { sr = (s > 1000.0f) ? s : 48000.0f; reset(); }
+
+    void reset() { z1 = z2 = z3 = 0.0; }
+
+    void setParams(float bassN, float midN, float trebleN)
+    {
+        const double t = clampPot(trebleN);
+        const double m = clampPot(midN);
+        double l = clampPot(bassN);
+        l = l * l * (3.0 - 2.0 * l);   // gentle log-ish taper on the bass pot
+
+        const double R1d=R1, R2d=R2, R3d=R3, R4d=R4, C1d=C1, C2d=C2, C3d=C3;
+        const double R3sq = R3d * R3d;
+
+        // ---- Continuous-time coefficients (Yeh & Smith eq. 1, verbatim) ----
+        const double b1c = t*C1d*R1d + m*C3d*R3d + l*(C1d*R2d + C2d*R2d)
+                         + (C1d*R3d + C2d*R3d);
+
+        const double b2c = t*(C1d*C2d*R1d*R4d + C1d*C3d*R1d*R4d)
+                         - m*m*(C1d*C3d*R3sq + C2d*C3d*R3sq)
+                         + m*(C1d*C3d*R1d*R3d + C1d*C3d*R3sq + C2d*C3d*R3sq)
+                         + l*(C1d*C2d*R1d*R2d + C1d*C2d*R2d*R4d + C1d*C3d*R2d*R4d)
+                         + l*m*(C1d*C3d*R2d*R3d + C2d*C3d*R2d*R3d)
+                         + (C1d*C2d*R1d*R3d + C1d*C2d*R3d*R4d + C1d*C3d*R3d*R4d);
+
+        const double b3c = l*m*(C1d*C2d*C3d*R1d*R2d*R3d + C1d*C2d*C3d*R2d*R3d*R4d)
+                         - m*m*(C1d*C2d*C3d*R1d*R3sq + C1d*C2d*C3d*R3sq*R4d)
+                         + m*(C1d*C2d*C3d*R1d*R3sq + C1d*C2d*C3d*R3sq*R4d)
+                         + t*C1d*C2d*C3d*R1d*R3d*R4d
+                         - t*m*C1d*C2d*C3d*R1d*R3d*R4d
+                         + t*l*C1d*C2d*C3d*R1d*R2d*R4d;
+
+        const double a0c = 1.0;
+
+        const double a1c = (C1d*R1d + C1d*R3d + C2d*R3d + C2d*R4d + C3d*R4d)
+                         + m*C3d*R3d + l*(C1d*R2d + C2d*R2d);
+
+        const double a2c = m*(C1d*C3d*R1d*R3d - C2d*C3d*R3d*R4d + C1d*C3d*R3sq + C2d*C3d*R3sq)
+                         + l*m*(C1d*C3d*R2d*R3d + C2d*C3d*R2d*R3d)
+                         - m*m*(C1d*C3d*R3sq + C2d*C3d*R3sq)
+                         + l*(C1d*C2d*R2d*R4d + C1d*C2d*R1d*R2d + C1d*C3d*R2d*R4d + C2d*C3d*R2d*R4d)
+                         + (C1d*C2d*R1d*R4d + C1d*C3d*R1d*R4d + C1d*C2d*R3d*R4d
+                            + C1d*C2d*R1d*R3d + C1d*C3d*R3d*R4d + C2d*C3d*R3d*R4d);
+
+        const double a3c = l*m*(C1d*C2d*C3d*R1d*R2d*R3d + C1d*C2d*C3d*R2d*R3d*R4d)
+                         - m*m*(C1d*C2d*C3d*R1d*R3sq + C1d*C2d*C3d*R3sq*R4d)
+                         + m*(C1d*C2d*C3d*R3sq*R4d + C1d*C2d*C3d*R1d*R3sq - C1d*C2d*C3d*R1d*R3d*R4d)
+                         + l*C1d*C2d*C3d*R1d*R2d*R4d + C1d*C2d*C3d*R1d*R3d*R4d;
+
+        // ---- Bilinear transform, c = 2*fs (Yeh & Smith eq. 2, verbatim) ----
+        const double c  = 2.0 * (double)sr;
+        const double c2 = c * c;
+        const double c3 = c2 * c;
+
+        const double B0 = -b1c*c - b2c*c2 - b3c*c3;       // b0c == 0
+        const double B1 = -b1c*c + b2c*c2 + 3.0*b3c*c3;
+        const double B2 =  b1c*c + b2c*c2 - 3.0*b3c*c3;
+        const double B3 =  b1c*c - b2c*c2 + b3c*c3;
+        const double A0 = -a0c - a1c*c - a2c*c2 - a3c*c3;
+        const double A1 = -3.0*a0c - a1c*c + a2c*c2 + 3.0*a3c*c3;
+        const double A2 = -3.0*a0c + a1c*c + a2c*c2 - 3.0*a3c*c3;
+        const double A3 = -a0c + a1c*c - a2c*c2 + a3c*c3;
+
+        const double inv = 1.0 / A0;
+        b0 = B0 * inv; b1 = B1 * inv; b2 = B2 * inv; b3 = B3 * inv;
+        a1 = A1 * inv; a2 = A2 * inv; a3 = A3 * inv;
+    }
+
+    float process(float x)
+    {
+        const double xn = (double)x;
+        const double y = b0 * xn + z1;
+        z1 = b1 * xn - a1 * y + z2;
+        z2 = b2 * xn - a2 * y + z3;
+        z3 = b3 * xn - a3 * y;
+        return (float)(y * makeup);
+    }
+};
+
 } // namespace
 
 class MarshallGuvnorPlusCore
@@ -163,15 +281,8 @@ class MarshallGuvnorPlusCore
     Biquad deepShelf;
     Biquad preVoice;
     Biquad clipRollOff;
-    Biquad bassShelf;
-    Biquad midEq;
-    Biquad trebleShelf;
+    MarshallToneStack toneStack;
     Biquad outputLp;
-
-    static float eqDb(float normalized, float rangeDb)
-    {
-        return (clamp01(normalized) - 0.5f) * 2.0f * rangeDb;
-    }
 
     void updateFilters()
     {
@@ -182,9 +293,9 @@ class MarshallGuvnorPlusCore
         preVoice.setPeaking(sampleRate, 680.0f + 420.0f * mid, 0.78f,
                             1.4f + 2.6f * g);
         clipRollOff.setLowPass(sampleRate, 7200.0f - 1800.0f * g + 1000.0f * treble, 0.68f);
-        bassShelf.setLowShelf(sampleRate, 135.0f, 0.75f, eqDb(bass, 11.0f));
-        midEq.setPeaking(sampleRate, 620.0f + 560.0f * mid, 0.68f, eqDb(mid, 12.0f));
-        trebleShelf.setHighShelf(sampleRate, 2300.0f + 1700.0f * treble, 0.72f, eqDb(treble, 12.5f));
+        // Real passive Marshall TMB tone stack: the Bass/Mid/Treble controls
+        // share RC nodes and interact (vs. the old three independent filters).
+        toneStack.setParams(bass, mid, treble);
         outputLp.setLowPass(sampleRate, 3900.0f + 7600.0f * treble, 0.62f);
     }
 
@@ -195,9 +306,7 @@ public:
         deepShelf.reset();
         preVoice.reset();
         clipRollOff.reset();
-        bassShelf.reset();
-        midEq.reset();
-        trebleShelf.reset();
+        toneStack.reset();
         outputLp.reset();
         updateFilters();
     }
@@ -205,6 +314,7 @@ public:
     void setSampleRate(float sr)
     {
         sampleRate = sr > 1000.0f ? sr : 48000.0f;
+        toneStack.setSampleRate(sampleRate);
         reset();
     }
 
@@ -230,9 +340,7 @@ public:
         const float cleanLeak = 0.12f * (1.0f - gain);
         y = y * (1.0f - cleanLeak) + x * cleanLeak;
 
-        y = bassShelf.process(y);
-        y = midEq.process(y);
-        y = trebleShelf.process(y);
+        y = toneStack.process(y);
         y = outputLp.process(y);
 
         const float level = 0.74f / (1.0f + 0.36f * gain + 0.20f * g + 0.12f * deep);
@@ -244,8 +352,7 @@ class MarshallGuvnorPlusPlugin : public Plugin
 {
     MarshallGuvnorPlusCore left;
     MarshallGuvnorPlusCore right;
-    RBAutoMakeup makeupL;
-    RBAutoMakeup makeupR;
+    RBAutoMakeup makeup;
     float params[kParamCount];
 
     void applyAll()
@@ -270,8 +377,7 @@ public:
             params[i] = kMarshallGuvnorPlusDef[i];
         left.setSampleRate((float)getSampleRate());
         right.setSampleRate((float)getSampleRate());
-        makeupL.setSampleRate((float)getSampleRate());
-        makeupR.setSampleRate((float)getSampleRate());
+        makeup.setSampleRate((float)getSampleRate());
         applyAll();
     }
 
@@ -306,16 +412,14 @@ protected:
             return;
         params[index] = clamp01(value);
         applyAll();
-        makeupL.snap();
-        makeupR.snap();
+        makeup.snap();
     }
 
     void sampleRateChanged(double newSampleRate) override
     {
         left.setSampleRate((float)newSampleRate);
         right.setSampleRate((float)newSampleRate);
-        makeupL.setSampleRate((float)newSampleRate);
-        makeupR.setSampleRate((float)newSampleRate);
+        makeup.setSampleRate((float)newSampleRate);
         applyAll();
     }
 
@@ -329,8 +433,7 @@ protected:
         {
             // Auto makeup-gain: match output loudness to the dry input so the
             // drive's controls change only the amount of clip, not the level.
-            outL[i] = makeupL.process(inL[i], left.process(inL[i]));
-            outR[i] = makeupR.process(inR[i], right.process(inR[i]));
+            makeup.processStereo(inL[i], inR[i], left.process(inL[i]), right.process(inR[i]), outL[i], outR[i]);
         }
     }
 

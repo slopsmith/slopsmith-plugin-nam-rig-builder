@@ -42,7 +42,11 @@ static inline float softClip(float x)
 
 static inline float hardDiodeClip(float x, float threshold)
 {
-    return threshold * std::tanh(x / threshold);
+    // DS-1: silicon diodes shunting the signal to ground clip harder than a
+    // feedback-loop diode. A steeper tanh squares the tops more (the papery,
+    // aggressive DS-1 edge) while staying smooth, so it does not alias the way a
+    // raw hard clip would without oversampling. norm = 1/tanh(2) ≈ 1.0373.
+    return threshold * 1.0373f * std::tanh(2.0f * x / threshold);
 }
 
 class Biquad
@@ -226,8 +230,7 @@ class StandardDistortionPlugin : public Plugin
 {
     StandardDistortionCore left;
     StandardDistortionCore right;
-    RBAutoMakeup makeupL;
-    RBAutoMakeup makeupR;
+    RBAutoMakeup makeup;
     float params[kParamCount];
 
     void applyAll()
@@ -246,8 +249,7 @@ public:
             params[i] = kStandardDistortionDef[i];
         left.setSampleRate((float)getSampleRate());
         right.setSampleRate((float)getSampleRate());
-        makeupL.setSampleRate((float)getSampleRate());
-        makeupR.setSampleRate((float)getSampleRate());
+        makeup.setSampleRate((float)getSampleRate());
         applyAll();
     }
 
@@ -282,16 +284,14 @@ protected:
             return;
         params[index] = clamp01(value);
         applyAll();
-        makeupL.snap();
-        makeupR.snap();
+        makeup.snap();
     }
 
     void sampleRateChanged(double newSampleRate) override
     {
         left.setSampleRate((float)newSampleRate);
         right.setSampleRate((float)newSampleRate);
-        makeupL.setSampleRate((float)newSampleRate);
-        makeupR.setSampleRate((float)newSampleRate);
+        makeup.setSampleRate((float)newSampleRate);
         applyAll();
     }
 
@@ -305,8 +305,7 @@ protected:
         {
             // Auto makeup-gain: match output loudness to the dry input so Gain/
             // Tone change only the amount of clip, not the level (RB_AUTOMAKEUP).
-            outL[i] = makeupL.process(inL[i], left.process(inL[i]));
-            outR[i] = makeupR.process(inR[i], right.process(inR[i]));
+            makeup.processStereo(inL[i], inR[i], left.process(inL[i]), right.process(inR[i]), outL[i], outR[i]);
         }
     }
 

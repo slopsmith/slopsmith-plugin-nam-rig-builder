@@ -159,9 +159,11 @@ public:
         const float low = onePoleLow(y, toneLowY, toneLowA);
         const float highBase = onePoleLow(y, toneHighY, toneHighA);
         const float high = y - 0.72f * highBase;
+        // Two-branch crossfade only. The earlier fixed "+ y*0.18" added an
+        // unfiltered copy that combed against the filtered branches (a static
+        // notch / faux-phaser); a passive tone control has no such flat path.
         y = low * (1.03f - 0.78f * tone)
-          + high * (0.22f + 1.08f * tone)
-          + y * 0.18f;
+          + high * (0.22f + 1.08f * tone);
 
         y = onePoleLow(y, outputLowY, outputLowA);
 
@@ -174,8 +176,7 @@ class BZ1Plugin : public Plugin
 {
     BZ1Core left;
     BZ1Core right;
-    RBAutoMakeup makeupL;
-    RBAutoMakeup makeupR;
+    RBAutoMakeup makeup;
     float params[kParamCount];
 
     void applyAll()
@@ -194,8 +195,7 @@ public:
             params[i] = kBZ1Def[i];
         left.setSampleRate((float)getSampleRate());
         right.setSampleRate((float)getSampleRate());
-        makeupL.setSampleRate((float)getSampleRate());
-        makeupR.setSampleRate((float)getSampleRate());
+        makeup.setSampleRate((float)getSampleRate());
         applyAll();
     }
 
@@ -230,16 +230,14 @@ protected:
             return;
         params[index] = clamp01(value);
         applyAll();
-        makeupL.snap();
-        makeupR.snap();
+        makeup.snap();
     }
 
     void sampleRateChanged(double newSampleRate) override
     {
         left.setSampleRate((float)newSampleRate);
         right.setSampleRate((float)newSampleRate);
-        makeupL.setSampleRate((float)newSampleRate);
-        makeupR.setSampleRate((float)newSampleRate);
+        makeup.setSampleRate((float)newSampleRate);
         applyAll();
     }
 
@@ -253,8 +251,7 @@ protected:
         {
             // Auto makeup-gain: match output loudness to the dry input so the
             // drive's controls change only the amount of clip, not the level.
-            outL[i] = makeupL.process(inL[i], left.process(inL[i]));
-            outR[i] = makeupR.process(inR[i], right.process(inR[i]));
+            makeup.processStereo(inL[i], inR[i], left.process(inL[i]), right.process(inR[i]), outL[i], outR[i]);
         }
     }
 

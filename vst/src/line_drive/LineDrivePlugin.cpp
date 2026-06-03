@@ -142,7 +142,6 @@ class LineDriveCore
 
     Biquad inputHp;
     Biquad odVoice;
-    Biquad distPre;
     Biquad distPost;
     Biquad postMid;
     Biquad toneShelf;
@@ -154,7 +153,6 @@ class LineDriveCore
         inputHp.setHighPass(sampleRate, 72.0f + 92.0f * gain, 0.68f);
         odVoice.setPeaking(sampleRate, 710.0f + 180.0f * tone, 0.76f,
                            2.2f + 2.2f * g);
-        distPre.setHighPass(sampleRate, 210.0f + 175.0f * gain, 0.72f);
         distPost.setLowPass(sampleRate, 6800.0f - 2100.0f * g + 1200.0f * tone, 0.68f);
         postMid.setPeaking(sampleRate, 920.0f + 420.0f * tone, 0.70f,
                            1.4f + 1.6f * gain - 1.3f * tone);
@@ -168,7 +166,6 @@ public:
     {
         inputHp.reset();
         odVoice.reset();
-        distPre.reset();
         distPost.reset();
         postMid.reset();
         toneShelf.reset();
@@ -205,13 +202,17 @@ public:
         od *= 1.15f + 5.0f * gain + 9.0f * g;
         od = asymClip(od + 0.012f * gain, 0.58f - 0.07f * gain, 0.86f - 0.10f * gain);
 
-        float dist = distPre.process(x);
+        // Both clip paths share the same input (no extra high-pass on the dist
+        // path only): high-passing one path left the OD path's lows with no in-
+        // phase partner and combed ~250–350 Hz. The post-clip roll-off is applied
+        // to the summed signal below, so neither path is band-limited on its own.
+        float dist = x;
         dist *= 2.1f + 10.5f * gain + 18.0f * g;
         dist = softClip(dist * (0.82f + 1.85f * gain));
-        dist = distPost.process(dist);
 
         const float color = 0.48f + 0.22f * gain;
         float y = od * (1.0f - color) + dist * color;
+        y = distPost.process(y);
 
         // The Line Drive is often used before already-hot amps. Low Gain
         // should still color, but not create a hidden clean boost.
@@ -231,8 +232,7 @@ class LineDrivePlugin : public Plugin
 {
     LineDriveCore left;
     LineDriveCore right;
-    RBAutoMakeup makeupL;
-    RBAutoMakeup makeupR;
+    RBAutoMakeup makeup;
     float params[kParamCount];
 
     void applyAll()
@@ -251,8 +251,7 @@ public:
             params[i] = kLineDriveDef[i];
         left.setSampleRate((float)getSampleRate());
         right.setSampleRate((float)getSampleRate());
-        makeupL.setSampleRate((float)getSampleRate());
-        makeupR.setSampleRate((float)getSampleRate());
+        makeup.setSampleRate((float)getSampleRate());
         applyAll();
     }
 
@@ -287,16 +286,14 @@ protected:
             return;
         params[index] = clamp01(value);
         applyAll();
-        makeupL.snap();
-        makeupR.snap();
+        makeup.snap();
     }
 
     void sampleRateChanged(double newSampleRate) override
     {
         left.setSampleRate((float)newSampleRate);
         right.setSampleRate((float)newSampleRate);
-        makeupL.setSampleRate((float)newSampleRate);
-        makeupR.setSampleRate((float)newSampleRate);
+        makeup.setSampleRate((float)newSampleRate);
         applyAll();
     }
 
@@ -310,8 +307,7 @@ protected:
         {
             // Auto makeup-gain: match output loudness to the dry input so the
             // drive's controls change only the amount of clip, not the level.
-            outL[i] = makeupL.process(inL[i], left.process(inL[i]));
-            outR[i] = makeupR.process(inR[i], right.process(inR[i]));
+            makeup.processStereo(inL[i], inR[i], left.process(inL[i]), right.process(inR[i]), outL[i], outR[i]);
         }
     }
 

@@ -154,7 +154,10 @@ class SuperDriveCore
     void updateFilters()
     {
         const float g = smoothstep(gain);
-        inputHp.setHighPass(sampleRate, 95.0f + 115.0f * gain, 0.68f);
+        // SD-1 input is full-range (470k in, large coupling cap → ~7 Hz corner);
+        // the tight/mid-focused voice comes from the clipping-stage feedback RC
+        // (feedbackVoice/midHump), not from cutting lows. Loosened from 95-210 Hz.
+        inputHp.setHighPass(sampleRate, 40.0f + 70.0f * gain, 0.68f);
         feedbackVoice.setPeaking(sampleRate, 720.0f + 150.0f * gain, 0.78f,
                                  2.4f + 3.2f * g);
         opAmpRollOff.setLowPass(sampleRate, 7600.0f - 1900.0f * g, 0.70f);
@@ -231,8 +234,7 @@ class SuperDrivePlugin : public Plugin
 {
     SuperDriveCore left;
     SuperDriveCore right;
-    RBAutoMakeup makeupL;
-    RBAutoMakeup makeupR;
+    RBAutoMakeup makeup;
     float params[kParamCount];
 
     void applyAll()
@@ -251,8 +253,7 @@ public:
             params[i] = kSuperDriveDef[i];
         left.setSampleRate((float)getSampleRate());
         right.setSampleRate((float)getSampleRate());
-        makeupL.setSampleRate((float)getSampleRate());
-        makeupR.setSampleRate((float)getSampleRate());
+        makeup.setSampleRate((float)getSampleRate());
         applyAll();
     }
 
@@ -287,16 +288,14 @@ protected:
             return;
         params[index] = clamp01(value);
         applyAll();
-        makeupL.snap();
-        makeupR.snap();
+        makeup.snap();
     }
 
     void sampleRateChanged(double newSampleRate) override
     {
         left.setSampleRate((float)newSampleRate);
         right.setSampleRate((float)newSampleRate);
-        makeupL.setSampleRate((float)newSampleRate);
-        makeupR.setSampleRate((float)newSampleRate);
+        makeup.setSampleRate((float)newSampleRate);
         applyAll();
     }
 
@@ -310,8 +309,7 @@ protected:
         {
             // Auto makeup-gain: match output loudness to the dry input so the
             // drive's controls change only the amount of clip, not the level.
-            outL[i] = makeupL.process(inL[i], left.process(inL[i]));
-            outR[i] = makeupR.process(inR[i], right.process(inR[i]));
+            makeup.processStereo(inL[i], inR[i], left.process(inL[i]), right.process(inR[i]), outL[i], outR[i]);
         }
     }
 

@@ -70,12 +70,20 @@ class GermaniumDriveCore
         // Keep a small always-on germanium edge, but let the bottom of the
         // Gain control clean up instead of staying in obvious distortion.
         const float driveKnob = 0.08f + 0.92f * gain;
-        const float drive = 2.2f + 42.0f * driveKnob * driveKnob;
-        const float bias = -0.12f + 0.08f * gain;
+        // Germanium conducts at a LOW forward voltage (~0.3 V) and rounds off
+        // softly and early — touch-sensitive, never a hard wall. Moderate drive
+        // (not the old 44×, which sat permanently slammed) keeps that dynamic,
+        // and the asymmetric Vf (positive half conducts sooner) gives the warm
+        // even-harmonic germanium grit. Low DC bias so the blocker has little to
+        // chase.
+        const float drive = 1.5f + 10.0f * driveKnob;
+        const float bias = -0.05f + 0.04f * gain;
+        const float vfPos = 0.29f;   // Ge forward voltage, positive half
+        const float vfNeg = 0.40f;   // softer / later negative half
 
         const float pushed = x * drive + bias;
-        const float pos = softClip(pushed * (1.60f + 2.60f * driveKnob));
-        const float neg = softClip(pushed * (0.65f + 1.20f * driveKnob));
+        const float pos = vfPos * std::tanh(pushed / vfPos);
+        const float neg = vfNeg * std::tanh(pushed / vfNeg);
         float y = pushed >= 0.0f ? pos : neg;
 
         // Leak only a little clean signal. The first revision kept too much
@@ -143,8 +151,7 @@ class GermaniumDrivePlugin : public Plugin
 {
     GermaniumDriveCore left;
     GermaniumDriveCore right;
-    RBAutoMakeup makeupL;
-    RBAutoMakeup makeupR;
+    RBAutoMakeup makeup;
     float params[kParamCount];
 
     void applyAll()
@@ -163,8 +170,7 @@ public:
             params[i] = kGermaniumDriveDef[i];
         left.setSampleRate((float)getSampleRate());
         right.setSampleRate((float)getSampleRate());
-        makeupL.setSampleRate((float)getSampleRate());
-        makeupR.setSampleRate((float)getSampleRate());
+        makeup.setSampleRate((float)getSampleRate());
         applyAll();
     }
 
@@ -199,16 +205,14 @@ protected:
             return;
         params[index] = clamp01(value);
         applyAll();
-        makeupL.snap();
-        makeupR.snap();
+        makeup.snap();
     }
 
     void sampleRateChanged(double newSampleRate) override
     {
         left.setSampleRate((float)newSampleRate);
         right.setSampleRate((float)newSampleRate);
-        makeupL.setSampleRate((float)newSampleRate);
-        makeupR.setSampleRate((float)newSampleRate);
+        makeup.setSampleRate((float)newSampleRate);
         applyAll();
     }
 
@@ -222,8 +226,7 @@ protected:
         {
             // Auto makeup-gain: match output loudness to the dry input so the
             // drive's controls change only the amount of clip, not the level.
-            outL[i] = makeupL.process(inL[i], left.process(inL[i]));
-            outR[i] = makeupR.process(inR[i], right.process(inR[i]));
+            makeup.processStereo(inL[i], inR[i], left.process(inL[i]), right.process(inR[i]), outL[i], outR[i]);
         }
     }
 

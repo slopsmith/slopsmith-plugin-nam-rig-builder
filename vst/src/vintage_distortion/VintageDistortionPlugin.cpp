@@ -42,13 +42,17 @@ static inline float smoothstep(float v)
 
 static inline float diodeClip250(float x, float gain)
 {
-    // Asymmetric DOD-250-ish clipping: one diode one way, two in series the
-    // other way. The thresholds are softened to avoid hard digital edges.
-    const float posThresh = 0.42f - 0.08f * gain;
-    const float negThresh = 0.78f - 0.10f * gain;
+    // DOD-250 (schematic: pedals/vintage distortion.png): a single LM741 gain
+    // stage into an ASYMMETRIC pair of shunt diode clippers to ground — one
+    // 1N4148 on the positive half, TWO in series on the negative half. One-vs-two
+    // diodes makes the negative half clip ~2× higher than the positive, which is
+    // the 250's asymmetric even-harmonic overdrive. Shunt-to-ground (through the
+    // 10 k series R) clips firmer than a feedback diode, hence the steepened tanh.
+    const float posThresh = 0.42f - 0.08f * gain;   // 1× Vf
+    const float negThresh = 0.78f - 0.10f * gain;   // 2× Vf (two diodes in series)
     if (x >= 0.0f)
-        return posThresh * std::tanh(x / posThresh);
-    return -negThresh * std::tanh((-x) / negThresh);
+        return posThresh * 1.0373f * std::tanh(2.0f * x / posThresh);
+    return -negThresh * 1.0373f * std::tanh(2.0f * (-x) / negThresh);
 }
 
 class Biquad
@@ -155,7 +159,8 @@ class VintageDistortionCore
     void updateFilters()
     {
         const float g = smoothstep(gain);
-        inputHp.setHighPass(sampleRate, 58.0f + 120.0f * g, 0.70f);
+        // DOD-250 has a large input coupling cap → passes deep low end.
+        inputHp.setHighPass(sampleRate, 25.0f + 60.0f * g, 0.70f);
         opAmpVoice.setPeaking(sampleRate, 760.0f + 420.0f * tone, 0.82f,
                               1.0f + 4.0f * g);
         // LM741 feedback cap / limited slew cue: more gain loses some top.
@@ -209,8 +214,11 @@ public:
         float y = x * drive;
         y = opAmpRollOff.process(y);
 
-        const float clipped = diodeClip250(y + 0.025f * gain, gain);
-        const float opAmpSat = softClip(y * (0.22f + 0.42f * gain)) * 0.36f;
+        // The LM741 is a clean, high-gain stage (it does not clip at these levels);
+        // all the distortion is the asymmetric shunt diodes. So the op-amp "hair"
+        // is small (0.36→0.15) and the asymmetry lives entirely in diodeClip250.
+        const float clipped = diodeClip250(y, gain);
+        const float opAmpSat = softClip(y * (0.22f + 0.42f * gain)) * 0.15f;
         y = clipped * (0.86f + 0.10f * gain) + opAmpSat;
 
         // The real DOD has no blend; this tiny clean leak keeps RS Gain 11/25
@@ -233,8 +241,7 @@ class VintageDistortionPlugin : public Plugin
 {
     VintageDistortionCore left;
     VintageDistortionCore right;
-    RBAutoMakeup makeupL;
-    RBAutoMakeup makeupR;
+    RBAutoMakeup makeup;
     float params[kParamCount];
 
     void applyAll()
@@ -253,8 +260,7 @@ public:
             params[i] = kVintageDistortionDef[i];
         left.setSampleRate((float)getSampleRate());
         right.setSampleRate((float)getSampleRate());
-        makeupL.setSampleRate((float)getSampleRate());
-        makeupR.setSampleRate((float)getSampleRate());
+        makeup.setSampleRate((float)getSampleRate());
         applyAll();
     }
 
@@ -289,16 +295,14 @@ protected:
             return;
         params[index] = clamp01(value);
         applyAll();
-        makeupL.snap();
-        makeupR.snap();
+        makeup.snap();
     }
 
     void sampleRateChanged(double newSampleRate) override
     {
         left.setSampleRate((float)newSampleRate);
         right.setSampleRate((float)newSampleRate);
-        makeupL.setSampleRate((float)newSampleRate);
-        makeupR.setSampleRate((float)newSampleRate);
+        makeup.setSampleRate((float)newSampleRate);
         applyAll();
     }
 
@@ -312,8 +316,7 @@ protected:
         {
             // Auto makeup-gain: match output loudness to the dry input so the
             // drive's controls change only the amount of clip, not the level.
-            outL[i] = makeupL.process(inL[i], left.process(inL[i]));
-            outR[i] = makeupR.process(inR[i], right.process(inR[i]));
+            makeup.processStereo(inL[i], inR[i], left.process(inL[i]), right.process(inR[i]), outL[i], outR[i]);
         }
     }
 

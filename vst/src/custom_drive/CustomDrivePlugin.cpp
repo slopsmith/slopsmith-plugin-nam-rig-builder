@@ -28,9 +28,20 @@ static inline float clampFreq(float hz, float sr)
     return hz > nyquist ? nyquist : hz;
 }
 
-static inline float diode(float x, float drive)
+static inline float ocdShaper(float in)
 {
-    return std::tanh(x * drive);
+    // Fulltone OCD waveshaper, transfer curve taken verbatim from the open-source
+    // Schrammel OJD (github.com/janosgit/schrammel_ojd). Asymmetric soft clip: the
+    // positive half stays linear up to +0.9 while the negative half begins bending
+    // at -0.3, which is the OCD's even-harmonic, touch-dynamic, "vocal" asymmetry.
+    // C1-continuous (slopes match at every breakpoint) so it stays smooth. The OJD
+    // runs it at 16× oversampling; here the continuous slope plus the post-clip
+    // low-pass keep aliasing in check without an oversampler.
+    if (in <= -1.7f) return -1.0f;
+    if (in <  -0.3f) { const float u = in + 0.3f; return u + (u * u) / 2.8f - 0.3f; }
+    if (in <=  0.9f) return in;
+    if (in <   1.1f) { const float u = in - 0.9f; return u - (u * u) / 0.4f + 0.9f; }
+    return 1.0f;
 }
 
 class Biquad
@@ -189,23 +200,15 @@ public:
         float x = inputHp.process(in);
         x = preVoice.process(x);
 
-        // Op-amp gain into MOSFET/diode clipping. Low Gain stays controlled;
-        // mid/high Gain now pushes clearly into Custom Drive distortion.
+        // Op-amp gain into the OCD waveshaper. Drive scales the signal into the
+        // shaper's clipping zones; the Voice (HP/LP) switch shifts the EQ around
+        // it (see updateFilters) and adds a little asymmetry bias. Kept well below
+        // the old ~15× so the signal sits in the shaper's soft/asymmetric region
+        // rather than railing flat (and therefore symmetric) at every setting.
         const float g = gain * gain;
-        const float drive = 1.35f + 4.0f * gain + 7.5f * g + 2.4f * voiceOn * gain;
-        const float bias = voiceOn ? (-0.026f - 0.032f * gain) : (0.016f * gain);
-        float y = x * drive + bias;
-
-        if (voiceOn > 0.5f)
-        {
-            const float pos = diode(y, 1.45f + 2.25f * gain);
-            const float neg = diode(y, 0.95f + 1.65f * gain);
-            y = y >= 0.0f ? pos : neg;
-        }
-        else
-        {
-            y = diode(y, 1.05f + 1.70f * gain);
-        }
+        const float drive = 1.0f + 2.2f * gain + 2.5f * g + 1.0f * voiceOn * gain;
+        const float bias = voiceOn ? (-0.05f - 0.04f * gain) : (0.03f * gain);
+        float y = ocdShaper(x * drive + bias);
 
         // Blend back a little unclipped path at low gain so Gain=0 does not
         // behave like a permanently distorted pedal.
@@ -227,8 +230,7 @@ class CustomDrivePlugin : public Plugin
 {
     CustomDriveCore left;
     CustomDriveCore right;
-    RBAutoMakeup makeupL;
-    RBAutoMakeup makeupR;
+    RBAutoMakeup makeup;
     float params[kParamCount];
 
     void applyAll()
@@ -249,8 +251,7 @@ public:
             params[i] = kCustomDriveDef[i];
         left.setSampleRate((float)getSampleRate());
         right.setSampleRate((float)getSampleRate());
-        makeupL.setSampleRate((float)getSampleRate());
-        makeupR.setSampleRate((float)getSampleRate());
+        makeup.setSampleRate((float)getSampleRate());
         applyAll();
     }
 
@@ -285,16 +286,14 @@ protected:
             return;
         params[index] = clamp01(value);
         applyAll();
-        makeupL.snap();
-        makeupR.snap();
+        makeup.snap();
     }
 
     void sampleRateChanged(double newSampleRate) override
     {
         left.setSampleRate((float)newSampleRate);
         right.setSampleRate((float)newSampleRate);
-        makeupL.setSampleRate((float)newSampleRate);
-        makeupR.setSampleRate((float)newSampleRate);
+        makeup.setSampleRate((float)newSampleRate);
         applyAll();
     }
 
@@ -308,8 +307,7 @@ protected:
         {
             // Auto makeup-gain: match output loudness to the dry input so the
             // drive's controls change only the amount of clip, not the level.
-            outL[i] = makeupL.process(inL[i], left.process(inL[i]));
-            outR[i] = makeupR.process(inR[i], right.process(inR[i]));
+            makeup.processStereo(inL[i], inR[i], left.process(inL[i]), right.process(inR[i]), outL[i], outR[i]);
         }
     }
 

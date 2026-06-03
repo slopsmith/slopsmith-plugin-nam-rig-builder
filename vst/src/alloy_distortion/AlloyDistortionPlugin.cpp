@@ -159,15 +159,17 @@ class AlloyDistortionCore
     {
         const float g = smoothstep(gain);
         inputHp.setHighPass(sampleRate, 70.0f + 80.0f * gain, 0.68f);
-        lowColor.setPeaking(sampleRate, 118.0f + 80.0f * tone, 0.72f,
-                            1.0f + 7.0f * (1.0f - tone));
-        upperColor.setPeaking(sampleRate, 920.0f + 520.0f * tone, 0.62f,
-                              2.8f + 6.0f * tone + 2.0f * g);
+        // HM-2 "chainsaw" voicing: a broad tight-low bump + a FIXED deep mid
+        // scoop + a buzzy high shelf. The real Low/High knobs usually run maxed;
+        // Rocksmith exposes only Tone, which sweeps how bright/buzzy the top is.
+        // The earlier model stacked two overlapping +dB peaks around 1 kHz (a mid
+        // BOOST) — the opposite of the HM-2's scooped-mid character.
+        lowColor.setPeaking(sampleRate, 110.0f, 0.55f, 4.0f + 3.0f * (1.0f - tone));
+        upperColor.setPeaking(sampleRate, 1100.0f, 0.70f, 1.5f + 2.0f * tone);
         clipRollOff.setLowPass(sampleRate, 5400.0f - 1700.0f * g + 1300.0f * tone, 0.66f);
-        chainsawMid.setPeaking(sampleRate, 1050.0f + 500.0f * tone, 0.55f,
-                               3.0f + 5.2f * tone);
-        toneShelf.setHighShelf(sampleRate, 2100.0f + 1800.0f * tone, 0.70f,
-                               -7.0f + 13.5f * tone);
+        chainsawMid.setPeaking(sampleRate, 500.0f, 0.90f, -6.0f - 3.0f * tone);
+        toneShelf.setHighShelf(sampleRate, 2400.0f + 1600.0f * tone, 0.70f,
+                               -2.0f + 13.0f * tone);
         outputLp.setLowPass(sampleRate, 2700.0f + 7000.0f * tone, 0.62f);
     }
 
@@ -234,8 +236,7 @@ class AlloyDistortionPlugin : public Plugin
 {
     AlloyDistortionCore left;
     AlloyDistortionCore right;
-    RBAutoMakeup makeupL;
-    RBAutoMakeup makeupR;
+    RBAutoMakeup makeup;
     float params[kParamCount];
 
     void applyAll()
@@ -254,8 +255,7 @@ public:
             params[i] = kAlloyDistortionDef[i];
         left.setSampleRate((float)getSampleRate());
         right.setSampleRate((float)getSampleRate());
-        makeupL.setSampleRate((float)getSampleRate());
-        makeupR.setSampleRate((float)getSampleRate());
+        makeup.setSampleRate((float)getSampleRate());
         applyAll();
     }
 
@@ -290,16 +290,14 @@ protected:
             return;
         params[index] = clamp01(value);
         applyAll();
-        makeupL.snap();
-        makeupR.snap();
+        makeup.snap();
     }
 
     void sampleRateChanged(double newSampleRate) override
     {
         left.setSampleRate((float)newSampleRate);
         right.setSampleRate((float)newSampleRate);
-        makeupL.setSampleRate((float)newSampleRate);
-        makeupR.setSampleRate((float)newSampleRate);
+        makeup.setSampleRate((float)newSampleRate);
         applyAll();
     }
 
@@ -313,8 +311,7 @@ protected:
         {
             // Auto makeup-gain: match output loudness to the dry input so the
             // drive's controls change only the amount of clip, not the level.
-            outL[i] = makeupL.process(inL[i], left.process(inL[i]));
-            outR[i] = makeupR.process(inR[i], right.process(inR[i]));
+            makeup.processStereo(inL[i], inR[i], left.process(inL[i]), right.process(inR[i]), outL[i], outR[i]);
         }
     }
 
