@@ -51,6 +51,7 @@ def test_screen_registers_executable_audio_effects_provider():
     assert "operationHandlers: rbAudioEffectsOperationHandlers()" in src
     assert "'chain.resolve'" in src
     assert "rbBuildAudioEffectsRequestFromPayload" in src
+    assert "invalid-provider-ref" in src
     assert "assets[assetRef] = asset" in src
     assert "asset.stateBase64 = stage.state" in src
     assert "rbLoadChainPlanWithHost" in src
@@ -70,6 +71,8 @@ def test_screen_registers_executable_audio_effects_provider():
     assert "rbFetchLegacyNamToneMappings(filename)" in src
     assert "save_preset persisted provider-private legacy tone database rows" in src
     assert src.count("/api/plugins/nam_tone/mappings/") == 1
+    assert "requesterId" not in src
+    assert "RB_AUDIO_EFFECTS_ROUTE_KEY" not in src
     assert "window.__rbPlaybackSettingsKey = ''" in src
     assert "window.__rbPlaybackSettingsFilename" in src
     assert "slopsmithDesktop.audioEffects" not in src

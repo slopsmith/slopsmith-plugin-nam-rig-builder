@@ -852,6 +852,9 @@ async function rbFetchAudioEffectsPayloadForRequest(request) {
     const planRequest = request && request.planRequest && typeof request.planRequest === 'object' ? request.planRequest : {};
     const providerRef = target.providerRef || target.provider_ref || request && (request.providerRef || request.provider_ref) || planRequest.providerRef || planRequest.provider_ref || '';
     const presetId = target.presetId || target.preset_id || request && request.presetId || planRequest.presetId || rbPresetIdFromProviderRef(providerRef);
+    if (providerRef && !presetId) {
+        return { outcome: 'no-target', status: 'invalid-provider-ref', reason: 'Rig Builder audio-effects request had an invalid provider ref' };
+    }
     if (presetId != null && presetId !== '') {
         const resp = await fetch(`${RB_API}/native_preset_full/${encodeURIComponent(presetId)}`);
         if (!resp.ok) return { outcome: 'no-target', status: 'preset-unavailable', reason: `Rig Builder preset plan unavailable: HTTP ${resp.status}` };
@@ -1182,7 +1185,7 @@ function rbRecordLegacyToneDbBridge(reason, status) {
     if (!recorder || typeof recorder.recordBridgeHit !== 'function') return;
     recorder.recordBridgeHit({
         domain: 'audio-effects',
-        routeKey: RB_AUDIO_EFFECTS_ROUTE_KEY,
+        routeKey: RB_EFFECTS_ROUTE_KEY,
         bridgeId: 'audio-effects.legacy-tone-db',
         pluginId: RB_PLUGIN_ID,
         legacySurface: 'nam_tone.db tone_mappings',
@@ -1197,7 +1200,7 @@ function rbRecordLegacyNativeLoadBridge(reason, status) {
     if (!recorder || typeof recorder.recordBridgeHit !== 'function') return;
     recorder.recordBridgeHit({
         domain: 'audio-effects',
-        routeKey: RB_AUDIO_EFFECTS_ROUTE_KEY,
+        routeKey: RB_EFFECTS_ROUTE_KEY,
         bridgeId: 'audio-effects.legacy-native-load',
         pluginId: RB_PLUGIN_ID,
         legacySurface: 'window.slopsmithDesktop.audio.loadPreset',
@@ -1223,7 +1226,6 @@ async function rbSyncAudioEffectsCapability(reason, options) {
         });
         const payload = {
             providerId: RB_EFFECTS_PARTICIPANT_ID,
-            requesterId: RB_PLUGIN_ID,
             routeKey: RB_EFFECTS_ROUTE_KEY,
             chainSummary,
             dependencies: {
