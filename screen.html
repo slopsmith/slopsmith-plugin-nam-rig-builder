@@ -1,11 +1,10 @@
 <style>
-    /* v3-integration polish (safe in both the legacy desktop and the new
-       fee[dB]ack v3 shell). */
-    /* Kill the white UA focus box that the v3 web shell shows on click
-       (buttons/tabs AND the interactive pedal <canvas> — Safari outlines a
-       clicked canvas, drawing a white rectangle around the whole pedal).
-       Unconditional + !important so it wins over the UA `outline:auto` in
-       every browser (Safari's :focus-visible heuristics differ from Chrome). */
+    /* v3-integration polish, custom (non-utility) rules only. The Tailwind
+       utility classes this plugin uses ship via assets/rb.css (loaded by
+       screen.js, built by tools/build_tailwind.sh) so the look is correct even
+       when the host skips its JIT rebuild. Safe in legacy desktop + v3. */
+    /* Kill the white UA focus box the v3 web shell shows on click (buttons/tabs
+       and the interactive pedal <canvas>, which Safari outlines). */
     #rb-root button:focus,
     #rb-root a:focus,
     #rb-root [onclick]:focus,
@@ -18,147 +17,10 @@
     #rb-root a:focus-visible,
     #rb-root [onclick]:focus-visible,
     #rb-root canvas:focus-visible { outline: none !important; box-shadow: none !important; }
-    /* The pt-24 clears the legacy fixed top navbar. In the v3 shell that
-       navbar is hidden, so the gap is dead space — trim it ONLY when we're
-       rendered inside #v3-main. The legacy desktop (no #v3-main) keeps pt-24. */
+    /* pt-24 clears the legacy fixed navbar; in v3 that navbar is hidden, so trim
+       the gap ONLY inside #v3-main. The legacy desktop keeps pt-24. */
     #v3-main #rb-root { padding-top: 1.5rem; }
-    /* Tailwind opacity-color fallback: the host rebuilds tailwind.min.css
-       to include a plugin's classes, but several builds (and the v3 web
-       shell without node) skip that rebuild — leaving opacity-modified
-       colors like `border-emerald-800/40` undefined, so `border` falls
-       back to the preflight default (~gray-200) and shows a WHITE box.
-       Ship the classes we use here so the look is correct everywhere
-       (a real user-visible bug since alpha7). Generated from the TW v3
-       palette; identical to what the rebuild would produce. */
-    #rb-root .bg-amber-600\/60{background-color:rgb(217 119 6 / 0.60)!important}
-    #rb-root .bg-amber-700\/40{background-color:rgb(180 83 9 / 0.40)!important}
-    #rb-root .bg-amber-700\/60{background-color:rgb(180 83 9 / 0.60)!important}
-    #rb-root .bg-amber-900\/10{background-color:rgb(120 53 15 / 0.10)!important}
-    #rb-root .bg-amber-900\/25{background-color:rgb(120 53 15 / 0.25)!important}
-    #rb-root .bg-amber-900\/30{background-color:rgb(120 53 15 / 0.30)!important}
-    #rb-root .bg-amber-900\/40{background-color:rgb(120 53 15 / 0.40)!important}
-    #rb-root .bg-amber-900\/45{background-color:rgb(120 53 15 / 0.45)!important}
-    #rb-root .bg-blue-900\/15{background-color:rgb(30 58 138 / 0.15)!important}
-    #rb-root .bg-blue-900\/20{background-color:rgb(30 58 138 / 0.20)!important}
-    #rb-root .bg-cyan-600\/70{background-color:rgb(8 145 178 / 0.70)!important}
-    #rb-root .bg-cyan-700\/70{background-color:rgb(14 116 144 / 0.70)!important}
-    #rb-root .bg-cyan-900\/10{background-color:rgb(22 78 99 / 0.10)!important}
-    #rb-root .bg-cyan-900\/30{background-color:rgb(22 78 99 / 0.30)!important}
-    #rb-root .bg-cyan-900\/50{background-color:rgb(22 78 99 / 0.50)!important}
-    #rb-root .bg-emerald-700\/40{background-color:rgb(4 120 87 / 0.40)!important}
-    #rb-root .bg-emerald-700\/60{background-color:rgb(4 120 87 / 0.60)!important}
-    #rb-root .bg-emerald-900\/10{background-color:rgb(6 78 59 / 0.10)!important}
-    #rb-root .bg-emerald-900\/15{background-color:rgb(6 78 59 / 0.15)!important}
-    #rb-root .bg-emerald-900\/20{background-color:rgb(6 78 59 / 0.20)!important}
-    #rb-root .bg-emerald-900\/30{background-color:rgb(6 78 59 / 0.30)!important}
-    #rb-root .bg-emerald-900\/40{background-color:rgb(6 78 59 / 0.40)!important}
-    #rb-root .bg-emerald-900\/50{background-color:rgb(6 78 59 / 0.50)!important}
-    #rb-root .bg-emerald-900\/60{background-color:rgb(6 78 59 / 0.60)!important}
-    #rb-root .bg-gray-700\/30{background-color:rgb(55 65 81 / 0.30)!important}
-    #rb-root .bg-gray-800\/30{background-color:rgb(31 41 55 / 0.30)!important}
-    #rb-root .bg-green-900\/15{background-color:rgb(20 83 45 / 0.15)!important}
-    #rb-root .bg-green-900\/20{background-color:rgb(20 83 45 / 0.20)!important}
-    #rb-root .bg-indigo-900\/10{background-color:rgb(49 46 129 / 0.10)!important}
-    #rb-root .bg-indigo-900\/20{background-color:rgb(49 46 129 / 0.20)!important}
-    #rb-root .bg-indigo-900\/30{background-color:rgb(49 46 129 / 0.30)!important}
-    #rb-root .bg-indigo-900\/50{background-color:rgb(49 46 129 / 0.50)!important}
-    #rb-root .bg-orange-900\/20{background-color:rgb(124 45 18 / 0.20)!important}
-    #rb-root .bg-purple-600\/60{background-color:rgb(147 51 234 / 0.60)!important}
-    #rb-root .bg-purple-700\/50{background-color:rgb(126 34 206 / 0.50)!important}
-    #rb-root .bg-purple-900\/10{background-color:rgb(88 28 135 / 0.10)!important}
-    #rb-root .bg-purple-900\/20{background-color:rgb(88 28 135 / 0.20)!important}
-    #rb-root .bg-purple-900\/30{background-color:rgb(88 28 135 / 0.30)!important}
-    #rb-root .bg-purple-900\/40{background-color:rgb(88 28 135 / 0.40)!important}
-    #rb-root .bg-purple-900\/50{background-color:rgb(88 28 135 / 0.50)!important}
-    #rb-root .bg-purple-900\/60{background-color:rgb(88 28 135 / 0.60)!important}
-    #rb-root .bg-red-900\/20{background-color:rgb(127 29 29 / 0.20)!important}
-    #rb-root .bg-red-900\/30{background-color:rgb(127 29 29 / 0.30)!important}
-    #rb-root .bg-red-900\/40{background-color:rgb(127 29 29 / 0.40)!important}
-    #rb-root .bg-red-900\/50{background-color:rgb(127 29 29 / 0.50)!important}
-    #rb-root .bg-red-900\/60{background-color:rgb(127 29 29 / 0.60)!important}
-    #rb-root .bg-sky-700\/60{background-color:rgb(3 105 161 / 0.60)!important}
-    #rb-root .bg-sky-900\/15{background-color:rgb(12 74 110 / 0.15)!important}
-    #rb-root .bg-sky-900\/30{background-color:rgb(12 74 110 / 0.30)!important}
-    #rb-root .bg-sky-900\/40{background-color:rgb(12 74 110 / 0.40)!important}
-    #rb-root .bg-sky-900\/60{background-color:rgb(12 74 110 / 0.60)!important}
-    #rb-root .bg-yellow-900\/15{background-color:rgb(113 63 18 / 0.15)!important}
-    #rb-root .bg-yellow-900\/20{background-color:rgb(113 63 18 / 0.20)!important}
-    #rb-root .border-amber-600\/40{border-color:rgb(217 119 6 / 0.40)!important}
-    #rb-root .border-amber-800\/30{border-color:rgb(146 64 14 / 0.30)!important}
-    #rb-root .border-amber-800\/40{border-color:rgb(146 64 14 / 0.40)!important}
-    #rb-root .border-blue-700\/40{border-color:rgb(29 78 216 / 0.40)!important}
-    #rb-root .border-blue-800\/30{border-color:rgb(30 64 175 / 0.30)!important}
-    #rb-root .border-cyan-800\/30{border-color:rgb(21 94 117 / 0.30)!important}
-    #rb-root .border-cyan-800\/40{border-color:rgb(21 94 117 / 0.40)!important}
-    #rb-root .border-emerald-500\/60{border-color:rgb(16 185 129 / 0.60)!important}
-    #rb-root .border-emerald-600\/40{border-color:rgb(5 150 105 / 0.40)!important}
-    #rb-root .border-emerald-700\/40{border-color:rgb(4 120 87 / 0.40)!important}
-    #rb-root .border-emerald-800\/30{border-color:rgb(6 95 70 / 0.30)!important}
-    #rb-root .border-emerald-800\/40{border-color:rgb(6 95 70 / 0.40)!important}
-    #rb-root .border-gray-600\/40{border-color:rgb(75 85 99 / 0.40)!important}
-    #rb-root .border-gray-800\/30{border-color:rgb(31 41 55 / 0.30)!important}
-    #rb-root .border-gray-800\/40{border-color:rgb(31 41 55 / 0.40)!important}
-    #rb-root .border-gray-800\/50{border-color:rgb(31 41 55 / 0.50)!important}
-    #rb-root .border-green-800\/30{border-color:rgb(22 101 52 / 0.30)!important}
-    #rb-root .border-indigo-800\/30{border-color:rgb(55 48 163 / 0.30)!important}
-    #rb-root .border-indigo-800\/40{border-color:rgb(55 48 163 / 0.40)!important}
-    #rb-root .border-orange-700\/40{border-color:rgb(194 65 12 / 0.40)!important}
-    #rb-root .border-purple-700\/40{border-color:rgb(126 34 206 / 0.40)!important}
-    #rb-root .border-purple-800\/30{border-color:rgb(107 33 168 / 0.30)!important}
-    #rb-root .border-purple-800\/40{border-color:rgb(107 33 168 / 0.40)!important}
-    #rb-root .border-purple-800\/50{border-color:rgb(107 33 168 / 0.50)!important}
-    #rb-root .border-red-800\/30{border-color:rgb(153 27 27 / 0.30)!important}
-    #rb-root .border-red-800\/40{border-color:rgb(153 27 27 / 0.40)!important}
-    #rb-root .border-sky-500\/60{border-color:rgb(14 165 233 / 0.60)!important}
-    #rb-root .border-sky-700\/40{border-color:rgb(3 105 161 / 0.40)!important}
-    #rb-root .border-sky-800\/30{border-color:rgb(7 89 133 / 0.30)!important}
-    #rb-root .border-sky-800\/40{border-color:rgb(7 89 133 / 0.40)!important}
-    #rb-root .border-yellow-700\/40{border-color:rgb(161 98 7 / 0.40)!important}
-    #rb-root .border-yellow-800\/30{border-color:rgb(133 77 14 / 0.30)!important}
-    #rb-root .text-amber-200\/80{color:rgb(253 230 138 / 0.80)!important}
-    #rb-root .text-amber-300\/80{color:rgb(252 211 77 / 0.80)!important}
-    #rb-root .text-green-400\/90{color:rgb(74 222 128 / 0.90)!important}
-    #rb-root .text-purple-200\/70{color:rgb(233 213 255 / 0.70)!important}
-    #rb-root .text-purple-200\/80{color:rgb(233 213 255 / 0.80)!important}
-    #rb-root .text-purple-300\/80{color:rgb(216 180 254 / 0.80)!important}
-    #rb-root .text-purple-300\/90{color:rgb(216 180 254 / 0.90)!important}
-    /* Missing layout utilities (gap/space) + hover: opacity variants the
-       host JIT would generate but skips without node — same root cause
-       as the white-border bug (e.g. the status bar's `gap-x-4` was 0 so
-       its segments ran together: "mappedamps", "17IR map"). */
-    #rb-root .gap-1\.5{gap:0.375rem!important}
-    #rb-root .gap-x-4{column-gap:1rem!important}
-    #rb-root .gap-y-1{row-gap:0.25rem!important}
-    #rb-root .space-y-1>:not([hidden])~:not([hidden]){margin-top:0.25rem!important}
-    #rb-root .space-y-2>:not([hidden])~:not([hidden]){margin-top:0.5rem!important}
-    #rb-root .space-y-3>:not([hidden])~:not([hidden]){margin-top:0.75rem!important}
-    #rb-root .space-y-4>:not([hidden])~:not([hidden]){margin-top:1rem!important}
-    #rb-root .space-y-6>:not([hidden])~:not([hidden]){margin-top:1.5rem!important}
-    #rb-root .hover\:bg-amber-900\/30:hover{background-color:rgb(120 53 15 / 0.30)!important}
-    #rb-root .hover\:bg-amber-900\/45:hover{background-color:rgb(120 53 15 / 0.45)!important}
-    #rb-root .hover\:bg-cyan-600\/70:hover{background-color:rgb(8 145 178 / 0.70)!important}
-    #rb-root .hover\:bg-cyan-900\/50:hover{background-color:rgb(22 78 99 / 0.50)!important}
-    #rb-root .hover\:bg-emerald-900\/20:hover{background-color:rgb(6 78 59 / 0.20)!important}
-    #rb-root .hover\:bg-emerald-900\/30:hover{background-color:rgb(6 78 59 / 0.30)!important}
-    #rb-root .hover\:bg-emerald-900\/40:hover{background-color:rgb(6 78 59 / 0.40)!important}
-    #rb-root .hover\:bg-emerald-900\/50:hover{background-color:rgb(6 78 59 / 0.50)!important}
-    #rb-root .hover\:bg-emerald-900\/60:hover{background-color:rgb(6 78 59 / 0.60)!important}
-    #rb-root .hover\:bg-gray-800\/30:hover{background-color:rgb(31 41 55 / 0.30)!important}
-    #rb-root .hover\:bg-indigo-900\/20:hover{background-color:rgb(49 46 129 / 0.20)!important}
-    #rb-root .hover\:bg-indigo-900\/50:hover{background-color:rgb(49 46 129 / 0.50)!important}
-    #rb-root .hover\:bg-purple-600\/60:hover{background-color:rgb(147 51 234 / 0.60)!important}
-    #rb-root .hover\:bg-purple-900\/20:hover{background-color:rgb(88 28 135 / 0.20)!important}
-    #rb-root .hover\:bg-purple-900\/50:hover{background-color:rgb(88 28 135 / 0.50)!important}
-    #rb-root .hover\:bg-purple-900\/60:hover{background-color:rgb(88 28 135 / 0.60)!important}
-    #rb-root .hover\:bg-red-900\/50:hover{background-color:rgb(127 29 29 / 0.50)!important}
-    #rb-root .hover\:bg-red-900\/60:hover{background-color:rgb(127 29 29 / 0.60)!important}
-    #rb-root .hover\:bg-sky-900\/40:hover{background-color:rgb(12 74 110 / 0.40)!important}
-    #rb-root .hover\:bg-sky-900\/60:hover{background-color:rgb(12 74 110 / 0.60)!important}
-    #rb-root .hover\:border-emerald-700\/40:hover{border-color:rgb(4 120 87 / 0.40)!important}
-    #rb-root .hover\:border-sky-700\/40:hover{border-color:rgb(3 105 161 / 0.40)!important}
-    /* v3: the sidebar + Plugins page handle navigation, so the legacy
-       in-plugin "< Back" is redundant — hide it inside #v3-main only.
-       The legacy desktop keeps it. */
+    /* v3: sidebar + Plugins page own navigation, so hide the legacy "< Back". */
     #v3-main #rb-root .rb-back{display:none!important}
 </style>
 <div id="rb-root" class="max-w-5xl mx-auto px-6 pt-24 pb-16">

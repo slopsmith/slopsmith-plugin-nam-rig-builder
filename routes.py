@@ -8082,6 +8082,25 @@ def setup(app, context):
         return Response(content=data, media_type="application/javascript",
                         headers={"Cache-Control": "no-cache"})
 
+    @app.get("/api/plugins/rig_builder/asset/rb.css")
+    def asset_rb_css():
+        """Serve the plugin's self-contained Tailwind stylesheet. The host
+        regenerates tailwind.min.css to cover an installed plugin's classes,
+        but several builds skip that rebuild (no node), leaving classes the
+        host itself doesn't use undefined (white borders, collapsed `gap-x-4`,
+        etc.). We ship our own Tailwind build (`tools/build_tailwind.sh` →
+        assets/rb.css, scoped to #rb-root) so the look is correct everywhere,
+        independent of the host rebuild. screen.js injects it as a <link>."""
+        path = _plugin_dir / "assets" / "rb.css"
+        if not path.exists():
+            return JSONResponse({"error": "missing"}, 404)
+        try:
+            data = path.read_bytes()
+        except OSError as e:
+            return JSONResponse({"error": str(e)}, 500)
+        return Response(content=data, media_type="text/css",
+                        headers={"Cache-Control": "no-cache"})
+
     @app.post("/api/plugins/rig_builder/piece_variant_override")
     def piece_variant_override(data: dict = Body(...)):
         """Force a specific variant on ONE preset's gear piece.

@@ -19,6 +19,20 @@
         document.head.appendChild(sc);
     }
 
+    // Self-contained Tailwind stylesheet (assets/rb.css, built by
+    // tools/build_tailwind.sh). The host regenerates tailwind.min.css to cover
+    // a plugin's classes, but several builds skip that rebuild (no node) —
+    // leaving classes the host itself doesn't use undefined (white borders,
+    // collapsed `gap-x-4`, etc.). Loading our own build makes the UI correct
+    // everywhere, independent of the host rebuild.
+    if (!document.getElementById('rb-css')) {
+        const lk = document.createElement('link');
+        lk.id = 'rb-css';
+        lk.rel = 'stylesheet';
+        lk.href = '/api/plugins/rig_builder/asset/rb.css';
+        document.head.appendChild(lk);
+    }
+
     const origShowScreen = window.showScreen;
     if (typeof origShowScreen === 'function') {
         window.showScreen = function (id) {
