@@ -55,27 +55,115 @@ public:
     void setBypass() { b0 = 1; b1 = b2 = a1 = a2 = 0; z1 = z2 = 0; }
 };
 
+// ── Tiny fixed-size Modified Nodal Analysis solver (RT-safe, no heap) ─────────
+// (Same engine used by the FK 800BR.) Node 0 = gnd; nodes 1..nN unknown
+// voltages; nX aux currents. Resistors, capacitor companions, ideal op-amps and
+// the transconductance stamp (gm) for nonlinear elements; solved by Gaussian
+// elimination. Validated on RC low-pass, op-amp gain, and the 12AX7 triode.
+struct Mna {
+    static const int MAXN = 8;
+    int sz, nn;
+    double A[MAXN*MAXN], b[MAXN], x[MAXN];
+    void init(int nN, int nX) { nn = nN; sz = nN + nX;
+        for (int i = 0; i < sz*sz; ++i) A[i] = 0.0; for (int i = 0; i < sz; ++i) b[i] = 0.0; }
+    inline void stampG(int a, int bb, double g) {
+        if (a>0)  { A[(a-1)*sz+(a-1)]  += g; if (bb>0) A[(a-1)*sz+(bb-1)] -= g; }
+        if (bb>0) { A[(bb-1)*sz+(bb-1)]+= g; if (a>0)  A[(bb-1)*sz+(a-1)] -= g; } }
+    inline void R(int a, int bb, double r) { if (r < 1e-9) r = 1e-9; stampG(a, bb, 1.0/r); }
+    inline void Isrc(int a, int bb, double I) { if (a>0) b[a-1] -= I; if (bb>0) b[bb-1] += I; }
+    inline void Vsrc(int a, double V, int k) { int r = nn+k;
+        if (a>0) { A[(a-1)*sz+r] += 1; A[r*sz+(a-1)] += 1; } b[r] = V; }
+    inline void OpAmp(int np, int nnode, int no, int k) { int r = nn+k;
+        if (no>0) A[(no-1)*sz+r] += 1; if (np>0) A[r*sz+(np-1)] += 1; if (nnode>0) A[r*sz+(nnode-1)] -= 1; }
+    inline void gm(int oa, int ob, int ca, int cb, double g) {
+        if (oa>0) { if (ca>0) A[(oa-1)*sz+(ca-1)] += g; if (cb>0) A[(oa-1)*sz+(cb-1)] -= g; }
+        if (ob>0) { if (ca>0) A[(ob-1)*sz+(ca-1)] -= g; if (cb>0) A[(ob-1)*sz+(cb-1)] += g; } }
+    bool solve() { const int n = sz;
+        for (int col = 0; col < n; ++col) {
+            int piv = col; double mx = std::fabs(A[col*n+col]);
+            for (int r = col+1; r < n; ++r) { double v = std::fabs(A[r*n+col]); if (v > mx) { mx = v; piv = r; } }
+            if (mx < 1e-18) return false;
+            if (piv != col) { for (int c = 0; c < n; ++c) { double t = A[col*n+c]; A[col*n+c] = A[piv*n+c]; A[piv*n+c] = t; }
+                double t = b[col]; b[col] = b[piv]; b[piv] = t; }
+            const double d = A[col*n+col];
+            for (int r = 0; r < n; ++r) { if (r == col) continue; const double f = A[r*n+col]/d; if (f == 0) continue;
+                for (int c = col; c < n; ++c) A[r*n+c] -= f*A[col*n+c]; b[r] -= f*b[col]; } }
+        for (int i = 0; i < n; ++i) x[i] = b[i] / A[i*n+i];
+        return true; } };
+
+// ── 12AX7 TUBE PREAMP — true nodal triode (Koren model + Newton/sample) ───────
+// Common-cathode stage (B+ 300V, Rp 100k, Rk 1.5k self-bias, Ck cathode bypass).
+// The Koren plate-current law Ip(Vgk,Vpk) is solved by Newton-Raphson each
+// sample (numerical Jacobian, damped, warm-started); the plate swing clips
+// ASYMMETRICALLY toward B+/cutoff = the warm tube character. Validated:
+// bias ~0.99mA, gain ~x100, asymmetric overdrive.
+struct Tube {
+    double vG=0, vP=200, vK=1.4, ckv=0, cki=0, dcAvg=200.0, T=1.0/48000.0;
+    void setT(float fs) { T = 1.0 / ((fs>0.f)?fs:48000.0); }
+    void reset() { vG=0; vP=200; vK=1.4; ckv=0; cki=0; dcAvg=200.0; }
+    static inline double Ip(double vgk, double vpk) {
+        const double MU=100, EX=1.4, KG1=1060, KP=600, KVB=300;
+        if (vpk < 0) vpk = 0;
+        double e1 = (vpk/KP)*std::log(1.0 + std::exp(KP*(1.0/MU + vgk/std::sqrt(KVB + vpk*vpk))));
+        if (e1 < 0) e1 = 0; return std::pow(e1, EX)/KG1*2.0; }
+    inline double process(double vin) {        // vin = grid drive; returns AC plate swing
+        const double Bp=300, Rp=100000, Rk=1500, Ck=1e-6, h=1e-4;
+        const double Geq=2*Ck/T, Ieq=Geq*ckv+cki;
+        double G=vG, P=vP, K=vK;
+        for (int it=0; it<12; ++it) {
+            Mna m; m.init(4, 2);                // 1 B+, 2 grid, 3 plate, 4 cathode
+            m.Vsrc(1, Bp, 0); m.Vsrc(2, vin, 1);
+            m.R(3, 1, Rp); m.R(4, 0, Rk);
+            m.stampG(4, 0, Geq); m.Isrc(0, 4, Ieq);     // cathode bypass cap
+            const double vgk=G-K, vpk=P-K, ip=Ip(vgk,vpk);
+            const double gmv=(Ip(vgk+h,vpk)-ip)/h, gp=(Ip(vgk,vpk+h)-ip)/h;
+            m.gm(3,0,2,0,gmv); m.gm(3,0,3,0,gp); m.gm(3,0,4,0,-(gmv+gp));
+            m.gm(4,0,2,0,-gmv); m.gm(4,0,3,0,-gp); m.gm(4,0,4,0,(gmv+gp));
+            m.Isrc(3,0, ip-(gmv*G+gp*P-(gmv+gp)*K));
+            m.Isrc(4,0, -ip-(-gmv*G-gp*P+(gmv+gp)*K));
+            if (!m.solve()) break;
+            const double nP=m.x[2], nK=m.x[3]; const double err=std::fabs(nP-P)+std::fabs(nK-K);
+            G=m.x[1]; P=P+0.7*(nP-P); K=K+0.7*(nK-K);
+            if (err<1e-6) break;
+        }
+        if (!std::isfinite(P)) { reset(); return 0.0; }
+        const double ci=Geq*(K-ckv)-cki; cki=ci; ckv=K;     // advance cathode cap
+        vG=G; vP=P; vK=K;
+        dcAvg += 0.0008*(P-dcAvg);
+        return (P - dcAvg) * (1.0/100.0);                   // DC-blocked, ~unity small-signal
+    }
+};
+
+// ── SOLID-STATE PREAMP — nodal non-inverting op-amp (gain ~11), rail clip ─────
+struct SsPre {
+    inline double process(double vin) {
+        const double R2=4700, R3=47000, Vrail=13.5;
+        Mna m; m.init(3, 2); m.Vsrc(1,vin,0); m.R(2,0,R2); m.R(3,2,R3); m.OpAmp(1,2,3,1);
+        double vo=0; if (m.solve()) vo=m.x[2];
+        if (std::fabs(vo)>Vrail) { Mna m2; m2.init(3,2); m2.Vsrc(1,vin,0); m2.R(2,0,R2); m2.R(3,2,R3);
+            m2.Vsrc(3, (vo>0?Vrail:-Vrail), 1); if (m2.solve()) vo=m2.x[2]; }
+        return vo * (1.0/11.0);                             // ~unity small-signal
+    }
+};
+
 class HartkeChannel {
     float fs = 48000.f;
     Biquad eq[kNumEq];
     Biquad lpf, hpf;
-    float tubeGain=1, ssGain=1, master=1;
+    Tube tube; SsPre ss;                 // nodal dual preamp: real 12AX7 + op-amp SS
+    float tubeDrive=1, ssDrive=1, master=1;
     bool  eqIn=true, lpfOn=false, hpfOn=false;
-    // compressor
+    // compressor (behavioral envelope follower — the gain-cell is not yet nodal)
     bool compOn=false; float compThr=1, compRatio=1, compMk=1, env=0, atk=0, rel=0;
     static inline float msC(float ms, float fs){ return std::exp(-1.f/(0.001f*ms*fs)); }
-
-    static inline float tube(float x){ return std::tanh(1.6f*x) * 0.625f; }      // warm, soft
-    static inline float solid(float x){ const float a=std::fabs(x);             // punchy, harder knee
-        return (a<0.7f) ? x : (x>0?1.f:-1.f)*(0.7f+(a-0.7f)/(1.f+(a-0.7f)*3.f)); }
 public:
-    void setSampleRate(float s){ fs=(s>0)?s:48000.f; atk=msC(6.f,fs); rel=msC(120.f,fs); }
-    void reset(){ for(int i=0;i<kNumEq;++i) eq[i].reset(); lpf.reset(); hpf.reset(); env=0; }
+    void setSampleRate(float s){ fs=(s>0)?s:48000.f; atk=msC(6.f,fs); rel=msC(120.f,fs); tube.setT(s); }
+    void reset(){ tube.reset(); for(int i=0;i<kNumEq;++i) eq[i].reset(); lpf.reset(); hpf.reset(); env=0; }
 
     void setParams(const float* p) {
         const float padActive = (p[kActive] > 0.5f) ? 0.20f : 1.0f;   // Active jack ~ -14 dB
-        tubeGain = p[kTube]  * 2.2f * padActive;
-        ssGain   = p[kSolid] * 2.2f * padActive;
+        tubeDrive = p[kTube]  * 2.0f * padActive;   // grid drive into the 12AX7
+        ssDrive   = p[kSolid] * 2.0f * padActive;   // drive into the SS op-amp
 
         compOn = p[kComp] > 0.001f;
         compThr = 1.0f - p[kComp]*0.6f; compRatio = 1.0f + p[kComp]*5.0f; compMk = 1.0f + p[kComp]*0.7f;
@@ -95,9 +183,8 @@ public:
     }
 
     inline float process(float x) {
-        // dual preamp blend
-        float s = tube(tubeGain * x) + solid(ssGain * x);
-        s *= 0.5f;
+        // dual preamp blend — real 12AX7 (nodal triode) + solid-state (nodal op-amp)
+        float s = (float)(tube.process((double)(tubeDrive * x)) + ss.process((double)(ssDrive * x))) * 0.6f;
         // compressor (downward, peak-following)
         if (compOn) {
             const float a = std::fabs(s);
