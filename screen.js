@@ -665,6 +665,49 @@ function rbSafeCapabilityId(value, fallback) {
         .slice(0, 96) || fallback || 'unknown';
 }
 
+function rbAudioEffectsMappingApi() {
+    const api = rbAudioEffectsApi();
+    return api && typeof api.upsertMapping === 'function' ? api : null;
+}
+
+function rbPresetProviderRef(presetId) {
+    return `preset:${presetId}`;
+}
+
+function rbPresetIdFromProviderRef(providerRef) {
+    const value = String(providerRef || '').trim();
+    if (!value) return '';
+    const local = value.match(/^preset:(.+)$/);
+    if (local) return local[1];
+    const qualified = value.match(/^rig-builder:preset:(.+)$/);
+    if (qualified) return qualified[1];
+    return /^\d+$/.test(value) ? value : '';
+}
+
+function rbSongKeyForMapping(filename) {
+    const key = String(window.__rbPlaybackSettingsKey || '').trim();
+    const keyFilename = String(window.__rbPlaybackSettingsFilename || '').trim();
+    if (key && (!keyFilename || keyFilename === filename)) return key;
+    return filename || '';
+}
+
+async function rbUpsertAudioEffectsMapping({ filename, toneKey, presetId, label, source, active }) {
+    const api = rbAudioEffectsMappingApi();
+    if (!api || typeof api.upsertMapping !== 'function' || !presetId) return null;
+    const mappingFilename = String(filename || '');
+    return api.upsertMapping({
+        song_key: rbSongKeyForMapping(mappingFilename),
+        filename: mappingFilename,
+        tone_key: String(toneKey || ''),
+        provider_id: RB_EFFECTS_PARTICIPANT_ID,
+        provider_ref: rbPresetProviderRef(presetId),
+        label: String(label || ''),
+        source: source || 'manual',
+        active: active !== false,
+        metadata: { legacy_preset_id: String(presetId) },
+    });
+}
+
 function rbShortSafeText(value, fallback) {
     const text = String(value == null ? '' : value)
         .replace(/[\u0000-\u001f\u007f]+/g, ' ')
@@ -806,7 +849,8 @@ function rbBuildAudioEffectsRequestFromPayload(payload, options) {
 async function rbFetchAudioEffectsPayloadForRequest(request) {
     const target = request && request.target && typeof request.target === 'object' ? request.target : {};
     const planRequest = request && request.planRequest && typeof request.planRequest === 'object' ? request.planRequest : {};
-    const presetId = target.presetId || request && request.presetId || planRequest.presetId;
+    const providerRef = target.providerRef || target.provider_ref || request && (request.providerRef || request.provider_ref) || planRequest.providerRef || planRequest.provider_ref || '';
+    const presetId = target.presetId || target.preset_id || request && request.presetId || planRequest.presetId || rbPresetIdFromProviderRef(providerRef);
     if (presetId != null && presetId !== '') {
         const resp = await fetch(`${RB_API}/native_preset_full/${encodeURIComponent(presetId)}`);
         if (!resp.ok) return { outcome: 'no-target', status: 'preset-unavailable', reason: `Rig Builder preset plan unavailable: HTTP ${resp.status}` };
@@ -843,6 +887,7 @@ async function rbLoadChainPlanWithHost(payload, options) {
         providerId: RB_EFFECTS_PARTICIPANT_ID,
         target: {
             presetId: targetPresetId,
+            providerRef: targetPresetId ? rbPresetProviderRef(targetPresetId) : '',
             filename: targetFilename,
             source: 'rig-builder-ui',
         },
@@ -2107,6 +2152,7 @@ const RbMegaChain = (function () {
             window.slopsmith.on('playback:ready', (event) => {
                 const target = rbPlaybackTargetFromDetail(event && event.detail || {});
                 if (target.settingsKey) window.__rbPlaybackSettingsKey = target.settingsKey;
+                if (target.filename) window.__rbPlaybackSettingsFilename = target.filename;
                 if (!target.filename) {
                     console.log('[rig_builder mega-chain] playback:ready observed but no local filename is available; waiting for legacy/currentSong fallback');
                     return;
@@ -6690,6 +6736,7 @@ async function rbUploadFile(input, toneIdx, pIdx) {
 // only load a *saved* preset id, so previewing has to persist first.
 async function rbPersistTone(toneIdx, filename) {
     const tone = rbState.songTones.tones[toneIdx];
+    filename = filename || rbState.currentSongFile;
     const pieces = tone.chain.map(p => {
         // VST takes priority over NAM/IR when the user has explicitly
         // picked one (either pending via _vst_path or persisted via assigned).
@@ -6741,7 +6788,35 @@ async function rbPersistTone(toneIdx, filename) {
             return null;
         }
         const body = await r.json().catch(() => ({}));
-        return body.preset_id ?? null;
+        const presetId = body.preset_id ?? null;
+        if (presetId !== null) {
+            const toneKey = tone.key || tone.name;
+            await rbUpsertAudioEffectsMapping({
+                filename,
+                toneKey,
+                presetId,
+                label: tone.name || toneKey,
+                source: 'manual',
+                active: true,
+            }).catch(e => console.warn('[rig_builder] audio-effects mapping save failed:', e.message));
+            const mirroredRows = Array.isArray(body.mirrored_presets) && body.mirrored_presets.length
+                ? body.mirrored_presets
+                : (Array.isArray(body.mirrored) ? body.mirrored.map(name => ({ filename: name, preset_id: presetId })) : []);
+            for (const mirrored of mirroredRows) {
+                const mirroredFilename = mirrored && mirrored.filename;
+                const mirroredPresetId = mirrored && (mirrored.preset_id ?? mirrored.presetId) || presetId;
+                if (!mirroredFilename) continue;
+                rbUpsertAudioEffectsMapping({
+                    filename: mirroredFilename,
+                    toneKey,
+                    presetId: mirroredPresetId,
+                    label: tone.name || toneKey,
+                    source: 'manual-mirror',
+                    active: true,
+                }).catch(e => console.warn('[rig_builder] mirrored audio-effects mapping save failed:', e.message));
+            }
+        }
+        return presetId;
     } catch (e) {
         alert(`Save failed: ${e.message}`);
         return null;

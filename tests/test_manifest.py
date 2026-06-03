@@ -56,4 +56,16 @@ def test_screen_registers_executable_audio_effects_provider():
     assert "rbLoadChainPlanWithHost" in src
     assert "loadPlan" in src
     assert "rbLoadNativePresetPayload" in src
+    assert "rbUpsertAudioEffectsMapping" in src
+    assert "provider_ref: rbPresetProviderRef(presetId)" in src
+    assert "rbPresetIdFromProviderRef(providerRef)" in src
+    assert "body.mirrored_presets" in src
+    assert "window.__rbPlaybackSettingsFilename" in src
     assert "slopsmithDesktop.audioEffects" not in src
+
+
+def test_routes_return_mirrored_preset_ids_for_mapping_refs():
+    src = (ROOT / "routes.py").read_text()
+
+    assert "mirrored_presets" in src
+    assert "mirror_preset_id = _persist_preset_chain" in src

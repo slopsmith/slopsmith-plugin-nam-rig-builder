@@ -6369,22 +6369,24 @@ def setup(app, context):
         # different depending on which file got played. Matched by canonical
         # name (ext + the psarc "_p" marker dropped).
         mirrored = []
+        mirrored_presets = []
         try:
             ckey = _canonical_song_key(filename)
             sibs = [r[0] for r in _get_conn().execute(
                 "SELECT DISTINCT filename FROM tone_mappings WHERE filename != ?", (filename,)
             ).fetchall() if _canonical_song_key(r[0]) == ckey]
             for sib in sibs:
-                _persist_preset_chain(
+                mirror_preset_id = _persist_preset_chain(
                     filename=sib, tone_key=tone_key,
                     name=f"{sib}::{tone_key or 'tone'}", pieces=pieces,
                     input_gain=in_gain, output_gain=out_gain, gate_threshold=gate,
                     assigned_mode=mode,
                 )
                 mirrored.append(sib)
+                mirrored_presets.append({"filename": sib, "preset_id": mirror_preset_id})
         except Exception:
             log.warning("save_preset: mirror to sibling format failed", exc_info=True)
-        return {"ok": True, "preset_id": preset_id, "mirrored": mirrored}
+        return {"ok": True, "preset_id": preset_id, "mirrored": mirrored, "mirrored_presets": mirrored_presets}
 
     # ── Export current gear→capture assignments as shipped defaults ───
     @app.post("/api/plugins/nam_rig_builder/export_default_captures")
