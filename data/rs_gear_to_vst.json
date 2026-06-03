@@ -2075,5 +2075,16 @@
    "bundled": "vst/amps/SamplegSBTCL.vst3",
    "notes": "Bundled Ampeg SVT-CL style all-tube bass head (Rocksmith 'BT975B'); preamp modeled from the documented SVT-CL circuit, using Rocksmith's Gain, Bass, Mid, and Treble knobs."
   }
+ ],
+ "Bass_Amp_CS300B": [
+  {
+   "name": "SharkeHB3500",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/amps/SharkeHB3500.vst3",
+   "notes": "Bundled Hartke HA3500 style bass head (Rocksmith 'CS300B'): tube+solid-state preamp blend, compressor, 10-band graphic EQ, low/high-pass, master. Modeled from the HA3500 circuit diagram. RS Gain->Solid State; RS Bass/Mid/Treble->graphic-EQ 125/500/4k bands."
+  }
  ]
 }

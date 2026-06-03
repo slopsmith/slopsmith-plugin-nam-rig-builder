@@ -105,6 +105,17 @@
     rr(c, cx-cw/2, y-ch/2, cw, ch, 3*s); c.strokeStyle = rgb(8,8,10); c.lineWidth = 1*s; c.stroke();
     c.beginPath(); c.moveTo(cx, y-ch/2+3*s); c.lineTo(cx, y+ch/2-3*s); c.strokeStyle = rgb(228,230,234); c.lineWidth = 1.4*s; c.stroke(); }
 
+  // vertical fader (graphic-EQ band): recessed track + draggable cap with a
+  // white indicator line. val 0..1 bottom->top. Wired via spec.faders in attach.
+  function vfader(d, cx, y0, y1, val) { const c = d.ctx, s = d.s;
+    rr(c, cx-2.5*s, y0, 5*s, y1-y0, 2.5*s); c.fillStyle = rgb(18,18,20); c.fill();
+    rr(c, cx-2.5*s, y0, 5*s, y1-y0, 2.5*s); c.strokeStyle = rgb(70,72,76); c.lineWidth = 0.8*s; c.stroke();
+    const cy = y1 - clamp(val,0,1)*(y1-y0), cw = 16*s, ch = 11*s;
+    const g = c.createLinearGradient(cx-cw/2, cy-ch/2, cx+cw/2, cy+ch/2); g.addColorStop(0, rgb(66,68,72)); g.addColorStop(1, rgb(26,26,28));
+    rr(c, cx-cw/2, cy-ch/2, cw, ch, 2*s); c.fillStyle = g; c.fill();
+    rr(c, cx-cw/2, cy-ch/2, cw, ch, 2*s); c.strokeStyle = rgb(10,10,12); c.lineWidth = 1*s; c.stroke();
+    c.beginPath(); c.moveTo(cx-cw/2+2*s, cy); c.lineTo(cx+cw/2-2*s, cy); c.strokeStyle = rgb(228,230,234); c.lineWidth = 1.3*s; c.stroke(); }
+
   function setFont(d, family, px) { d.ctx.font = `${px*d.s}px ${family}, sans-serif`; }
   function textC(d, cx, cy, family, px, col, str, align) {
     const c=d.ctx; setFont(d,family,px); c.fillStyle=col; c.textAlign=align||'center'; c.textBaseline='middle';
@@ -529,6 +540,71 @@
       diamond(.052*W, gy, 12, 'S', 14);
       textC(d,.097*W,gy,F.bebas,28,rgb(232,234,238),'Sampleg','left');
       textC(d,.955*W,gy,F.crete,17,rgb(150,152,158),'Heritage','right'); } };
+
+  // ── Sharke HB3500 — faithful Hartke HA3500 silver panel (parody) ────────────
+  // Silver control panel: Passive/Active inputs + Active pad, Tube + Solid State
+  // + Compression knobs, a 10-band graphic EQ (vertical faders 30..16k) with an
+  // EQ-In switch, Low Pass / High Pass / Volume knobs, a power rocker, and the
+  // Sharke wordmark + MODEL HB3500 along the bottom.
+  // Logical ids: 0 Tube 1 Solid 2 Comp 3 LowPass 4 HighPass 5 Volume |
+  //   6..15 EQ 30/64/125/250/500/1k/2k/4k/8k/16k | 16 Active 17 EQ In
+  P.sharkehb3500 = { w:960, h:300,
+    knobs:[
+      {id:0,cx:.170,cy:.40,r:.023,style:'pointer',cap:[26,26,28]},
+      {id:1,cx:.245,cy:.40,r:.023,style:'pointer',cap:[26,26,28]},
+      {id:2,cx:.320,cy:.40,r:.023,style:'pointer',cap:[26,26,28]},
+      {id:3,cx:.775,cy:.40,r:.023,style:'pointer',cap:[26,26,28]},
+      {id:4,cx:.840,cy:.40,r:.023,style:'pointer',cap:[26,26,28]},
+      {id:5,cx:.905,cy:.40,r:.023,style:'pointer',cap:[26,26,28]}],
+    switches:[
+      {id:16,cx:.103,cy:.40,hs:.011,dark:true},
+      {id:17,cx:.405,cy:.40,hs:.011,dark:true}],
+    faders:[
+      {id:6,cx:.440,y0:.27,y1:.56},{id:7,cx:.4725,y0:.27,y1:.56},{id:8,cx:.505,y0:.27,y1:.56},
+      {id:9,cx:.5375,y0:.27,y1:.56},{id:10,cx:.570,y0:.27,y1:.56},{id:11,cx:.6025,y0:.27,y1:.56},
+      {id:12,cx:.635,y0:.27,y1:.56},{id:13,cx:.6675,y0:.27,y1:.56},{id:14,cx:.700,y0:.27,y1:.56},
+      {id:15,cx:.7325,y0:.27,y1:.56}],
+    tick:rgb(74,76,82), ptr:rgb(245,246,249),
+    draw(d,vals){ vals=vals||{}; const {ctx:c,W,H}=d;
+      const ink=rgb(30,31,35), dim=rgb(92,94,100);
+      box(d, 26,27,30, true);
+      const PL=.03*W,PT=.07*H,PW=.94*W,PH=.62*H;
+      const pg=c.createLinearGradient(0,PT,0,PT+PH); pg.addColorStop(0,rgb(202,204,208)); pg.addColorStop(.5,rgb(180,182,188)); pg.addColorStop(1,rgb(158,160,166));
+      rr(c,PL,PT,PW,PH,4); c.fillStyle=pg; c.fill();
+      c.save(); rr(c,PL,PT,PW,PH,4); c.clip();
+      for(let x=PL;x<PL+PW;x+=2){ c.strokeStyle=(((x|0)%4)?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.045)'); c.lineWidth=1; c.beginPath(); c.moveTo(x,PT); c.lineTo(x,PT+PH); c.stroke(); }
+      c.restore();
+      rr(c,PL,PT,PW,PH,4); c.strokeStyle=rgb(118,120,126); c.lineWidth=1.5; c.stroke();
+      const engrave=(x,y,w,h)=>{ rr(c,x,y+1.5,w,h,5); c.strokeStyle='rgba(255,255,255,0.5)'; c.lineWidth=1; c.stroke(); rr(c,x,y,w,h,5); c.strokeStyle=rgb(112,114,120); c.lineWidth=1.2; c.stroke(); };
+      const lab=(cx,y,sz,t,col)=>textC(d,cx*W,y*H,F.barlow,sz,col||ink,t);
+      // input box
+      const ibx=.04*W,iby=.13*H,ibw=.092*W,ibh=.44*H;
+      rr(c,ibx,iby,ibw,ibh,4); c.fillStyle=rgb(150,152,158); c.fill(); rr(c,ibx,iby,ibw,ibh,4); c.strokeStyle=rgb(106,108,114); c.lineWidth=1.2; c.stroke();
+      const jack=(x,y)=>{ c.beginPath(); c.arc(x,y,7,0,7); c.fillStyle=rgb(14,14,16); c.fill(); c.strokeStyle=rgb(88,90,96); c.lineWidth=1.3; c.stroke(); c.beginPath(); c.arc(x,y,3,0,7); c.fillStyle=rgb(34,34,38); c.fill(); };
+      jack(ibx+ibw*0.30, iby+ibh*0.24); jack(ibx+ibw*0.30, iby+ibh*0.58);
+      textC(d,ibx+ibw*0.58,iby+ibh*0.24,F.barlow,6.5,ink,'PASS','left'); textC(d,ibx+ibw*0.58,iby+ibh*0.58,F.barlow,6.5,ink,'ACT','left');
+      lab(.103,.61,7.5,'ACTIVE');
+      // engraved frames
+      engrave(.148*W, PT+8, .247*W, PH-16);
+      engrave(.422*W, PT+8, .325*W, PH-16);
+      engrave(.753*W, PT+8, PL+PW-8 - .753*W, PH-16);
+      // left knob labels
+      [[.170,'TUBE'],[.245,'SOLID ST'],[.320,'COMP']].forEach(k=>lab(k[0],.59,8.5,k[1]));
+      // EQ band freq labels above the faders + section legend below
+      const ef=['30','64','125','250','500','1k','2k','4k','8k','16k'];
+      const fx=[.440,.4725,.505,.5375,.570,.6025,.635,.6675,.700,.7325];
+      for(let i=0;i<10;i++) textC(d,fx[i]*W,.225*H,F.barlow,7,dim,ef[i]);
+      lab(.586,.62,8,'GRAPHIC EQUALIZER');
+      // right knob labels
+      [[.775,'LOW PASS'],[.840,'HIGH PASS'],[.905,'VOLUME']].forEach(k=>lab(k[0],.59,8,k[1]));
+      // power rocker
+      const px=.958*W,py=.40*H; rr(c,px-10,py-19,20,38,3); c.fillStyle=rgb(20,20,22); c.fill();
+      rr(c,px-10,py-19,20,38,3); c.strokeStyle=rgb(70,72,76); c.lineWidth=1.2; c.stroke(); rr(c,px-7,py-17,14,17,2); c.fillStyle=rgb(176,32,30); c.fill();
+      textC(d,px,.61*H,F.barlow,7,ink,'POWER');
+      // wordmark + model below the panel
+      const gy=.85*H;
+      textC(d,.04*W,gy,F.bebas,27,rgb(232,234,238),'Sharke','left');
+      textC(d,.955*W,gy,F.barlow,9.5,rgb(150,152,158),'MODEL HB3500  ·  350 WATTS','right'); } };
 
   P.mouse = { w:320,h:500, knobs:[
       {id:0,cx:.215,cy:.305,r:.105,style:'pointer',cap:[26,26,28]},
@@ -3237,6 +3313,10 @@
       const v = (values && values[sl.id] != null) ? values[sl.id] : 0.5;
       hSlider(d, sl.x0 * d.W, sl.x1 * d.W, sl.y * d.H, v);
     });
+    (spec.faders || []).forEach(fd => {
+      const v = (values && values[fd.id] != null) ? values[fd.id] : 0.5;
+      vfader(d, fd.cx * d.W, fd.y0 * d.H, fd.y1 * d.H, v);
+    });
   }
   function render(canvas, stem, values) {
     const spec = P[stem]; if (!spec) return false;
@@ -3250,7 +3330,8 @@
     drawSpec(canvas, spec, values);
     if (!opts.interactive) return true;
     const G = spec.eq ? eqGeom(spec) : null;
-    let drag = -1, sdrag = -1, lastY = 0, dv = 0;
+    let drag = -1, sdrag = -1, fdrag = -1, lastY = 0, dv = 0;
+    const faderVal = (fd, py) => clamp(1 - (py - fd.y0*spec.h) / ((fd.y1-fd.y0)*spec.h), 0, 1);
     const toSpec = (clientX, clientY) => { const rect = canvas.getBoundingClientRect();
       const sx = spec.w / canvas.clientWidth, sy = spec.h / (canvas.clientHeight || 1);
       return { x: (clientX - rect.left) * sx, y: (clientY - rect.top) * sy }; };
@@ -3291,6 +3372,15 @@
           e.preventDefault(); return;
         }
       }
+      // Vertical faders (graphic EQ): click/drag sets value by y position.
+      for (let i = 0; i < (spec.faders || []).length; i++) {
+        const fd = spec.faders[i];
+        if (Math.abs(p.x - fd.cx*spec.w) <= 12 && p.y >= fd.y0*spec.h - 12 && p.y <= fd.y1*spec.h + 12) {
+          fdrag = i; const v = faderVal(fd, p.y); values[fd.id] = v;
+          drawSpec(canvas, spec, values); if (opts.onChange) opts.onChange(fd.id, v);
+          e.preventDefault(); return;
+        }
+      }
       const k = hitKnob(p.x, p.y); if (k < 0) return;
       const kn = spec.knobs[k];
       // Selector knob (e.g. MODE): a click steps through `select` discrete
@@ -3306,6 +3396,8 @@
       dv = (values[kn.id] != null) ? values[kn.id] : 0.5; e.preventDefault();
     });
     window.addEventListener('mousemove', e => {
+      if (fdrag >= 0) { const p = toSpec(e.clientX, e.clientY); const fd = spec.faders[fdrag];
+        const v = faderVal(fd, p.y); values[fd.id] = v; drawSpec(canvas, spec, values); if (opts.onChange) opts.onChange(fd.id, v); return; }
       if (sdrag >= 0) { const p = toSpec(e.clientX, e.clientY); const sl = spec.sliders[sdrag];
         const sx0 = sl.x0 * spec.w, sx1 = sl.x1 * spec.w; const v = clamp((p.x - sx0) / (sx1 - sx0), 0, 1);
         values[sl.id] = v; drawSpec(canvas, spec, values); if (opts.onChange) opts.onChange(sl.id, v); return; }
@@ -3316,7 +3408,7 @@
       const id = spec.knobs[drag].id; values[id] = dv;
       drawSpec(canvas, spec, values); if (opts.onChange) opts.onChange(id, dv);
     });
-    window.addEventListener('mouseup', () => { drag = -1; sdrag = -1; });
+    window.addEventListener('mouseup', () => { drag = -1; sdrag = -1; fdrag = -1; });
     return true;
   }
   function dataURL(stem, values) {
