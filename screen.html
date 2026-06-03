@@ -122,9 +122,47 @@
     #rb-root .text-purple-200\/80{color:rgb(233 213 255 / 0.80)!important}
     #rb-root .text-purple-300\/80{color:rgb(216 180 254 / 0.80)!important}
     #rb-root .text-purple-300\/90{color:rgb(216 180 254 / 0.90)!important}
+    /* Missing layout utilities (gap/space) + hover: opacity variants the
+       host JIT would generate but skips without node — same root cause
+       as the white-border bug (e.g. the status bar's `gap-x-4` was 0 so
+       its segments ran together: "mappedamps", "17IR map"). */
+    #rb-root .gap-1\.5{gap:0.375rem!important}
+    #rb-root .gap-x-4{column-gap:1rem!important}
+    #rb-root .gap-y-1{row-gap:0.25rem!important}
+    #rb-root .space-y-1>:not([hidden])~:not([hidden]){margin-top:0.25rem!important}
+    #rb-root .space-y-2>:not([hidden])~:not([hidden]){margin-top:0.5rem!important}
+    #rb-root .space-y-3>:not([hidden])~:not([hidden]){margin-top:0.75rem!important}
+    #rb-root .space-y-4>:not([hidden])~:not([hidden]){margin-top:1rem!important}
+    #rb-root .space-y-6>:not([hidden])~:not([hidden]){margin-top:1.5rem!important}
+    #rb-root .hover\:bg-amber-900\/30:hover{background-color:rgb(120 53 15 / 0.30)!important}
+    #rb-root .hover\:bg-amber-900\/45:hover{background-color:rgb(120 53 15 / 0.45)!important}
+    #rb-root .hover\:bg-cyan-600\/70:hover{background-color:rgb(8 145 178 / 0.70)!important}
+    #rb-root .hover\:bg-cyan-900\/50:hover{background-color:rgb(22 78 99 / 0.50)!important}
+    #rb-root .hover\:bg-emerald-900\/20:hover{background-color:rgb(6 78 59 / 0.20)!important}
+    #rb-root .hover\:bg-emerald-900\/30:hover{background-color:rgb(6 78 59 / 0.30)!important}
+    #rb-root .hover\:bg-emerald-900\/40:hover{background-color:rgb(6 78 59 / 0.40)!important}
+    #rb-root .hover\:bg-emerald-900\/50:hover{background-color:rgb(6 78 59 / 0.50)!important}
+    #rb-root .hover\:bg-emerald-900\/60:hover{background-color:rgb(6 78 59 / 0.60)!important}
+    #rb-root .hover\:bg-gray-800\/30:hover{background-color:rgb(31 41 55 / 0.30)!important}
+    #rb-root .hover\:bg-indigo-900\/20:hover{background-color:rgb(49 46 129 / 0.20)!important}
+    #rb-root .hover\:bg-indigo-900\/50:hover{background-color:rgb(49 46 129 / 0.50)!important}
+    #rb-root .hover\:bg-purple-600\/60:hover{background-color:rgb(147 51 234 / 0.60)!important}
+    #rb-root .hover\:bg-purple-900\/20:hover{background-color:rgb(88 28 135 / 0.20)!important}
+    #rb-root .hover\:bg-purple-900\/50:hover{background-color:rgb(88 28 135 / 0.50)!important}
+    #rb-root .hover\:bg-purple-900\/60:hover{background-color:rgb(88 28 135 / 0.60)!important}
+    #rb-root .hover\:bg-red-900\/50:hover{background-color:rgb(127 29 29 / 0.50)!important}
+    #rb-root .hover\:bg-red-900\/60:hover{background-color:rgb(127 29 29 / 0.60)!important}
+    #rb-root .hover\:bg-sky-900\/40:hover{background-color:rgb(12 74 110 / 0.40)!important}
+    #rb-root .hover\:bg-sky-900\/60:hover{background-color:rgb(12 74 110 / 0.60)!important}
+    #rb-root .hover\:border-emerald-700\/40:hover{border-color:rgb(4 120 87 / 0.40)!important}
+    #rb-root .hover\:border-sky-700\/40:hover{border-color:rgb(3 105 161 / 0.40)!important}
+    /* v3: the sidebar + Plugins page handle navigation, so the legacy
+       in-plugin "< Back" is redundant — hide it inside #v3-main only.
+       The legacy desktop keeps it. */
+    #v3-main #rb-root .rb-back{display:none!important}
 </style>
 <div id="rb-root" class="max-w-5xl mx-auto px-6 pt-24 pb-16">
-    <button onclick="showScreen('home')" class="text-gray-500 hover:text-white text-sm mb-6 flex items-center gap-1">
+    <button onclick="showScreen('home')" class="rb-back text-gray-500 hover:text-white text-sm mb-6 flex items-center gap-1">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg> Back
     </button>
     <h2 class="text-3xl font-bold text-white mb-2">Rig Builder</h2>
