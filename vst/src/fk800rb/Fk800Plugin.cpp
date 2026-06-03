@@ -139,10 +139,16 @@ public:
         if (contourOn) contour.setPeak(500.f, -11.f, 1.1f, fs);      else contour.setBypass();
         if (hiBoostOn) hiBoost.setHighShelf(2200.f, 6.5f, fs);       else hiBoost.setBypass();
 
-        // ── 4-band active EQ, ±15 dB (0.5 = flat) at the manual's frequencies ──
-        bqBass.setLowShelf(60.f,   (bass   - 0.5f) * 30.f, fs);
-        bqLoMid.setPeak(250.f,     (loMid  - 0.5f) * 30.f, 0.9f, fs);
-        bqHiMid.setPeak(1000.f,    (hiMid  - 0.5f) * 30.f, 0.9f, fs);
+        // ── 4-band active EQ, ±15 dB (0.5 = flat). Frequencies/Q derived from
+        //    the preamp R/C (Bob Gallien sheet 60045A), which confirm the manual:
+        //      Bass   : R30 12K + C16 .22uF  -> 1/(2pi*R*C) = 60.3 Hz (low shelf)
+        //      Lo-Mid : C13/C14 .022uF net   -> ~250 Hz peak
+        //      Hi-Mid : C11/C12 .0047uF (same topology) -> 250*(.022/.0047) ~ 1.17 kHz
+        //      Treble : high shelf, design 4 kHz
+        //    GK's mid bands are broad/gentle, so Q ~ 0.7 (not a narrow notch).
+        bqBass.setLowShelf(60.f,      (bass   - 0.5f) * 30.f, fs);
+        bqLoMid.setPeak(250.f,        (loMid  - 0.5f) * 30.f, 0.7f, fs);
+        bqHiMid.setPeak(1150.f,       (hiMid  - 0.5f) * 30.f, 0.7f, fs);
         bqTreble.setHighShelf(4000.f, (treble - 0.5f) * 30.f, fs);
 
         // ── boost: preset, footswitchable, up to +15 dB ──
