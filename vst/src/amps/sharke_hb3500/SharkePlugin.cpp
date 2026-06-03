@@ -203,8 +203,10 @@ public:
 
     void setParams(const float* p) {
         const float padActive = (p[kActive] > 0.5f) ? 0.20f : 1.0f;   // Active jack ~ -14 dB
-        tubeDrive = p[kTube]  * 2.0f * padActive;   // grid drive into the 12AX7
-        ssDrive   = p[kSolid] * 2.0f * padActive;   // drive into the SS op-amp
+        // drive curve: clean-ish at low/mid, overdrives the 12AX7 / SS hard near
+        // the top (knob 0.5 -> ~1.7x, 1.0 -> ~16.6x) for real grind when cranked.
+        tubeDrive = p[kTube]  * (0.6f + p[kTube]  * p[kTube]  * 16.0f) * padActive;   // grid drive into 12AX7
+        ssDrive   = p[kSolid] * (0.6f + p[kSolid] * p[kSolid] * 16.0f) * padActive;   // drive into SS op-amp
 
         compOn  = p[kComp] > 0.001f;
         compThr = 0.35f - p[kComp]*0.28f;           // threshold drops with Compression

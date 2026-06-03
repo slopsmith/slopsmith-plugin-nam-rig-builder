@@ -290,7 +290,11 @@ public:
         //    Volume, op-amp rail-clipping growl when pushed). -10 dB pad cuts the
         //    drive into it. preMakeup normalises the ~13.5 V rail back to ~unity.
         const float padScale = pad ? 0.316f : 1.0f;
-        preDrive  = padScale * (0.04f + volume * 0.24f);   // signal level (V) into U1
+        // drive curve: stays clean at low/mid Volume, then a steep (vol^4) kick
+        // slams U1 into the rails near the top for heavy growl.
+        // (0.5 -> ~0.18 clean, 0.7 -> ~0.36, 1.0 -> ~1.05 heavy.)
+        const float v = volume;
+        preDrive  = padScale * (0.05f + 0.15f*v + 0.85f*v*v*v*v);   // signal level (V) into U1
         preMakeup = 6.0f / 214.0f;                          // ~unity at default Volume
 
         // ── voicing filters (nodal RC networks, switched in/out) ──
