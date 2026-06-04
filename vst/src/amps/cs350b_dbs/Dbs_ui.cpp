@@ -20,7 +20,7 @@ static const Spot kKnobs[] = {
     { kVolume,       0.930f, 0.40f, 0.030f, "VOLUME" },
 };
 static const int kNumKnobs = (int)(sizeof(kKnobs)/sizeof(kKnobs[0]));
-static const char* const kEqLbl[kNumEq] = {"30","90","275","750","2.2k","6.5k","12k"};
+static const char* const kEqLbl[kNumEq] = {"50","80","160","320","640","1k25","2k5","5k","8k"};
 
 class DbsUI : public UI {
     float fValues[kParamCount];

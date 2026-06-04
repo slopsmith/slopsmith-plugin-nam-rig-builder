@@ -685,10 +685,11 @@
   // ── Marsten DBS 7400 — faithful Marshall DBS 7400 (Dynamic Bass System) look
   //   (parody): gold/champagne chassis, black control panel, ALL controls REAL.
   //   Faithful to the real 7400: Primary EQ = Lo/Hi only (no mid); Compression =
-  //   Depth knob + Threshold INDICATOR LED (threshold is fixed internally).
+  //   Depth knob + Threshold INDICATOR LED (threshold is fixed internally);
+  //   graphic EQ = the real 9 bands 50/80/160/320/640/1.25k/2.5k/5k/8k.
   //   Logical ids: 0 Gain 1 Pre-amp Blend 2 Lo 3 Hi 4 Depth 5 Volume
-  //   | 6..12 graphic 30/90/275/750/2.2k/6.5k/12k 13 Graphic Level
-  //   | 14 Bright 15 Deep 16 Graphic 17 Lo Input
+  //   | 6..14 graphic 50/80/160/320/640/1k25/2k5/5k/8k 15 Graphic Level
+  //   | 16 Bright 17 Deep 18 Graphic 19 Lo Input
   P.marstendbs7400 = { w:960, h:300,
     knobs:[
       {id:0,cx:.092,cy:.31,r:.021,style:'pointer',cap:[20,20,22]},
@@ -698,14 +699,15 @@
       {id:4,cx:.484,cy:.36,r:.021,style:'pointer',cap:[20,20,22]},
       {id:5,cx:.903,cy:.31,r:.032,style:'pointer',cap:[20,20,22]}],
     switches:[
-      {id:14,cx:.188,cy:.22,hs:.0090,dark:true},
-      {id:15,cx:.188,cy:.40,hs:.0090,dark:true},
-      {id:16,cx:.829,cy:.31,hs:.0090,dark:true},
-      {id:17,cx:.092,cy:.76,hs:.0090,dark:true}],
+      {id:16,cx:.188,cy:.22,hs:.0090,dark:true},
+      {id:17,cx:.188,cy:.40,hs:.0090,dark:true},
+      {id:18,cx:.855,cy:.31,hs:.0090,dark:true},
+      {id:19,cx:.092,cy:.76,hs:.0090,dark:true}],
     faders:[
-      {id:6,cx:.561,y0:.18,y1:.42},{id:7,cx:.592,y0:.18,y1:.42},{id:8,cx:.623,y0:.18,y1:.42},
-      {id:9,cx:.654,y0:.18,y1:.42},{id:10,cx:.685,y0:.18,y1:.42},{id:11,cx:.716,y0:.18,y1:.42},
-      {id:12,cx:.747,y0:.18,y1:.42},{id:13,cx:.786,y0:.18,y1:.42}],
+      {id:6,cx:.566,y0:.18,y1:.42},{id:7,cx:.595,y0:.18,y1:.42},{id:8,cx:.624,y0:.18,y1:.42},
+      {id:9,cx:.653,y0:.18,y1:.42},{id:10,cx:.681,y0:.18,y1:.42},{id:11,cx:.710,y0:.18,y1:.42},
+      {id:12,cx:.739,y0:.18,y1:.42},{id:13,cx:.768,y0:.18,y1:.42},{id:14,cx:.797,y0:.18,y1:.42},
+      {id:15,cx:.826,y0:.18,y1:.42}],
     tick:rgb(150,148,135), ptr:rgb(236,233,221),
     draw(d,vals){ vals=vals||{}; const {ctx:c,W,H}=d;
       const cream=rgb(220,216,200), dim=rgb(150,148,132), goldInk=rgb(52,44,28);
@@ -736,10 +738,10 @@
       c.beginPath(); c.arc(.484*W,.215*H,4,0,7); c.fillStyle=rgb(150,46,38); c.fill();
       lab(.484,.265,5.5,'THRESHOLD',dim);
       lab(.484,.49,6.5,'DEPTH');
-      // GRAPHIC EQUALIZER frame + band labels + LEVEL + GRAPHIC switch
-      frame(.548*W,.10*H,.300*W,.40*H); lab(.666,.155,7.5,'GRAPHIC EQUALIZER',dim);
-      ['30','90','275','750','2k2','6k5','12k','LVL'].forEach((t,i)=>lab((i<7?.561+i*0.031:.786),.465,6,t,dim));
-      lab(.829,.45,6.5,'GRAPHIC');
+      // GRAPHIC EQUALIZER frame + band labels (real 9 bands) + LEVEL + GRAPHIC switch
+      frame(.556*W,.10*H,.280*W,.40*H); lab(.696,.155,7.5,'GRAPHIC EQUALIZER',dim);
+      [['50',.566],['80',.595],['160',.624],['320',.653],['640',.681],['1k25',.710],['2k5',.739],['5k',.768],['8k',.797],['LVL',.826]].forEach(b=>lab(b[1],.465,5.5,b[0],dim));
+      lab(.855,.45,6.5,'GRAPHIC');
       // VOLUME (big, right)
       lab(.903,.47,7.5,'VOLUME');
       // ── bottom gold strip: INPUT jack + Marsten script + power ──

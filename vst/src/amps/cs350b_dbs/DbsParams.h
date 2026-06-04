@@ -13,40 +13,42 @@
 //   Depth         : compressor depth/amount (VR5). Threshold is FIXED internally
 //                   (SSM2252 VCA); the front-panel "Threshold" is just the
 //                   INDICATOR LED that lights when the comp is acting — NOT a knob.
-//   7-band graphic EQ : 30/90/275/750/2.2k/6.5k/12k Hz (+/-15 dB) — the RS bands.
+//   9-band graphic EQ : 50/80/160/320/640/1.25k/2.5k/5k/8k Hz (+/-15 dB) — the
+//                   REAL 7400 bands (two M5227P, VR6..VR15).
 //   Graphic Level : graphic-EQ make-up (+/-6 dB).
 //   Graphic       : graphic-EQ in/out switch.
 //   Volume        : master into the SS power amp (~400 W).
 //   Lo Input      : the padded (Lo) input jack.
-// Rocksmith ("CLH-350B") drives Gain, Bass->Lo, Treble->Hi and the 7 graphic bands.
+// Rocksmith ("CLH-350B") drives Gain, Bass->Lo, Treble->Hi and the graphic bands
+// (RS sends 7 bands, remapped to the nearest of the real 9; see rs_knob_to_vst_param).
 enum DbsParamId {
     kGain = 0, kBlend, kLo, kHi, kDepth, kVolume,                            // knobs
-    kEq30, kEq90, kEq275, kEq750, kEq2k2, kEq6k5, kEq12k, kGraphicLevel,     // graphic faders
+    kEq50, kEq80, kEq160, kEq320, kEq640, kEq1k25, kEq2k5, kEq5k, kEq8k, kGraphicLevel,  // graphic faders
     kBright, kDeep, kGraphicOn, kLoInput,                                    // switches
     kParamCount
 };
-static const int kFirstEq = kEq30;     // 7 EQ bands are contiguous from here
-static const int kNumEq = 7;
-static const float kEqFreqs[kNumEq] = { 30.f, 90.f, 275.f, 750.f, 2200.f, 6500.f, 12000.f };
+static const int kFirstEq = kEq50;     // 9 EQ bands are contiguous from here
+static const int kNumEq = 9;
+static const float kEqFreqs[kNumEq] = { 50.f, 80.f, 160.f, 320.f, 640.f, 1250.f, 2500.f, 5000.f, 8000.f };
 
 static const char* const kDbsNames[kParamCount] = {
     "Gain", "Pre-amp Blend", "Lo", "Hi", "Depth", "Volume",
-    "30 Hz", "90 Hz", "275 Hz", "750 Hz", "2.2 kHz", "6.5 kHz", "12 kHz", "Graphic Level",
+    "50 Hz", "80 Hz", "160 Hz", "320 Hz", "640 Hz", "1.25 kHz", "2.5 kHz", "5 kHz", "8 kHz", "Graphic Level",
     "Bright", "Deep", "Graphic", "Lo Input"
 };
 static const char* const kDbsSymbols[kParamCount] = {
     "gain", "blend", "lo", "hi", "depth", "volume",
-    "eq30", "eq90", "eq275", "eq750", "eq2k2", "eq6k5", "eq12k", "graphiclevel",
+    "eq50", "eq80", "eq160", "eq320", "eq640", "eq1k25", "eq2k5", "eq5k", "eq8k", "graphiclevel",
     "bright", "deep", "graphic", "loinput"
 };
-static const float kDbsMin[kParamCount] = { 0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0 };
-static const float kDbsMax[kParamCount] = { 1,1,1,1,1,1, 1,1,1,1,1,1,1,1, 1,1,1,1 };
+static const float kDbsMin[kParamCount] = { 0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0 };
+static const float kDbsMax[kParamCount] = { 1,1,1,1,1,1, 1,1,1,1,1,1,1,1,1,1, 1,1,1,1 };
 // Gain 0.30; Blend 0.60 (toward solid-state); Lo/Hi 0.5 flat; Depth 0.35;
-// Volume 0.7; EQ bands + Graphic Level 0.5 (flat); Bright/Deep off; Graphic ON;
+// Volume 0.7; 9 EQ bands + Graphic Level 0.5 (flat); Bright/Deep off; Graphic ON;
 // Lo input off.
 static const float kDbsDef[kParamCount] = {
     0.30f, 0.60f, 0.50f, 0.50f, 0.35f, 0.70f,
-    0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f,
+    0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f,
     0.00f, 0.00f, 1.00f, 0.00f
 };
 

@@ -4302,38 +4302,38 @@
     "_hint": "RS Treble 0-100 (50=flat) -> Primary EQ Hi high shelf 0..1 (0.5 flat)."
    },
    "30": {
-    "param": "30 Hz",
+    "param": "50 Hz",
     "offset": 0.5,
     "scale": 0.033333,
-    "_hint": "graphic EQ band, RS +/-15 dB -> 0..1 (0.5 flat)."
+    "_hint": "RS graphic band remapped to nearest real 7400 band. RS +/-15 dB -> 0..1 (0.5 flat). Real bands 160 Hz + 1.25 kHz have no RS control (stay flat)."
    },
    "90": {
-    "param": "90 Hz",
+    "param": "80 Hz",
     "offset": 0.5,
     "scale": 0.033333
    },
    "250": {
-    "param": "275 Hz",
+    "param": "320 Hz",
     "offset": 0.5,
     "scale": 0.033333
    },
    "800": {
-    "param": "750 Hz",
+    "param": "640 Hz",
     "offset": 0.5,
     "scale": 0.033333
    },
    "2500": {
-    "param": "2.2 kHz",
+    "param": "2.5 kHz",
     "offset": 0.5,
     "scale": 0.033333
    },
    "7500": {
-    "param": "6.5 kHz",
+    "param": "5 kHz",
     "offset": 0.5,
     "scale": 0.033333
    },
    "15000": {
-    "param": "12 kHz",
+    "param": "8 kHz",
     "offset": 0.5,
     "scale": 0.033333
    }

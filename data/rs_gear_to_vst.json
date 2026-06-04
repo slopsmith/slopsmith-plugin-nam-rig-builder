@@ -2117,7 +2117,7 @@
    "url": "",
    "free": true,
    "bundled": "vst/amps/MarstenDBS7400.vst3",
-   "notes": "Bundled Marshall DBS 7400 (Dynamic Bass System) style solid-state bass head (Rocksmith 'CS350B'/'CLH-350B'); component-level model from the 7400 schematic (op-amp preamp + Lo/Hi Primary EQ + Depth-only compressor + 7-band gyrator graphic EQ). Uses RS Gain, Bass->Lo, Treble->Hi and the 7 graphic bands."
+   "notes": "Bundled Marshall DBS 7400 (Dynamic Bass System) style solid-state bass head (Rocksmith 'CS350B'/'CLH-350B'); component-level model from the 7400 schematic (op-amp preamp + Lo/Hi Primary EQ + Depth-only compressor + the real 9-band gyrator graphic EQ 50/80/160/320/640/1.25k/2.5k/5k/8k). Uses RS Gain, Bass->Lo, Treble->Hi; RS's 7 graphic bands are remapped to the nearest of the 9."
   }
  ]
 }
