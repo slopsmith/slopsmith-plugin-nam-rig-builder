@@ -13,6 +13,10 @@
 #include "reverb_params.h"
 #include "reverb_core.hpp"
 
+#ifndef REVERB_WETMAX
+#define REVERB_WETMAX 1.0f   // max wet/dry blend at Mix=100%; a rack can cap it lower for subtlety
+#endif
+
 START_NAMESPACE_DISTRHO
 
 class ReverbRackPlugin : public Plugin {
@@ -23,6 +27,7 @@ public:
     ReverbRackPlugin() : Plugin(kParamCount, 0, 0) {
         for (int i = 0; i < kParamCount; ++i) fParams[i] = kReverbDef[i];
         rv.setVoicing(REVERB_SIZE, REVERB_DAMP, REVERB_APFB);
+        rv.setWetMax(REVERB_WETMAX);
         rv.setSampleRate((float)getSampleRate());
         recalc();
     }

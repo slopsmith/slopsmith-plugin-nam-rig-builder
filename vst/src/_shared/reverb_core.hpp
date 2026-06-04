@@ -64,7 +64,7 @@ class ReverbCore {
     float lfoPh = 0.f, lfoInc = 0.f, modDepth = 0.f, modMix = 0.f;
     float mix = 0.3f;
     // voicing
-    float sizeScale = 1.f, dampBias = 0.f, apFb = 0.5f;
+    float sizeScale = 1.f, dampBias = 0.f, apFb = 0.5f, wetMax = 1.f;
 
     inline float modRead(const float* buf, float delaySamp) {
         float rp = (float)mw - delaySamp;
@@ -77,6 +77,7 @@ public:
     void setVoicing(float sScale, float dBias, float apFeedback) {
         sizeScale = sScale; dampBias = dBias; apFb = apFeedback;
     }
+    void setWetMax(float w) { wetMax = (w < 0.f) ? 0.f : (w > 1.f ? 1.f : w); }
     void setSampleRate(float s) {
         fs = (s > 0.f) ? s : 48000.f;
         lfoInc = 6.2831853f * 0.7f / fs;
@@ -101,9 +102,9 @@ public:
             apL[i].set((int)(kAllpassTune[i] * sr), apFb);
             apR[i].set((int)((kAllpassTune[i] + kStereoSpread) * sr), apFb);
         }
-        modDepth = depth * 0.0030f * fs;                              // excursion 0..~3 ms
-        modMix   = depth * 0.18f;                                     // 0 at Depth=0 → no coloration
-        mix = mixP;
+        (void)depth;
+        modDepth = 0.f; modMix = 0.f;          // wet modulation OFF — it read as a phaser on the tail
+        mix = mixP * wetMax;                   // wetMax caps the blend so the rack stays subtle
     }
     inline void process(float xL, float xR, float& outL, float& outR) {
         const float in = (xL + xR) * 0.5f * 0.30f;                    // mono feed, scaled (Freeverb gain)
