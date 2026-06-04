@@ -245,10 +245,17 @@ public:
         pwrDrive = 0.6f + master * 0.9f;                      // into the 7027A saturator
         // Output transformer + 7027A HF roll-off (100 W head, a touch darker top).
         pwrLP.setLowpassQ(7500.f, 0.7f, fs);
-        // ── Loudness standardization: gain-dependent output makeup so the
-        //    multitone RMS stays ~flat at the Box DC30 reference (~0.40) across
-        //    Gain. The SVT level rises steeply with Gain, so makeup falls with it.
-        outMakeup = 0.44f + 13.6f * std::exp(-3.05f * gain);
+        // ── Loudness standardization: a gain-dependent output makeup that keeps
+        //    the multitone RMS ~flat across the Gain knob. The preamp+power level
+        //    (RMS measured BEFORE makeup) rises ~0.164→0.348 as Gain 0→1, so
+        //    makeup = C / that curve holds the post-makeup level constant.
+        //    The OLD exp() makeup fell too fast and OVER-cancelled the top: past
+        //    ~45% Gain the natural level rise was more than undone, so max Gain
+        //    ended up QUIETER than mid Gain (the "volume drops at max" bug).
+        //    C = 0.806 = the pre-makeup RMS at Gain 0.5, so noon is unchanged and
+        //    the cross-amp level match is preserved.
+        const float rawLvl = 0.164f + gain * (0.108f + 0.076f * gain);
+        outMakeup = 0.806f / rawLvl;
     }
 
     inline float process(float x) {
