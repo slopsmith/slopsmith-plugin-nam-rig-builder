@@ -3879,30 +3879,39 @@
  },
  "Amp_CA100": {
   "dualrect": {
+   "_hint": "Silla Boogie Duo Rectifier = the FULL 3-channel Dual Rectifier panel. The 5 RS knobs map 1:1 onto the RED channel (the signature high-gain voice); the channel is pinned to RED in MODERN mode with a BOLD (tight silicon) rectifier via _static. Green/Orange channels sit at their defaults and stay editable by hand.",
    "Gain": {
-    "param": "Gain",
+    "param": "Red Gain",
     "scale": 0.01,
-    "_hint": "Rocksmith Gain morphs the Dual Rectifier Red channel through the local Red G2/G5/G8 curation."
-   },
-   "Bass": {
-    "param": "Bass",
-    "scale": 0.01,
-    "_hint": "Maps to the Dual Rectifier Red tone stack bass control with high-gain low-end tightening."
-   },
-   "Mid": {
-    "param": "Mid",
-    "scale": 0.01,
-    "_hint": "Maps to the Red tone stack mid control; high Gain adds the Rectifier modern scoop around it."
+    "_hint": "RS Gain -> Red channel Gain (the cascaded high-gain preamp). Loudness held ~flat by the makeup."
    },
    "Treble": {
-    "param": "Treble",
+    "param": "Red Treble",
     "scale": 0.01,
-    "_hint": "Maps to the Red tone stack treble control and cascaded-stage bite."
+    "_hint": "RS Treble -> Red channel Treble (Recto tone stack)."
+   },
+   "Mid": {
+    "param": "Red Mid",
+    "scale": 0.01,
+    "_hint": "RS Mid -> Red channel Mid; low Mid deepens the signature Recto scoop (more so in Modern)."
+   },
+   "Bass": {
+    "param": "Red Bass",
+    "scale": 0.01,
+    "_hint": "RS Bass -> Red channel Bass (the big Recto low end)."
    },
    "Pres": {
-    "param": "Pres",
+    "param": "Red Presence",
     "scale": 0.01,
-    "_hint": "Maps to the presence and feedback network in the power amp."
+    "_hint": "RS Pres -> Red channel Presence (power-amp feedback top end)."
+   },
+   "_static": {
+    "Channel": 1.0,
+    "Red Mode": 1.0,
+    "Rectifier": 1.0,
+    "Output": 0.6,
+    "Red Master": 0.55,
+    "_note": "Pinned for Rocksmith: Channel = RED, Red Mode = MODERN (the metal voice), Rectifier = BOLD (tight silicon), Output + Red Master at the loudness reference. Green/Orange knobs keep their plugin defaults."
    }
   }
  },
