@@ -71,6 +71,7 @@ def test_screen_registers_executable_audio_effects_provider():
     assert "audio-effects.legacy-native-load" in src
     assert "rbRecordLegacyNativeLoadBridge" in src
     assert "rbFetchLegacyNamToneMappings(filename)" in src
+    assert "owner=rig_builder" in src
     assert "save_preset persisted provider-private legacy tone database rows" in src
     assert src.count("/api/plugins/nam_tone/mappings/") == 1
     assert "requesterId" not in src
@@ -91,7 +92,8 @@ def test_legacy_tone_db_access_is_explicitly_inventoried():
     src = (ROOT / "routes.py").read_text()
 
     assert src.count('"nam_tone.db"') == 1
-    assert src.count("tone_mappings") == 17
+    assert src.count("tone_mappings") == 24
     assert "INSERT OR REPLACE INTO tone_mappings" in src
     assert "SELECT DISTINCT filename FROM tone_mappings WHERE filename != ?" in src
     assert "FROM tone_mappings tm JOIN presets p ON tm.preset_id = p.id" in src
+    assert "EXISTS (SELECT 1 FROM preset_pieces pp WHERE pp.preset_id = tone_mappings.preset_id)" in src

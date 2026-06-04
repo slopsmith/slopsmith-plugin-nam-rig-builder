@@ -4350,7 +4350,8 @@ def _batch_worker(mode: str = "all"):
                 existing_by_gear: dict[str, dict] = {}
                 _ekey = tone_key or parsed["name"]
                 _erow = _get_conn().execute(
-                    "SELECT preset_id FROM tone_mappings WHERE filename = ? AND tone_key = ?",
+                    "SELECT preset_id FROM tone_mappings WHERE filename = ? AND tone_key = ? "
+                    "AND EXISTS (SELECT 1 FROM preset_pieces pp WHERE pp.preset_id = tone_mappings.preset_id)",
                     (filename, _ekey),
                 ).fetchone()
                 if _erow:
@@ -4749,7 +4750,8 @@ def _auto_download_for_song(filename: str, path: Path) -> dict:
             # each cloud_loader re-download). Checking both forms keeps those
             # presets protected.
             already_saved = conn.execute(
-                "SELECT 1 FROM tone_mappings WHERE filename = ? AND tone_key IN (?, ?) LIMIT 1",
+                "SELECT 1 FROM tone_mappings WHERE filename = ? AND tone_key IN (?, ?) "
+                "AND EXISTS (SELECT 1 FROM preset_pieces pp WHERE pp.preset_id = tone_mappings.preset_id) LIMIT 1",
                 (filename, tone_key, parsed["key"]),
             ).fetchone()
             if already_saved:
@@ -5144,7 +5146,8 @@ def _auto_fix_cab_mics_for_song_module(filename: str, raw_tones: list) -> int:
     base_name = filename.rsplit("/", 1)[-1]
     tm_rows = conn.execute(
         "SELECT tone_key, preset_id FROM tone_mappings "
-        "WHERE filename = ? OR filename = ?",
+        "WHERE (filename = ? OR filename = ?) "
+        "AND EXISTS (SELECT 1 FROM preset_pieces pp WHERE pp.preset_id = tone_mappings.preset_id)",
         (filename, base_name),
     ).fetchall()
     if not tm_rows:
@@ -5244,7 +5247,8 @@ def _promote_generic_gear_for_song_module(filename: str, raw_tones: list) -> int
     base_name = filename.rsplit("/", 1)[-1]
     tm_rows = conn.execute(
         "SELECT tone_key, preset_id FROM tone_mappings "
-        "WHERE filename = ? OR filename = ?",
+        "WHERE (filename = ? OR filename = ?) "
+        "AND EXISTS (SELECT 1 FROM preset_pieces pp WHERE pp.preset_id = tone_mappings.preset_id)",
         (filename, base_name),
     ).fetchall()
     if not tm_rows:
@@ -5928,7 +5932,8 @@ def setup(app, context):
         base = filename.rsplit("/", 1)[-1]
         tm_rows = conn.execute(
             "SELECT tone_key, preset_id FROM tone_mappings "
-            "WHERE filename = ? OR filename = ?",
+            "WHERE (filename = ? OR filename = ?) "
+            "AND EXISTS (SELECT 1 FROM preset_pieces pp WHERE pp.preset_id = tone_mappings.preset_id)",
             (filename, base),
         ).fetchall()
         if not tm_rows:
@@ -6053,7 +6058,8 @@ def setup(app, context):
         except Exception:
             log.exception("auto generic-gear promote failed for %s", filename)
         existing_rows = conn.execute(
-            "SELECT tone_key, preset_id FROM tone_mappings WHERE filename = ?",
+            "SELECT tone_key, preset_id FROM tone_mappings WHERE filename = ? "
+            "AND EXISTS (SELECT 1 FROM preset_pieces pp WHERE pp.preset_id = tone_mappings.preset_id)",
             (filename,),
         ).fetchall()
         # tone_mappings are keyed by basename; if the song was opened with a
@@ -6062,7 +6068,8 @@ def setup(app, context):
         _base = filename.rsplit("/", 1)[-1]
         if not existing_rows and _base != filename:
             existing_rows = conn.execute(
-                "SELECT tone_key, preset_id FROM tone_mappings WHERE filename = ?",
+                "SELECT tone_key, preset_id FROM tone_mappings WHERE filename = ? "
+                "AND EXISTS (SELECT 1 FROM preset_pieces pp WHERE pp.preset_id = tone_mappings.preset_id)",
                 (_base,),
             ).fetchall()
         existing_by_key = {r[0]: r[1] for r in existing_rows}
@@ -6579,7 +6586,9 @@ def setup(app, context):
                 "SELECT tm.tone_key, tm.preset_id, p.name, p.input_gain, p.output_gain, "
                 "       p.gate_threshold "
                 "FROM tone_mappings tm JOIN presets p ON tm.preset_id = p.id "
-                "WHERE tm.filename = ? ORDER BY tm.id ASC",
+                "WHERE tm.filename = ? "
+                "AND EXISTS (SELECT 1 FROM preset_pieces pp WHERE pp.preset_id = tm.preset_id) "
+                "ORDER BY tm.id ASC",
                 (name,),
             ).fetchall()
 

@@ -1212,7 +1212,7 @@ function rbRecordLegacyNativeLoadBridge(reason, status) {
 
 async function rbFetchLegacyNamToneMappings(filename) {
     rbRecordLegacyToneDbBridge('read legacy nam_tone tone_mappings for amp auto-apply');
-    return fetch(`/api/plugins/nam_tone/mappings/${encodeURIComponent(filename)}`);
+    return fetch(`/api/plugins/nam_tone/mappings/${encodeURIComponent(filename)}?owner=rig_builder`);
 }
 
 async function rbSyncAudioEffectsCapability(reason, options) {
