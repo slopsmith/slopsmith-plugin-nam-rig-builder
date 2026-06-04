@@ -3262,12 +3262,19 @@ def _ir_stage(ir_path, *, bypassed, gain=1.0,
     `di_cab` (set only by the per-tone chain builders) swaps a BASS cab IR for
     its 70/30 DI+cab blend when the feature is on — see the DI+Cab helpers."""
     ir_path = str(ir_path)
-    di_cab_makeup = None
+    di_cab_blend = False
     if di_cab and _is_bass_cab_ir(ir_path) and _di_cab_enabled():
         blended = _di_cab_blend_file(Path(ir_path))
         if blended is not None:
-            di_cab_makeup = _di_cab_makeup_for(Path(ir_path), blended)
+            # Bake the bass-loudness-preserving makeup into the IR stage's own
+            # `gain` — the engine applies it UNCONDITIONALLY. (Folding it into
+            # cab_rms_makeup instead only works for NAM-amp chains: screen.js
+            # gates that chain-gain makeup on a NAM amp, so a VST-amp bass chain
+            # would play the deliberately-quiet blend IR uncompensated, ~10 dB
+            # too soft — the "fuzz bass plays quieter than other songs" bug.)
+            gain = gain * _di_cab_makeup_for(Path(ir_path), blended)
             ir_path = str(blended)
+            di_cab_blend = True
     stage = {"type": 2, "name": Path(ir_path).stem, "path": str(ir_path),
              "bypassed": bypassed}
     if slot is not None:
@@ -3279,12 +3286,12 @@ def _ir_stage(ir_path, *, bypassed, gain=1.0,
     # Per-cab RMS-match factor for screen.js (engine ignores it, like slot/
     # rs_gear). Only RS cab IRs vary in L2 after the clip-safe peak cap; other
     # IRs (tone3000) are already loudness-normalized, so we leave them alone.
-    # For a DI+cab blend we use the precomputed bass-loudness-preserving makeup
-    # instead of the blend IR's broadband L2 (which would drop bass ~4 dB).
+    # For a DI+cab blend the bass-loudness makeup is already baked into the IR
+    # `gain` above (engine-applied, works for VST + NAM amps alike), so keep the
+    # chain-gain cab makeup neutral here — else NAM-amp chains would double it.
     p = Path(ir_path)
     if "rocksmith" in p.as_posix().lower():
-        stage["cab_rms_makeup"] = round(
-            di_cab_makeup if di_cab_makeup is not None else _ir_rms_makeup(p), 4)
+        stage["cab_rms_makeup"] = round(1.0 if di_cab_blend else _ir_rms_makeup(p), 4)
     stage["state"] = _state_b64({"irPath": str(ir_path), "gain": gain})
     return stage
 
