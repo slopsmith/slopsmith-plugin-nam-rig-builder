@@ -34,7 +34,7 @@ START_NAMESPACE_DISTRHO
 // amp to the common multitone loudness (~0.30 RMS at real settings); the soft
 // knee is transparent below +/-0.80 and saturates to a +/-0.98 ceiling so EQ
 // boosts never hard-clip. See AMP_LOUDNESS.md.
-static inline float rbAmpLvl(float x){ const float t=0.80f,c=0.98f,a=(x<0.f?-x:x);
+static inline float rbAmpLvl(float x){ const float t=0.90f,c=0.99f,a=(x<0.f?-x:x);
     if(a<=t) return x; return (x<0.f?-1.f:1.f)*(t+(c-t)*std::tanh((a-t)/(c-t))); }
 
 // ── RBJ biquad (transposed direct form II) ───────────────────────────────────
@@ -401,7 +401,7 @@ protected:
     void run(const float** in, float** out, uint32_t frames) override {
         const float* iL = in[0]; const float* iR = in[1];
         float* oL = out[0]; float* oR = out[1];
-        for (uint32_t i = 0; i < frames; ++i) { oL[i] = rbAmpLvl(1.356f * L.process(iL[i])); oR[i] = rbAmpLvl(1.356f * R.process(iR[i])); }
+        for (uint32_t i = 0; i < frames; ++i) { oL[i] = rbAmpLvl(1.707f * L.process(iL[i])); oR[i] = rbAmpLvl(1.707f * R.process(iR[i])); }
     }
     DISTRHO_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Fk800Plugin)
 };
