@@ -2097,5 +2097,16 @@
    "bundled": "vst/amps/SharkeHB5000.vst3",
    "notes": "Bundled Hartke HA5000 style bass head (Rocksmith 'BT600B'): 2x250W bi-amp, tube+solid-state preamp blend, compressor, 10-band graphic EQ, contour low/high-pass, master. Modeled from the HA5000 circuit diagram (board 4005182801). RS Gain->Solid State; RS Bass/Mid/Treble->graphic-EQ 125/500/5k bands."
   }
+ ],
+ "Bass_Amp_CS75B": [
+  {
+   "name": "SamplegV4B",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/amps/SamplegV4B.vst3",
+   "notes": "Bundled Ampeg V-4B style all-tube bass head (Rocksmith 'CS75B'); component-level model from the 1971 V-4B schematic (12AX7 preamp, 4x 7027A ~100W), using Rocksmith's Gain, Bass, Mid, and Treble knobs."
+  }
  ]
 }

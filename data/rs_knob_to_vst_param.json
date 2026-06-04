@@ -4259,5 +4259,32 @@
     "_hint": "RS Treble +/-15 dB -> graphic-EQ 3 kHz band 0..1 (0.5 flat)."
    }
   }
+ },
+ "Bass_Amp_CS75B": {
+  "samplegv4b": {
+   "Gain": {
+    "param": "Gain",
+    "scale": 0.033,
+    "_hint": "RS Gain -> preamp Gain/drive 0..1 (12AX7 + 7027A grit)."
+   },
+   "Bass": {
+    "param": "Bass",
+    "offset": 0.5,
+    "scale": 0.033333,
+    "_hint": "RS Bass +/-15 dB -> ~70 Hz low-shelf 0..1 (0.5 flat)."
+   },
+   "Mid": {
+    "param": "Midrange",
+    "offset": 0.5,
+    "scale": 0.033333,
+    "_hint": "RS Mid +/-15 dB -> Midrange peak 0..1 (0.5 flat) at the Frequency-selected centre (default 800 Hz)."
+   },
+   "Treble": {
+    "param": "Treble",
+    "offset": 0.5,
+    "scale": 0.033333,
+    "_hint": "RS Treble +/-15 dB -> ~5 kHz high-shelf 0..1 (0.5 flat)."
+   }
+  }
  }
 }

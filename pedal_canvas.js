@@ -630,6 +630,61 @@
       textC(d,.097*W,gy,F.bebas,28,rgb(232,234,238),'Sampleg','left');
       textC(d,.955*W,gy,F.crete,17,rgb(150,152,158),'Heritage','right'); } };
 
+  // ── Sampleg V-4B — Ampeg V-4B style (parody): same brushed-aluminium Ampeg
+  //   panel as the SBT-CL, but Gain/Bass/Midrange/Frequency(3-way)/Treble/Master
+  //   and a V-4B nameplate. Logical ids: 0 Gain 1 Bass 2 Mid 3 Freq 4 Treble
+  //   5 Master | 6 -15dB 7 Ultra Lo 8 Ultra Hi.
+  P.samplegv4b = { w:900, h:256,
+    knobs:[
+      {id:0,cx:.205,cy:.38,r:.022,style:'ampeg'},
+      {id:1,cx:.365,cy:.38,r:.022,style:'ampeg'},
+      {id:2,cx:.439,cy:.38,r:.022,style:'ampeg'},
+      {id:3,cx:.513,cy:.38,r:.022,style:'ampeg',select:3},
+      {id:4,cx:.587,cy:.38,r:.022,style:'ampeg'},
+      {id:5,cx:.661,cy:.38,r:.022,style:'ampeg'}],
+    switches:[
+      {id:6,cx:.137,cy:.38,hs:.0095,dark:true},
+      {id:7,cx:.270,cy:.38,hs:.0100,dark:true},
+      {id:8,cx:.302,cy:.38,hs:.0100,dark:true}],
+    tick:rgb(74,76,82), ptr:rgb(245,246,249),
+    draw(d, vals){ vals=vals||{}; const {ctx:c,W,H}=d;
+      const ink=rgb(30,31,35), dim=rgb(92,94,100);
+      box(d, 26,27,30, true);                              // black tolex shell
+      const PL=.03*W, PT=.09*H, PW=.94*W, PH=.55*H;
+      const pg=c.createLinearGradient(0,PT,0,PT+PH); pg.addColorStop(0,rgb(202,204,208)); pg.addColorStop(.5,rgb(180,182,188)); pg.addColorStop(1,rgb(158,160,166));
+      rr(c,PL,PT,PW,PH,4); c.fillStyle=pg; c.fill();
+      c.save(); rr(c,PL,PT,PW,PH,4); c.clip();
+      for(let x=PL;x<PL+PW;x+=2){ c.strokeStyle=(((x|0)%4)?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.045)'); c.lineWidth=1; c.beginPath(); c.moveTo(x,PT); c.lineTo(x,PT+PH); c.stroke(); }
+      c.restore();
+      rr(c,PL,PT,PW,PH,4); c.strokeStyle=rgb(118,120,126); c.lineWidth=1.5; c.stroke();
+      const engrave=(x,y,w,h)=>{ rr(c,x,y+1.5,w,h,5); c.strokeStyle='rgba(255,255,255,0.5)'; c.lineWidth=1; c.stroke();
+        rr(c,x,y,w,h,5); c.strokeStyle=rgb(112,114,120); c.lineWidth=1.2; c.stroke(); };
+      const lab=(cx,y,sz,t,col)=>textC(d,cx*W,y*H,F.barlow,sz,col||ink,t);
+      const ibx=.045*W, iby=.17*H, ibw=.118*W, ibh=.40*H;
+      rr(c,ibx,iby,ibw,ibh,4); c.fillStyle=rgb(150,152,158); c.fill();
+      rr(c,ibx,iby,ibw,ibh,4); c.strokeStyle=rgb(106,108,114); c.lineWidth=1.2; c.stroke();
+      const diamond=(x,y,r,letter,lsz)=>{ c.save(); c.translate(x,y); c.rotate(Math.PI/4); rr(c,-r,-r,2*r,2*r,2); c.fillStyle=rgb(40,52,96); c.fill(); c.strokeStyle=rgb(208,212,220); c.lineWidth=1.3; c.stroke(); c.restore(); textC(d,x,y,F.bebas,lsz,rgb(222,226,234),letter); };
+      diamond(ibx+ibw*0.30, iby+ibh*0.28, 9, 'S', 11);
+      const jack=(x,y)=>{ c.beginPath(); c.arc(x,y,7,0,7); c.fillStyle=rgb(14,14,16); c.fill(); c.strokeStyle=rgb(88,90,96); c.lineWidth=1.3; c.stroke(); c.beginPath(); c.arc(x,y,3,0,7); c.fillStyle=rgb(34,34,38); c.fill(); };
+      jack(ibx+ibw*0.30, iby+ibh*0.70); jack(ibx+ibw*0.62, iby+ibh*0.70);
+      textC(d,ibx+ibw*0.30,iby+ibh-6,F.barlow,8,ink,'0'); textC(d,ibx+ibw*0.62,iby+ibh-6,F.barlow,8,ink,'-15');
+      lab(.137,.63,8.5,'-15dB');
+      engrave(.168*W, PT+8, .527*W, PH-16);
+      engrave(.705*W, PT+8, PL+PW-8 - .705*W, PH-16);
+      [[.205,'GAIN'],[.365,'BASS'],[.439,'MIDRANGE'],[.513,'FREQUENCY'],[.587,'TREBLE'],[.661,'MASTER']].forEach(k=>lab(k[0],.555,10.5,k[1]));
+      for(let i=0;i<3;i++) textC(d,(.513+(i-1)*0.018)*W,.19*H,F.barlow,8,dim,String(i+1));
+      textC(d,.286*W,.495*H,F.barlow,8,ink,'ULTRA');
+      textC(d,.270*W,.565*H,F.barlow,8,ink,'LO'); textC(d,.302*W,.565*H,F.barlow,8,ink,'HI');
+      textC(d,.772*W,.29*H,F.bebas,22,ink,'SAMPLEG'); textC(d,.772*W,.44*H,F.barlow,12.5,dim,'V-4B');
+      const rock=(cx,red,lbl)=>{ const x=cx*W,y=.38*H; rr(c,x-10,y-19,20,38,3); c.fillStyle=rgb(20,20,22); c.fill();
+        rr(c,x-10,y-19,20,38,3); c.strokeStyle=rgb(70,72,76); c.lineWidth=1.2; c.stroke();
+        rr(c,x-7,y-17,14,17,2); c.fillStyle=red?rgb(176,32,30):rgb(54,56,60); c.fill(); textC(d,x,.525*H,F.barlow,8,ink,lbl); };
+      rock(.872,false,'STANDBY'); rock(.915,true,'POWER');
+      const gy=.83*H;
+      diamond(.052*W, gy, 12, 'S', 14);
+      textC(d,.097*W,gy,F.bebas,28,rgb(232,234,238),'Sampleg','left');
+      textC(d,.955*W,gy,F.crete,17,rgb(150,152,158),'Heritage','right'); } };
+
   // ── Sharke HB3500 — faithful Hartke HA3500 silver panel (parody) ────────────
   // Silver control panel: Passive/Active inputs + Active pad, Tube + Solid State
   // + Compression knobs, a 10-band graphic EQ (vertical faders 30..16k) with an
