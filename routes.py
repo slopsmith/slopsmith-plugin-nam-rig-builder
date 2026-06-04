@@ -274,6 +274,11 @@ _DEFAULT_SETTINGS = {
     # own external cab sim. Stored just for the checkbox state; the actual
     # effect is the per-piece `bypassed` flag the toggle writes.
     "bypass_all_cabs": False,
+    # Bass DI + Cab blend (real bass rigs run mostly DI with a little mic'd cab).
+    # When on, every BASS cab IR is replaced by a single IR that bakes a fixed
+    # 70% DI (dry) + 30% cab blend, level-matched so the cab is audible and the
+    # bass-band loudness is preserved (see _ir_stage / tools/make_di_cab_irs.py).
+    "bass_di_cab": True,
 }
 
 # Tone3000 platform value to request per Rocksmith category. Amps and
@@ -3118,12 +3123,151 @@ def _ir_rms_makeup(path: Path) -> float:
     return max(1.0, min(_IR_MAKEUP_MAX, _IR_REF_L2 / l2))
 
 
+# ── DI + Cab blend for bass cabs (the "70% DI / 30% cab" feature) ─────────────
+# Real bass is amplified/recorded mostly via DI with a little mic'd cab. The
+# native engine is series-only (no parallel dry/wet on an IR), so the blend is
+# baked into ONE impulse response:
+#     blend = 0.7*delta(@cab peak) + 0.3*(cab / ||cab||2)
+# Convolving with it = 0.7*DI(dry) + 0.3*cab, with DI and cab at the SAME
+# broadband level (then weighted 70/30); the delta aligns to the cab's peak to
+# minimise comb filtering. The blend is brighter than the cab alone, so matching
+# it by broadband RMS would make bass tones ~4 dB quieter — instead each cab's
+# stage `cab_rms_makeup` is the precomputed factor that keeps the BASS-band
+# loudness equal to the cab-alone path (data/di_cab_makeup.json, cross-validated
+# to <0.5 dB). Generation is pure-python (no numpy) so it runs in the chain
+# builder; the makeup table is precomputed offline by tools/make_di_cab_irs.py.
+_DI_CAB_DI = 0.7
+_DI_CAB_CAB = 0.3
+_di_cab_makeup_tbl: dict | None = None
+
+
+def _di_cab_enabled() -> bool:
+    return bool(_load_settings().get("bass_di_cab", True))
+
+
+def _is_bass_cab_ir(ir_path) -> bool:
+    return "bass_cab" in Path(ir_path).name.lower()
+
+
+def _load_di_cab_makeup() -> dict:
+    global _di_cab_makeup_tbl
+    if _di_cab_makeup_tbl is None:
+        try:
+            p = _data_path("di_cab_makeup.json")
+            _di_cab_makeup_tbl = (json.loads(p.read_text()).get("makeup", {})
+                                  if p.exists() else {})
+        except (OSError, ValueError):
+            _di_cab_makeup_tbl = {}
+    return _di_cab_makeup_tbl
+
+
+def _read_ir_samples(path: Path):
+    """(samples:list[float], sr:int) for a mono float32 cab IR, or None."""
+    try:
+        blob = path.read_bytes()
+    except OSError:
+        return None
+    if blob[:4] != b"RIFF" or blob[8:12] != b"WAVE":
+        return None
+    pos = 12
+    fmt_tag = ch = sr = bps = None
+    data_off = data_size = None
+    while pos < len(blob) - 8:
+        cid = blob[pos:pos + 4]
+        csize = struct.unpack("<I", blob[pos + 4:pos + 8])[0]
+        if cid == b"fmt ":
+            fmt_tag, ch, sr, _, _, bps = struct.unpack(
+                "<HHIIHH", blob[pos + 8:pos + 8 + 16])
+        elif cid == b"data":
+            data_off, data_size = pos + 8, csize
+        pos += 8 + csize + (csize & 1)
+    if (fmt_tag, bps) != (3, 32) or data_off is None or ch != 1 or not data_size:
+        return None
+    n = data_size // 4
+    if n == 0:
+        return None
+    return list(struct.unpack("<%df" % n, blob[data_off:data_off + data_size])), sr
+
+
+def _write_ir_f32(path: Path, samples, sr: int) -> None:
+    raw = struct.pack("<%df" % len(samples), *samples)
+    with open(path, "wb") as f:
+        f.write(b"RIFF")
+        f.write(struct.pack("<I", 4 + 8 + 16 + 8 + len(raw)))
+        f.write(b"WAVE")
+        f.write(b"fmt ")
+        f.write(struct.pack("<I", 16))
+        f.write(struct.pack("<HHIIHH", 3, 1, sr, sr * 4, 4, 32))
+        f.write(b"data")
+        f.write(struct.pack("<I", len(raw)))
+        f.write(raw)
+
+
+def _di_cab_blend_samples(cab):
+    """0.7*delta(@peak) + 0.3*(cab/||cab||2). IDENTICAL formula to
+    tools/make_di_cab_irs.make_blend — the precomputed makeup depends on it."""
+    l2 = (sum(x * x for x in cab) ** 0.5) or 1.0
+    scale = _DI_CAB_CAB / l2
+    blend = [x * scale for x in cab]
+    peak = max(range(len(cab)), key=lambda i: abs(cab[i]))
+    blend[peak] += _DI_CAB_DI
+    return blend
+
+
+def _di_cab_blend_file(cab_path: Path) -> Path | None:
+    """Generate (and cache) the DI+cab blend IR for a bass cab. Pure-python;
+    cached under nam_irs/rocksmith_dicab/ (kept under a 'rocksmith' path so
+    screen.js still treats it as an RS cab: +6 dB + cab_rms_makeup)."""
+    if not _config_dir:
+        return None
+    try:
+        out = _config_dir / "nam_irs" / "rocksmith_dicab" / cab_path.name
+        try:
+            if out.exists() and out.stat().st_mtime_ns >= cab_path.stat().st_mtime_ns:
+                return out
+        except OSError:
+            pass
+        r = _read_ir_samples(cab_path)
+        if not r:
+            return None
+        samples, sr = r
+        blend = _di_cab_blend_samples(samples)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        _write_ir_f32(out, blend, sr)
+        return out
+    except Exception:
+        log.warning("di_cab blend failed for %s", cab_path, exc_info=True)
+        return None
+
+
+def _di_cab_makeup_for(cab_path: Path, blend_path: Path) -> float:
+    """cab_rms_makeup for the blend stage: the precomputed bass-loudness-
+    preserving factor, else a broadband normalize of the blend (fallback)."""
+    mk = _load_di_cab_makeup().get(cab_path.stem)
+    if mk:
+        try:
+            return float(mk)
+        except (TypeError, ValueError):
+            pass
+    return _ir_rms_makeup(blend_path)
+
+
 def _ir_stage(ir_path, *, bypassed, gain=1.0,
-              slot=None, rs_gear=None, tone_key=None) -> dict:
+              slot=None, rs_gear=None, tone_key=None, di_cab=False) -> dict:
     """Build a type-2 (cab IR) chain stage. `gain` is unity by default — the
     engine's chainOutputGain already applies the preset's output_gain, so the
     IR stays at 1.0 except in the single-IR audition where the caller passes
-    its own gain (see the −12 dB double-attenuation fix)."""
+    its own gain (see the −12 dB double-attenuation fix).
+
+    `di_cab` (set only by the per-tone chain builders) swaps a BASS cab IR for
+    its 70/30 DI+cab blend when the feature is on — see the DI+Cab helpers."""
+    ir_path = str(ir_path)
+    di_cab_makeup = None
+    if di_cab and _is_bass_cab_ir(ir_path) and _di_cab_enabled():
+        blended = _di_cab_blend_file(Path(ir_path))
+        if blended is not None:
+            di_cab_makeup = _di_cab_makeup_for(Path(ir_path), blended)
+            ir_path = str(blended)
     stage = {"type": 2, "name": Path(ir_path).stem, "path": str(ir_path),
              "bypassed": bypassed}
     if slot is not None:
@@ -3135,9 +3279,12 @@ def _ir_stage(ir_path, *, bypassed, gain=1.0,
     # Per-cab RMS-match factor for screen.js (engine ignores it, like slot/
     # rs_gear). Only RS cab IRs vary in L2 after the clip-safe peak cap; other
     # IRs (tone3000) are already loudness-normalized, so we leave them alone.
+    # For a DI+cab blend we use the precomputed bass-loudness-preserving makeup
+    # instead of the blend IR's broadband L2 (which would drop bass ~4 dB).
     p = Path(ir_path)
     if "rocksmith" in p.as_posix().lower():
-        stage["cab_rms_makeup"] = round(_ir_rms_makeup(p), 4)
+        stage["cab_rms_makeup"] = round(
+            di_cab_makeup if di_cab_makeup is not None else _ir_rms_makeup(p), 4)
     stage["state"] = _state_b64({"irPath": str(ir_path), "gain": gain})
     return stage
 
@@ -6556,7 +6703,7 @@ def setup(app, context):
                 # chainOutputGain applies the preset output_gain once (−12 dB
                 # fix); RS IRs get a fixed makeup since they're quieter.
                 chain.append(_ir_stage(ir_path, bypassed=ir_bypassed,
-                                       slot=ir_slot, rs_gear=ir_gear,
+                                       slot=ir_slot, rs_gear=ir_gear, di_cab=True,
                                        gain=_RS_IR_MAKEUP if ir_kind == "rs_ir" else 1.0))
             else:
                 missing.append(ir_file)
@@ -6715,7 +6862,7 @@ def setup(app, context):
                 ir_path = _safe_child(irs_dir, ir_file)
                 if ir_path and ir_path.exists():
                     tone_stages.append(_ir_stage(
-                        ir_path, bypassed=ir_bypassed,
+                        ir_path, bypassed=ir_bypassed, di_cab=True,
                         slot=ir_slot, rs_gear=ir_gear, tone_key=tone_key,
                         gain=_RS_IR_MAKEUP if ir_kind == "rs_ir" else 1.0))
                 else:
