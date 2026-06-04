@@ -53,10 +53,14 @@ def test_screen_registers_executable_audio_effects_provider():
     assert "operationHandlers: rbAudioEffectsOperationHandlers()" in src
     assert "'chain.resolve'" in src
     assert "rbBuildAudioEffectsRequestFromPayload" in src
+    assert "function rbToneSegmentId" in src
+    assert "stageBypass" in src
     assert "invalid-provider-ref" in src
     assert "assets[assetRef] = asset" in src
     assert "asset.stateBase64 = stage.state" in src
     assert "rbLoadChainPlanWithHost" in src
+    assert "rbActivateSegmentWithHost" in src
+    assert "audioEffects.activateSegment" in src
     assert "rbRegisterAudioEffectsCapability();\n    const audioEffects = rbAudioEffectsApi();" in src
     assert "loadPlan" in src
     assert "rbLoadNativePresetPayload" in src
@@ -107,6 +111,8 @@ def test_screen_blocks_amp_button_while_mega_chain_active():
     assert "audioEffects.selectChain" in src
     assert "authorization: 'restore-selection'" in src
     assert "rbSelectAudioEffectsRoute('mega-chain-pending')" in src
+    assert "const activatedByHost = await rbActivateSegmentWithHost" in src
+    assert "if (!activatedByHost)" in src
     assert "waiting for /settings before build" in src
     assert "settings-ready catch-up" in src
     assert "function rbInjectPlayerToneButton()" in src

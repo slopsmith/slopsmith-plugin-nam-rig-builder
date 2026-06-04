@@ -779,6 +779,11 @@ function rbAudioEffectsPlanId(prefix, ref) {
     return rbSafeCapabilityId(`rig-builder-${prefix}-${ref || Date.now()}`, 'rig-builder-plan');
 }
 
+function rbToneSegmentId(tone, index) {
+    const key = tone && (tone.tone_key || tone.toneKey || tone.name || tone.id);
+    return rbSafeCapabilityId(`tone-${key || index}`, `tone-${index}`);
+}
+
 function rbBuildAudioEffectsRequestFromPayload(payload, options) {
     const opts = options || {};
     const nativePreset = payload && payload.native_preset || {};
@@ -813,20 +818,29 @@ function rbBuildAudioEffectsRequestFromPayload(payload, options) {
     });
 
     const stageIds = stages.map(stage => stage.stageId);
-    let segments = [{ segmentId: 'base', stageIds }];
+    let segments = [{ segmentId: 'base', stageIds, stageBypass: Object.fromEntries(stages.map(stage => [stage.stageId, !!stage.bypassed])) }];
     if (payload && Array.isArray(payload.tones) && payload.tones.length) {
         const indexToStageId = new Map(stages.map((stage, index) => [index, stage.stageId]));
-        const masterIdx = [];
-        for (const entry of payload.master_pre_slots || []) if (typeof entry.idx === 'number') masterIdx.push(entry.idx);
-        for (const entry of payload.master_post_slots || []) if (typeof entry.idx === 'number') masterIdx.push(entry.idx);
+        const masterEntries = [];
+        for (const entry of payload.master_pre_slots || []) if (entry && typeof entry.idx === 'number') masterEntries.push(entry);
+        for (const entry of payload.master_post_slots || []) if (entry && typeof entry.idx === 'number') masterEntries.push(entry);
         segments = payload.tones.slice(0, 80).map((tone, toneIndex) => {
-            const idxs = new Set(masterIdx);
+            const entriesByIdx = new Map();
+            for (const entry of masterEntries) entriesByIdx.set(entry.idx, entry);
             for (const entry of tone && tone.slots || []) {
-                if (typeof entry.idx === 'number') idxs.add(entry.idx);
+                if (entry && typeof entry.idx === 'number') entriesByIdx.set(entry.idx, entry);
+            }
+            const orderedIdxs = Array.from(entriesByIdx.keys()).sort((a, b) => a - b);
+            const segmentStageIds = orderedIdxs.map(idx => indexToStageId.get(idx)).filter(Boolean);
+            const stageBypass = {};
+            for (const idx of orderedIdxs) {
+                const stageId = indexToStageId.get(idx);
+                if (stageId) stageBypass[stageId] = !!(entriesByIdx.get(idx) && entriesByIdx.get(idx).bypassed);
             }
             return {
-                segmentId: rbSafeCapabilityId(`tone-${toneIndex}`, `tone-${toneIndex}`),
-                stageIds: Array.from(idxs).sort((a, b) => a - b).map(idx => indexToStageId.get(idx)).filter(Boolean),
+                segmentId: rbToneSegmentId(tone, toneIndex),
+                stageIds: segmentStageIds,
+                stageBypass,
             };
         });
     }
@@ -908,6 +922,24 @@ async function rbLoadChainPlanWithHost(payload, options) {
         },
     }, RB_PLUGIN_ID);
     return rbHandledAudioEffectsResult(result, 'Rig Builder audio-effects host load failed');
+}
+
+async function rbActivateSegmentWithHost(segmentId, toneKey) {
+    rbRegisterAudioEffectsCapability();
+    const audioEffects = rbAudioEffectsApi();
+    if (!segmentId || !audioEffects || typeof audioEffects.activateSegment !== 'function') return false;
+    try {
+        const result = await audioEffects.activateSegment({
+            routeKey: RB_EFFECTS_ROUTE_KEY,
+            segmentId,
+            toneKey: toneKey || segmentId,
+        });
+        if (result && result.outcome === 'handled') return true;
+        console.warn('[rig_builder mega-chain] audio-effects segment activation was not handled:', result);
+    } catch (e) {
+        console.warn('[rig_builder mega-chain] audio-effects segment activation failed:', e);
+    }
+    return false;
 }
 
 async function rbLoadNativePresetPayload(api, payload, options) {
@@ -1766,6 +1798,8 @@ const RbMegaChain = (function () {
         const api = _api();
         if (!api || !_mega) return;
         const tone = _findToneByKey(activeToneKey);
+        const toneIndex = tone && Array.isArray(_mega.tones) ? _mega.tones.indexOf(tone) : -1;
+        const segmentId = tone ? rbToneSegmentId(tone, toneIndex >= 0 ? toneIndex : 0) : '';
         const chainSpec = (_mega.native_preset && _mega.native_preset.chain) || [];
         const totalStages = chainSpec.length || 0;
         if (!totalStages) return;
@@ -1785,25 +1819,28 @@ const RbMegaChain = (function () {
         (_mega.master_post_slots || []).forEach(applyEntry);
         if (tone && Array.isArray(tone.slots)) tone.slots.forEach(applyEntry);
 
-        const changes = [];
-        const mapLen = _indexToSlotId.length;
-        for (let idx = 0; idx < totalStages; idx++) {
-            // Skip chain indices whose stage failed to load (slot ID is
-            // null in the map). Firing setBypass with the raw index as
-            // fallback would hit the WRONG slot in the engine since
-            // engine IDs aren't sequential 0..N-1.
-            if (idx >= mapLen || _indexToSlotId[idx] == null) continue;
-            const slotId = _indexToSlotId[idx];
-            changes.push({ slotId, bypassed: bypassByIdx[idx] });
-        }
-        try {
-            if (typeof api.setMultiBypass === 'function') {
-                await api.setMultiBypass(changes);
-            } else if (typeof api.setBypass === 'function') {
-                for (const c of changes) await api.setBypass(c.slotId, c.bypassed);
+        const activatedByHost = await rbActivateSegmentWithHost(segmentId, tone && tone.tone_key || activeToneKey || '');
+        if (!activatedByHost) {
+            const changes = [];
+            const mapLen = _indexToSlotId.length;
+            for (let idx = 0; idx < totalStages; idx++) {
+                // Skip chain indices whose stage failed to load (slot ID is
+                // null in the map). Firing setBypass with the raw index as
+                // fallback would hit the WRONG slot in the engine since
+                // engine IDs aren't sequential 0..N-1.
+                if (idx >= mapLen || _indexToSlotId[idx] == null) continue;
+                const slotId = _indexToSlotId[idx];
+                changes.push({ slotId, bypassed: bypassByIdx[idx] });
             }
-        } catch (e) {
-            console.warn('[rig_builder mega-chain] applyActiveTone failed:', e);
+            try {
+                if (typeof api.setMultiBypass === 'function') {
+                    await api.setMultiBypass(changes);
+                } else if (typeof api.setBypass === 'function') {
+                    for (const c of changes) await api.setBypass(c.slotId, c.bypassed);
+                }
+            } catch (e) {
+                console.warn('[rig_builder mega-chain] applyActiveTone failed:', e);
+            }
         }
         const effectiveChain = chainSpec.map((stage, idx) => {
             const copy = Object.assign({}, stage, { bypassed: !!bypassByIdx[idx] });
