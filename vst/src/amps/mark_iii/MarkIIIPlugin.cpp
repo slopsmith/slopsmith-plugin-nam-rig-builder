@@ -79,8 +79,8 @@ protected:
     {
         for (uint32_t i = 0; i < frames; ++i)
         {
-            outputs[0][i] = rbAmpLvl(0.829f * left.process(inputs[0][i]));
-            outputs[1][i] = rbAmpLvl(0.829f * right.process(inputs[1][i]));
+            outputs[0][i] = rbAmpLvl(0.415f * left.process(inputs[0][i]));
+            outputs[1][i] = rbAmpLvl(0.415f * right.process(inputs[1][i]));
         }
     }
 

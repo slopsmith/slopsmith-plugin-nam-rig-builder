@@ -401,7 +401,7 @@ protected:
     void run(const float** in, float** out, uint32_t frames) override {
         const float* iL = in[0]; const float* iR = in[1];
         float* oL = out[0]; float* oR = out[1];
-        for (uint32_t i = 0; i < frames; ++i) { oL[i] = rbAmpLvl(1.707f * L.process(iL[i])); oR[i] = rbAmpLvl(1.707f * R.process(iR[i])); }
+        for (uint32_t i = 0; i < frames; ++i) { oL[i] = rbAmpLvl(0.855f * L.process(iL[i])); oR[i] = rbAmpLvl(0.855f * R.process(iR[i])); }
     }
     DISTRHO_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Fk800Plugin)
 };

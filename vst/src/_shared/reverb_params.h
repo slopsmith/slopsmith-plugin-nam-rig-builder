@@ -14,6 +14,6 @@ static const char* const kReverbSymbols[kParamCount] = { "time", "tone", "depth"
 
 static const float kReverbMin[kParamCount] = { 0,0,0,0 };
 static const float kReverbMax[kParamCount] = { 1,1,1,1 };
-static const float kReverbDef[kParamCount] = { 0.40f, 0.50f, 0.20f, 0.30f };
+static const float kReverbDef[kParamCount] = { 0.35f, 0.50f, 0.08f, 0.22f };
 
 #endif // REVERB_PARAMS_H

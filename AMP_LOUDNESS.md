@@ -19,15 +19,16 @@ oL[i] = rbAmpLvl(kLvl * core.process(iL[i]));
 Two parts:
 
 1. **`kLvl`** — a per-amp constant that makes the amp hit the common loudness
-   **target ≈ 0.38 RMS (≈ −8 LUF)** (a 110 Hz–1.8 kHz multitone, measured at the
+   **target ≈ 0.19 RMS (≈ −14 LUF)** (a 110 Hz–1.8 kHz multitone, measured at the
    amp's real Rocksmith song settings). That's what equalizes volume across amps.
 2. **`rbAmpLvl`** — a soft ceiling: it does nothing below ±0.90 (so the matched
    tone is untouched), then rounds off to ±0.99 above. So an EQ/tone boost
    soft-saturates near full scale instead of hard-clipping the engine.
 
-`0.38 RMS` (≈ −8.4 dBFS / −8 LUF) is the house reference — settled by ear with
-the user (2026-06-04). 0.30 (−10 LUF) felt too quiet; +6 dB (0.60) made the
-soft-clip graze loud transients. Don't change it per-amp; only `kLvl` changes.
+`0.19 RMS` (≈ −14.4 dBFS / −14 LUF) is the house reference — settled by ear with
+the user (2026-06-04). Higher targets (0.30 / 0.38 / +6 dB) made the soft-clip
+graze hard-playing transients and audibly distort; −14 LUF keeps the loudest
+plucks under the soft-clip threshold. Don't change it per-amp; only `kLvl`.
 
 > Note: if a single amp distorts way more than the rest, first check the
 > **gain the song actually sends** (RS knob → param mapping) — an amp at
@@ -40,8 +41,8 @@ soft-clip graze loud transients. Don't change it per-amp; only `kLvl` changes.
 2. Measure its **multitone RMS at the real RS settings** (the knob values the
    game actually sends — pull them from `nam_tone.db` `preset_pieces.vst_state`,
    take the median across songs that use the gear). Harness below.
-3. `kLvl = 0.38 / measured_RMS`.
-4. Rebuild, re-measure → should read ~0.38. Re-measure the **EQ-max peak** (all
+3. `kLvl = 0.19 / measured_RMS`.
+4. Rebuild, re-measure → should read ~0.19. Re-measure the **EQ-max peak** (all
    tone/EQ knobs at 1.0): must be **≤ ~0.99** (rbAmpLvl guarantees it).
 5. Verify against another amp by ear — they should feel equal.
 
@@ -61,19 +62,19 @@ Call `sampleRateChanged(48000)` (host normally sets SR; offline it's 0). Set the
 gain-equivalent param by NAME — it's "Gain" for most, **"Solid State"** for
 Hartke (Sharke), **"Volume"** for the GK (FK800). See [[reference_build_bundled_vsts]].
 
-## Current kLvl values (target 0.38 ≈ −8 LUF, 2026-06-04)
+## Current kLvl values (target 0.19 ≈ −14 LUF, 2026-06-04)
 
 | amp | kLvl | | amp | kLvl |
 |---|---|---|---|---|
-| DSL100 | 1.274 | | MarkIII | 0.829 |
-| DualRect | 1.499 | | MarkIV | 0.856 |
-| EN30 / Box DC30 | 0.965 | | FK800 (GK) | 1.707 |
-| TW22 / SuperNova | 0.951 | | Sharke HB3500 | 0.357 |
-| TW26 / Deluxe | 1.041 | | Sharke HB5000 | 0.498 |
-| TW40 | 2.130 | | Sampleg SVT | 0.729 |
+| DSL100 | 0.638 | | MarkIII | 0.415 |
+| DualRect | 0.751 | | MarkIV | 0.429 |
+| EN30 / Box DC30 | 0.483 | | FK800 (GK) | 0.855 |
+| TW22 / SuperNova | 0.476 | | Sharke HB3500 | 0.179 |
+| TW26 / Deluxe | 0.522 | | Sharke HB5000 | 0.249 |
+| TW40 | 1.067 | | Sampleg SVT | 0.365 |
 
 All matched to the same multitone loudness; EQ-max peaks bounded ≤ 0.99 by
-rbAmpLvl. (Earlier 0.30-target table: multiply each by 1.259 for the history.)
+rbAmpLvl. To re-scale the whole set by ear: multiply every kLvl by 10^(dB/20).
 
 ## Gotchas
 

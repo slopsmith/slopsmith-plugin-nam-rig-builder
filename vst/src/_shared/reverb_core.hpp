@@ -61,7 +61,7 @@ class ReverbCore {
     RvAllpass apL[4],     apR[4];
     // post modulation (Depth)
     float modBufL[2048], modBufR[2048]; int mw = 0;
-    float lfoPh = 0.f, lfoInc = 0.f, modDepth = 0.f;
+    float lfoPh = 0.f, lfoInc = 0.f, modDepth = 0.f, modMix = 0.f;
     float mix = 0.3f;
     // voicing
     float sizeScale = 1.f, dampBias = 0.f, apFb = 0.5f;
@@ -101,7 +101,8 @@ public:
             apL[i].set((int)(kAllpassTune[i] * sr), apFb);
             apR[i].set((int)((kAllpassTune[i] + kStereoSpread) * sr), apFb);
         }
-        modDepth = depth * 0.0022f * fs;                              // up to ~2.2 ms wet wobble
+        modDepth = depth * 0.0030f * fs;                              // excursion 0..~3 ms
+        modMix   = depth * 0.18f;                                     // 0 at Depth=0 → no coloration
         mix = mixP;
     }
     inline void process(float xL, float xR, float& outL, float& outR) {
@@ -110,16 +111,19 @@ public:
         for (int i = 0; i < 8; ++i) { wL += combL[i].process(in); wR += combR[i].process(in); }
         for (int i = 0; i < 4; ++i) { wL = apL[i].process(wL);  wR = apR[i].process(wR); }
 
-        // light wet modulation (Depth) — store then read with LFO offset
+        // subtle wet chorus (Depth) — fully OFF at Depth=0 so the tail has no
+        // fixed-comb/flanger/phaser coloration; a gentle ~11 ms base when engaged
         modBufL[mw] = wL; modBufR[mw] = wR;
-        lfoPh += lfoInc; if (lfoPh > 6.2831853f) lfoPh -= 6.2831853f;
-        const float off = 4.0f + modDepth * (0.5f + 0.5f * std::sin(lfoPh));
-        const float offR = 4.0f + modDepth * (0.5f + 0.5f * std::sin(lfoPh + 1.7f));
-        float mL = modRead(modBufL, off), mR = modRead(modBufR, offR);
+        if (modMix > 1e-4f) {
+            lfoPh += lfoInc; if (lfoPh > 6.2831853f) lfoPh -= 6.2831853f;
+            const float base = 0.011f * fs;
+            const float off  = base + modDepth * (0.5f + 0.5f * std::sin(lfoPh));
+            const float offR = base + modDepth * (0.5f + 0.5f * std::sin(lfoPh + 1.7f));
+            float mL = modRead(modBufL, off), mR = modRead(modBufR, offR);
+            wL = wL * (1.f - modMix) + mL * modMix;
+            wR = wR * (1.f - modMix) + mR * modMix;
+        }
         if (++mw >= 2048) mw = 0;
-        // blend a little modulated signal in (subtle)
-        wL = wL * 0.5f + mL * 0.5f;
-        wR = wR * 0.5f + mR * 0.5f;
 
         outL = xL * (1.0f - mix) + wL * mix;
         outR = xR * (1.0f - mix) + wR * mix;

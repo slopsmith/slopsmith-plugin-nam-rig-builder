@@ -99,8 +99,8 @@ protected:
         float* outR = outputs[1];
         for (uint32_t i = 0; i < frames; ++i)
         {
-            outL[i] = rbAmpLvl(0.951f * left.process(inL[i]));
-            outR[i] = rbAmpLvl(0.951f * right.process(inR[i]));
+            outL[i] = rbAmpLvl(0.476f * left.process(inL[i]));
+            outR[i] = rbAmpLvl(0.476f * right.process(inR[i]));
         }
     }
 
