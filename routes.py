@@ -3027,11 +3027,21 @@ def _nam_stage(path, *, bypassed, input_level=1.0, output_drive=None,
     return stage
 
 
-# NOTE: the native engine IGNORES the per-stage IR `gain` (confirmed — see the
-# screen.js note near rbNormalizeRsIrs). So this stays at unity / no-op; the
-# real, engine-respected cab+chain level is `setGain('chain', X)`, driven by
-# rbChainGainTargetFor + the user "Chain volume" trim (chain_makeup) in screen.js.
-_RS_IR_MAKEUP = 1.0
+# RS cab IR makeup, applied via the per-stage IR `gain` (in `_state_b64`).
+# CORRECTION (2026-06-04): the native engine DOES read+apply the per-stage IR
+# `gain` — confirmed by (a) the slopsmith_audio.node binary exposing `irPath`/
+# `gain`/`state` state keys, (b) the v1.3.2 double-attenuation bug (IR gain 0.5
+# × chainOutputGain 0.5 = −12 dB), and (c) IRLoader.cpp reading outputGain off
+# the slot state. The old "engine IGNORES per-stage IR gain" note was wrong.
+#
+# Why +12 dB: the engine loads cab IRs with juce::dsp::Convolution `Normalise::
+# yes`, which force-renormalizes EVERY IR to a broadband gain of 0.125 (−18.1
+# dB) — discarding the extractor's L2=2.4 (+7.6 dB) calibration. That flat −18
+# dB is what made cabs (esp. bass, energy in 40–250 Hz) sound quiet/thin. This
+# per-cab gain recovers it at the IR stage (robust on every chain path, unlike
+# the fragile `setGain('chain')` makeup). 4.0 (+12 dB) lands the RS cab at a
+# healthy level with the existing chain_makeup untouched; tune by ear.
+_RS_IR_MAKEUP = 4.0
 
 
 # Per-cab RMS matching. A cab IR's broadband convolution gain — i.e. how much
