@@ -3861,7 +3861,7 @@
    "Time": {
     "param": "Time",
     "scale": 0.005,
-    "_hint": "RS Time in ms"
+    "_hint": "RS Time in ms
    },
    "Feedback": {
     "param": "Feedback",

@@ -2095,7 +2095,7 @@
    "url": "",
    "free": true,
    "bundled": "vst/amps/SharkeHB5000.vst3",
-   "notes": "Bundled Hartke HA5000 style bass head (Rocksmith 'BT600B'): 2x250W bi-amp, tube+solid-state preamp blend, compressor, 10-band graphic EQ, contour low/high-pass, master. Modeled from the HA5000 circuit diagram (board 4005182801). RS Gain->Solid State; RS Bass/Mid/Treble->graphic-EQ 125/500/3k bands."
+   "notes": "Bundled Hartke HA5000 style bass head (Rocksmith 'BT600B'): 2x250W bi-amp, tube+solid-state preamp blend, compressor, 10-band graphic EQ, contour low/high-pass, master. Modeled from the HA5000 circuit diagram (board 4005182801). RS Gain->Solid State; RS Bass/Mid/Treble->graphic-EQ 125/500/5k bands."
   }
  ]
 }
