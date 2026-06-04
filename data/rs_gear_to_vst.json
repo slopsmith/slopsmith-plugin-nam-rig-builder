@@ -1999,6 +1999,17 @@
    "notes": "Bundled Mesa-Boogie Mark III R2 / crunch-mode style amp based on the local Mark III schematic, using Rocksmith's Gain, Bass, Mid, and Treble knobs."
   }
  ],
+ "Amp_CS90": [
+  {
+   "name": "Ronald JC-90",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/amps/JC90.vst3",
+   "notes": "Bundled Roland JC-90 'Jazz Chorus' style SOLID-STATE amp (parody brand 'Ronald'), full front panel (Distortion, Volume, Hi-Treble/Treble/Middle/Bass, Reverb, Rate/Depth/Chorus stereo BBD chorus) modelled component-by-component from the local JC-90 schematic. Rocksmith's Gain knob drives the Distortion (clean at 0); Bass/Mid/Treble->tone stack, Pres->Hi-Treble. Reverb/Chorus off for songs."
+  }
+ ],
  "Amp_EN30": [
   {
    "name": "EN30",

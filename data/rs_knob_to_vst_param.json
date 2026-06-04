@@ -3963,6 +3963,44 @@
    }
   }
  },
+ "Amp_CS90": {
+  "jc90": {
+   "_hint": "Ronald JC-90 = the full Roland JC-90 'Jazz Chorus' panel (solid-state). RS Gain drives DISTORTION (clean at 0 -> gritty diode drive). Treble/Mid/Bass -> tone stack, Pres -> Hi-Treble. Reverb + Chorus are pinned OFF for songs (Rocksmith adds those via its own pedals/racks) and stay editable by hand.",
+   "Gain": {
+    "param": "Distortion",
+    "scale": 0.01,
+    "_hint": "RS Gain -> Distortion (the JC diode-clip drive). 0 = the famous JC clean; higher = the gritty solid-state distortion (Ch1 Hi / Ch2 Hi captures)."
+   },
+   "Bass": {
+    "param": "Bass",
+    "scale": 0.01,
+    "_hint": "RS Bass -> tone-stack bass."
+   },
+   "Mid": {
+    "param": "Middle",
+    "scale": 0.01,
+    "_hint": "RS Mid -> tone-stack middle."
+   },
+   "Treble": {
+    "param": "Treble",
+    "scale": 0.01,
+    "_hint": "RS Treble -> tone-stack treble."
+   },
+   "Pres": {
+    "param": "Hi-Treble",
+    "scale": 0.01,
+    "_hint": "RS Pres -> Hi-Treble (the JC's extra top-end brightness)."
+   },
+   "_static": {
+    "Volume": 0.6,
+    "Reverb": 0.0,
+    "Chorus": 0.5,
+    "Rate": 0.4,
+    "Depth": 0.5,
+    "_note": "Volume at the loudness reference; Reverb off and Chorus = OFF (the 3-way midpoint) for songs — Rocksmith brings its own reverb/chorus. All editable by hand (Chorus 1.0 = the iconic stereo chorus, 0.0 = vibrato)."
+   }
+  }
+ },
  "Amp_EN30": {
   "box dc30": {
    "_hint": "BOX DC30 = the FULL Vox AC30C2 panel (modelled from Vox_ac30c2.pdf). The AC30 has no Mid or Bright pot, so those RS knobs are mapped to REAL circuit behaviour: Mid -> Normal-channel Volume with the input jumpered to Both (the classic AC30 channel-jumper fills the Vox mid-scoop), and Bright -> the Top Boost brilliance bright-cap. Gain/Treble/Bass/Pres map straight onto the panel.",

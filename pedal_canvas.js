@@ -4139,20 +4139,22 @@
   //    12 Presence. RS: Gain->Channel morph, Bass/Mid/Treble->stack, Pres->Presence.
   P.aor50 = { w:1500, h:600, ptr:rgb(238,239,242),
     knobs:[
-      {id:12,cx:.205,cy:.715,r:.015,style:'pointer',cap:[20,20,22]},  // PRESENCE
-      {id:7, cx:.272,cy:.715,r:.015,style:'pointer',cap:[20,20,22]},  // BASS
-      {id:8, cx:.339,cy:.715,r:.015,style:'pointer',cap:[20,20,22]},  // MIDDLE
-      {id:9, cx:.406,cy:.715,r:.015,style:'pointer',cap:[20,20,22]},  // TREBLE
-      {id:5, cx:.505,cy:.715,r:.015,style:'pointer',cap:[20,20,22]},  // CH1 MASTER
-      {id:4, cx:.572,cy:.715,r:.015,style:'pointer',cap:[20,20,22]},  // CH1 PREAMP
-      {id:2, cx:.668,cy:.715,r:.015,style:'pointer',cap:[20,20,22]},  // AOR MASTER
-      {id:1, cx:.735,cy:.715,r:.015,style:'pointer',cap:[20,20,22]} ],// AOR PREAMP
+      {id:12,cx:.175,cy:.700,r:.023,style:'pointer',cap:[20,20,22]},  // PRESENCE
+      {id:7, cx:.245,cy:.700,r:.023,style:'pointer',cap:[20,20,22]},  // BASS
+      {id:8, cx:.315,cy:.700,r:.023,style:'pointer',cap:[20,20,22]},  // MIDDLE
+      {id:9, cx:.385,cy:.700,r:.023,style:'pointer',cap:[20,20,22]},  // TREBLE
+      {id:5, cx:.485,cy:.700,r:.023,style:'pointer',cap:[20,20,22]},  // CH1 MASTER
+      {id:4, cx:.555,cy:.700,r:.023,style:'pointer',cap:[20,20,22]},  // CH1 PREAMP
+      {id:2, cx:.655,cy:.700,r:.023,style:'pointer',cap:[20,20,22]},  // AOR MASTER
+      {id:1, cx:.725,cy:.700,r:.023,style:'pointer',cap:[20,20,22]} ],// AOR PREAMP
+    // pull-pot toggles — drawn by draw() as small "PULL …" buttons ABOVE each pot (the real
+    // amp uses push-pull pots, NOT separate levers). hidden:true = click-only; two:true = on/off.
     sw3:[
-      {id:10,cx:.272,cy:.885,hw:8,hh:13,two:true},   // Bass Pull-Deep
-      {id:11,cx:.339,cy:.885,hw:8,hh:13,two:true},   // Middle Pull-Boost
-      {id:6, cx:.505,cy:.885,hw:8,hh:13,two:true},   // Ch1 Pull-Bright
-      {id:3, cx:.668,cy:.885,hw:8,hh:13,two:true},   // AOR Pull-Bright
-      {id:0, cx:.735,cy:.885,hw:8,hh:13,two:true} ], // Pull-AOR-On (channel)
+      {id:10,cx:.245,cy:.575,hw:27,hh:9,two:true,hidden:true},  // BASS   Pull-Deep
+      {id:11,cx:.315,cy:.575,hw:27,hh:9,two:true,hidden:true},  // MIDDLE Pull-Boost
+      {id:6, cx:.485,cy:.575,hw:27,hh:9,two:true,hidden:true},  // CH1    Pull-Bright
+      {id:3, cx:.655,cy:.575,hw:27,hh:9,two:true,hidden:true},  // AOR    Pull-Bright
+      {id:0, cx:.725,cy:.575,hw:27,hh:9,two:true,hidden:true} ],// AOR    Pull-On (channel)
     draw(d,vals){ const {ctx:c,W,H,s}=d;
       const ink=rgb(232,233,236), faint='rgba(214,216,222,0.55)', chr=rgb(186,190,196);
       const ch=(vals&&vals[0]!=null)?vals[0]:1;
@@ -4180,15 +4182,14 @@
         const gg=c.createLinearGradient(cxx,cyy,cxx+dx*k,cyy+dy*k); gg.addColorStop(0,rgb(228,232,236)); gg.addColorStop(0.5,rgb(150,154,160)); gg.addColorStop(1,rgb(96,100,106));
         c.fillStyle=gg; c.fill(); c.strokeStyle=rgb(60,62,66); c.lineWidth=0.9*s; c.stroke(); bolt(cxx+dx*k*0.42,cyy+dy*k*0.42,2.4*s); };
       corner(0,0,1,1); corner(W,0,-1,1); corner(0,H,1,-1); corner(W,H,-1,-1);
-      // ── grille (top, with the RANEY badge) ──
-      const gy=H*.10, gh=H*.46, gx=W*.05, gw=W*.90;
-      rr(c,gx,gy,gw,gh,6*s); c.fillStyle=rgb(15,15,17); c.fill();
-      c.save(); rr(c,gx,gy,gw,gh,6*s); c.clip();
-      for(let yy=gy; yy<gy+gh; yy+=3*s){ for(let xx=gx; xx<gx+gw; xx+=3*s){
-        const n=((xx*13+yy*7)%19); if(n<2){ c.fillStyle='rgba(150,152,158,0.18)'; c.fillRect(xx,yy,1.4*s,1.4*s); } } }
-      c.restore();
-      rr(c,gx,gy,gw,gh,6*s); c.strokeStyle=rgb(150,152,158); c.lineWidth=2*s; c.stroke();
-      rr(c,gx+3*s,gy+3*s,gw-6*s,gh-6*s,5*s); c.strokeStyle='rgba(120,122,128,0.5)'; c.lineWidth=1*s; c.stroke();
+      // ── front baffle (plain black tolex) + cream piping frame (AOR signature) ──
+      const gy=H*.085, gh=H*.405, gx=W*.045, gw=W*.91;
+      rr(c,gx,gy,gw,gh,6*s); c.fillStyle=rgb(18,17,17); c.fill();
+      c.save(); rr(c,gx,gy,gw,gh,6*s); c.clip(); c.lineWidth=1; c.strokeStyle='rgba(255,255,255,0.014)';
+      for(let x=gx-gh;x<gx+gw;x+=6*s){ c.beginPath(); c.moveTo(x,gy); c.lineTo(x+gh,gy+gh); c.stroke(); } c.restore();
+      // cream/beige piping border
+      rr(c,gx,gy,gw,gh,7*s); c.strokeStyle=rgb(208,198,162); c.lineWidth=3*s; c.stroke();
+      rr(c,gx+4*s,gy+4*s,gw-8*s,gh-8*s,5*s); c.strokeStyle='rgba(150,142,112,0.5)'; c.lineWidth=1*s; c.stroke();
       // RANEY badge — black plate with white block letters
       const bw=W*.20, bh=gh*.30, bx=W*.5-bw/2, by=gy+gh*.5-bh/2;
       rr(c,bx,by,bw,bh,5*s); const bgd=c.createLinearGradient(0,by,0,by+bh); bgd.addColorStop(0,rgb(28,28,30)); bgd.addColorStop(1,rgb(8,8,10));
@@ -4196,33 +4197,133 @@
       bolt(bx+10*s,by+bh*.5,2.6*s); bolt(bx+bw-10*s,by+bh*.5,2.6*s);
       textSpaced(d,W*.5,by+bh*.52,F.anton,46,rgb(238,240,244),'RANEY',0.06);
       // ── black control panel (bottom strip) ──
-      const py=H*.62, ph=H*.34, px=W*.03, pw=W*.94, lblY=py+ph*.62;
+      const py=H*.55, ph=H*.41, px=W*.03, pw=W*.94;
+      const nameY=py+ph*.16, pullY=py+ph*.06;   // labels + PULL buttons ABOVE the pots (real layout)
       const pg=c.createLinearGradient(0,py,0,py+ph); pg.addColorStop(0,rgb(26,26,28)); pg.addColorStop(1,rgb(12,12,14));
       rr(c,px,py,pw,ph,5*s); c.fillStyle=pg; c.fill(); rr(c,px,py,pw,ph,5*s); c.strokeStyle=rgb(70,72,76); c.lineWidth=1.2*s; c.stroke();
       bolt(px+9*s,py+9*s,2.6*s); bolt(px+pw-9*s,py+9*s,2.6*s); bolt(px+9*s,py+ph-9*s,2.6*s); bolt(px+pw-9*s,py+ph-9*s,2.6*s);
-      // power/standby (decorative) + model text
-      batToggle(d,.045*W,py+ph*.40,8*s,true); batToggle(d,.082*W,py+ph*.40,8*s,true);
-      textSpaced(d,.045*W,py+ph*.14,F.barlow,6.5,ink,'POWER',0.03); textSpaced(d,.082*W,py+ph*.14,F.barlow,6,ink,'STANDBY',0.02);
-      textSpaced(d,.063*W,py+ph*.86,F.barlow,7,faint,'AOR50  SERIES II',0.04);
-      // knob labels
-      const lbl=(cx,t,sz)=>textSpaced(d,cx*W,lblY,F.barlow,sz||8.5,ink,t,0.02);
-      lbl(.205,'PRESENCE',7.5); lbl(.272,'BASS'); lbl(.339,'MIDDLE'); lbl(.406,'TREBLE');
-      lbl(.505,'MASTER'); lbl(.572,'PREAMP'); lbl(.668,'MASTER'); lbl(.735,'PREAMP');
-      // pull-switch labels (below the small levers)
-      const pl=(cx,t)=>textSpaced(d,cx*W,py+ph*.99,F.barlow,5.5,faint,t,0.02);
-      pl(.272,'PULL DEEP'); pl(.339,'PULL BOOST'); pl(.505,'PULL BRT'); pl(.668,'PULL BRT'); pl(.735,'PULL AOR');
-      // channel section brackets + LEDs
-      const brk=(x0,x1,t,on,r,g,b)=>{ const y=py+ph*.10; c.strokeStyle=faint; c.lineWidth=1*s;
-        c.beginPath(); c.moveTo(x0*W,y+4*s); c.lineTo(x0*W,y); c.lineTo(x1*W,y); c.lineTo(x1*W,y+4*s); c.stroke();
-        textSpaced(d,(x0+x1)/2*W,y-3*s,F.barlow,6.5,ink,t,0.04); ledDot(d,(x0+x1)/2*W,py+ph*.30,on,r,g,b); };
-      brk(.475,.605,'CHANNEL ONE', ch<0.5, 70,206,96);
-      brk(.638,.768,'AOR CHANNEL', ch>=0.5, 224,150,40);
-      // ── INPUTS (Low/High sensitivity) ──
-      const jack=(jx)=>{ c.beginPath(); c.arc(jx,py+ph*.42,7*s,0,7); c.fillStyle=rgb(18,16,16); c.fill();
-        c.strokeStyle=chr; c.lineWidth=1.8*s; c.stroke(); c.beginPath(); c.arc(jx,py+ph*.42,2.4*s,0,7); c.fillStyle=rgb(54,54,58); c.fill(); };
-      const jL=.86*W, jH=.915*W; jack(jL); jack(jH);
-      textSpaced(d,jL,lblY,F.barlow,7.5,ink,'LOW',0.03); textSpaced(d,jH,lblY,F.barlow,7.5,ink,'HIGH',0.03);
-      textSpaced(d,(jL+jH)/2,py+ph*.10,F.barlow,6.5,faint,'SENSITIVITY',0.04); } };
+      // POWER (red rocker) + STANDBY (grey rocker) + model text — far left
+      const rocker=(rx,red)=>{ const ry=py+ph*.45, rw=15*s, rh=23*s;
+        rr(c,rx-rw/2,ry-rh/2,rw,rh,3*s); const g=c.createLinearGradient(0,ry-rh/2,0,ry+rh/2);
+        if(red){ g.addColorStop(0,rgb(230,70,56)); g.addColorStop(1,rgb(146,28,24)); } else { g.addColorStop(0,rgb(78,78,82)); g.addColorStop(1,rgb(32,32,36)); }
+        c.fillStyle=g; c.fill(); rr(c,rx-rw/2,ry-rh/2,rw,rh,3*s); c.strokeStyle=rgb(10,10,12); c.lineWidth=1.3*s; c.stroke();
+        rr(c,rx-rw/2+2*s,ry-rh/2+2*s,rw-4*s,rh*0.40,2*s); c.fillStyle='rgba(255,255,255,0.22)'; c.fill(); };
+      rocker(.052*W,true); rocker(.092*W,false);
+      textSpaced(d,.052*W,pullY,F.barlow,8,ink,'POWER',0.03); textSpaced(d,.092*W,pullY,F.barlow,7.5,ink,'STANDBY',0.02);
+      textSpaced(d,.072*W,py+ph*.80,F.barlow,8,faint,'AOR50  SERIES II',0.04);
+      textSpaced(d,.072*W,py+ph*.92,F.barlow,6.5,faint,'MADE IN ENGLAND',0.03);
+      // knob NAME labels (above each pot)
+      const lbl=(cx,t,sz)=>textSpaced(d,cx*W,nameY,F.barlow,sz||10.5,ink,t,0.02);
+      lbl(.175,'PRESENCE',9); lbl(.245,'BASS'); lbl(.315,'MIDDLE'); lbl(.385,'TREBLE');
+      lbl(.485,'MASTER'); lbl(.555,'PREAMP'); lbl(.655,'MASTER'); lbl(.725,'PREAMP');
+      // PULL-pot toggles — push-pull pots like the real amp: a small "PULL …" button above
+      // the pot that lights green when engaged (no separate lever switches).
+      const pull=(cx,id,txt)=>{ const on=(vals&&vals[id]!=null)?vals[id]>0.5:false;
+        const lx=cx*W, bw=52*s, bh=14*s; rr(c,lx-bw/2,pullY-bh/2,bw,bh,3*s);
+        c.fillStyle= on? rgb(36,84,42) : rgb(28,28,31); c.fill();
+        rr(c,lx-bw/2,pullY-bh/2,bw,bh,3*s); c.strokeStyle= on? rgb(96,206,116) : rgb(66,68,72); c.lineWidth=1*s; c.stroke();
+        textSpaced(d,lx,pullY,F.barlow,6.5, on? rgb(184,242,190):faint, txt, 0.0); };
+      pull(.245,10,'PULL DEEP'); pull(.315,11,'PULL BOOST'); pull(.485,6,'PULL BRIGHT');
+      pull(.655,3,'PULL BRIGHT'); pull(.725,0,'PULL AOR ON');
+      // channel section brackets (BELOW the channel pots, opening up toward them)
+      const brk=(x0,x1,t)=>{ const y=py+ph*.84; c.strokeStyle=faint; c.lineWidth=1.2*s;
+        c.beginPath(); c.moveTo(x0*W,y-5*s); c.lineTo(x0*W,y); c.lineTo(x1*W,y); c.lineTo(x1*W,y-5*s); c.stroke();
+        textSpaced(d,(x0+x1)/2*W,y+8*s,F.barlow,8.5,ink,t,0.05); };
+      brk(.455,.585,'CHANNEL ONE'); brk(.625,.755,'AOR CHANNEL');
+      // ── INPUTS (Low/High sensitivity) — far right ──
+      const jack=(jx)=>{ c.beginPath(); c.arc(jx,py+ph*.45,9*s,0,7); c.fillStyle=rgb(18,16,16); c.fill();
+        c.strokeStyle=chr; c.lineWidth=2*s; c.stroke(); c.beginPath(); c.arc(jx,py+ph*.45,3*s,0,7); c.fillStyle=rgb(54,54,58); c.fill(); };
+      const jL=.850*W, jH=.915*W; jack(jL); jack(jH);
+      textSpaced(d,(jL+jH)/2,pullY,F.barlow,8.5,faint,'INPUTS',0.04);
+      textSpaced(d,jL,py+ph*.72,F.barlow,8.5,ink,'LOW',0.03); textSpaced(d,jH,py+ph*.72,F.barlow,8.5,ink,'HIGH',0.03); } };
+
+  // ── RONALD JC-90 (Roland JC-90 Jazz Chorus) — black combo, top control strip
+  //    + salt-and-pepper grille, "Ronald" logo. ids: 0 Distortion 1 Volume
+  //    2 HiTreble 3 Treble 4 Middle 5 Bass 6 Reverb 7 Rate 8 Depth 9 Chorus(3-way).
+  //    RS: Gain->Distortion, Bass/Mid/Treble->stack, Pres->HiTreble.
+  P.jc90 = { w:1380, h:600, ptr:rgb(244,245,248), tick:rgb(172,174,180),
+    // Roland JC-90 knobs: small, silver fluted skirt + black insert + white pointer + 0–10 tick fan ('ampeg').
+    knobs:[
+      {id:0,cx:.103,cy:.232,r:.018,style:'ampeg'},  // DISTORTION
+      {id:1,cx:.158,cy:.232,r:.018,style:'ampeg'},  // VOLUME
+      {id:2,cx:.228,cy:.232,r:.018,style:'ampeg'},  // HI-TREBLE
+      {id:3,cx:.283,cy:.232,r:.018,style:'ampeg'},  // TREBLE
+      {id:4,cx:.338,cy:.232,r:.018,style:'ampeg'},  // MIDDLE
+      {id:5,cx:.393,cy:.232,r:.018,style:'ampeg'},  // BASS
+      {id:6,cx:.460,cy:.232,r:.018,style:'ampeg'},  // REVERB
+      {id:7,cx:.548,cy:.232,r:.018,style:'ampeg'},  // RATE
+      {id:8,cx:.603,cy:.232,r:.018,style:'ampeg'},  // DEPTH
+      {id:9,cx:.658,cy:.232,r:.018,style:'ampeg',select:3,tick:'rgba(0,0,0,0)'} ],// CHORUS 3-pos SELECTOR (own detents; no 0–10 fan)
+    draw(d,vals){ const {ctx:c,W,H,s}=d;
+      const ink=rgb(238,239,242), faint='rgba(214,216,222,0.6)', chr=rgb(186,190,196), gold=rgb(176,150,86);
+      // ── black tolex combo ──
+      const bgr=c.createLinearGradient(0,0,0,H); bgr.addColorStop(0,rgb(28,27,29)); bgr.addColorStop(1,rgb(12,11,13));
+      c.fillStyle=bgr; c.fillRect(0,0,W,H);
+      c.save(); c.beginPath(); c.rect(0,0,W,H); c.clip(); c.lineWidth=1; c.strokeStyle='rgba(255,255,255,0.016)';
+      for(let x=-H;x<W;x+=6*s){ c.beginPath(); c.moveTo(x,0); c.lineTo(x+H,H); c.stroke(); } c.restore();
+      const bolt=(x,y,r)=>{ r=r||4*s; const g=c.createRadialGradient(x-r*0.3,y-r*0.3,r*0.15,x,y,r);
+        g.addColorStop(0,rgb(96,96,100)); g.addColorStop(0.6,rgb(54,54,58)); g.addColorStop(1,rgb(22,22,24));
+        c.beginPath(); c.arc(x,y,r,0,7); c.fillStyle=g; c.fill(); c.strokeStyle=rgb(14,14,16); c.lineWidth=0.6*s; c.stroke(); };
+      for(let i=0;i<13;i++){ const rx=W*(.06+i*.072); bolt(rx,H*.035,4.2*s); bolt(rx,H*.965,4.2*s); }
+      // ── control panel (black strip, top — labels ABOVE the knobs) ──
+      const py=H*.07, ph=H*.30, px=W*.035, pw=W*.93, lblY=py+ph*.16, cy=py+ph*.60;
+      rr(c,px-2*s,py-2*s,pw+4*s,ph+4*s,6*s); c.fillStyle=rgb(150,152,158); c.fill();   // silver frame
+      const pg=c.createLinearGradient(0,py,0,py+ph); pg.addColorStop(0,rgb(30,30,33)); pg.addColorStop(1,rgb(14,14,16));
+      rr(c,px,py,pw,ph,5*s); c.fillStyle=pg; c.fill();
+      const lbl=(cx,t,sz)=>textSpaced(d,cx*W,lblY,F.barlow,sz||12,ink,t,0.02);
+      // ── INPUT jacks (HIGH / LOW) ──
+      const jack=(jx,jy)=>{ c.beginPath(); c.arc(jx,jy,9*s,0,7); c.fillStyle=rgb(18,16,16); c.fill(); c.strokeStyle=chr; c.lineWidth=2*s; c.stroke();
+        c.beginPath(); c.arc(jx,jy,3*s,0,7); c.fillStyle=rgb(52,52,56); c.fill(); };
+      jack(.050*W,cy); jack(.082*W,cy);
+      textSpaced(d,.066*W,lblY,F.barlow,10,ink,'INPUT',0.03);
+      textSpaced(d,.050*W,cy+17*s,F.barlow,8,faint,'HIGH',0.02); textSpaced(d,.082*W,cy+17*s,F.barlow,8,faint,'LOW',0.02);
+      // ── knob labels ──
+      lbl(.103,'DISTORTION',10); lbl(.158,'VOLUME');
+      // EQUALIZER bracket
+      const eqL=.198*W, eqR=.422*W, ey=py+ph*.025;
+      c.strokeStyle=faint; c.lineWidth=1.4*s; c.beginPath(); c.moveTo(eqL,ey+7*s); c.lineTo(eqL,ey); c.lineTo(eqR,ey); c.lineTo(eqR,ey+7*s); c.stroke();
+      textSpaced(d,(eqL+eqR)/2,ey-2*s,F.barlow,10,ink,'EQUALIZER',0.06);
+      lbl(.228,'HI-TREBLE',10.5); lbl(.283,'TREBLE'); lbl(.338,'MIDDLE'); lbl(.393,'BASS'); lbl(.460,'REVERB');
+      // ── CHORUS green sub-panel (Rate / Depth / Chorus) ──
+      const cx0=.512*W, cw=.182*W, cy0=py+ph*.06, ch=ph*.88;
+      rr(c,cx0,cy0,cw,ch,4*s); const cg=c.createLinearGradient(0,cy0,0,cy0+ch); cg.addColorStop(0,rgb(40,58,42)); cg.addColorStop(1,rgb(22,36,24));
+      c.fillStyle=cg; c.fill(); rr(c,cx0,cy0,cw,ch,4*s); c.strokeStyle=rgb(74,100,76); c.lineWidth=1*s; c.stroke();
+      lbl(.548,'RATE'); lbl(.603,'DEPTH');
+      // CHORUS = rotary 3-position SELECTOR (FIXED / OFF / MANUAL) — click steps detents
+      textSpaced(d,.658*W,py+ph*.10,F.barlow,9.5,ink,'CHORUS',0.02);
+      const chx=.658*W, chy=.232*H, kR=.018*W;
+      c.strokeStyle='rgba(204,228,204,0.92)'; c.lineWidth=2*s; c.lineCap='round';
+      [0,0.5,1].forEach(v=>{ const a=ang(v), r1=kR*1.20, r2=kR*1.50;
+        c.beginPath(); c.moveTo(chx+Math.cos(a)*r1,chy+Math.sin(a)*r1); c.lineTo(chx+Math.cos(a)*r2,chy+Math.sin(a)*r2); c.stroke(); });
+      c.lineCap='butt';
+      setFont(d,F.barlow,7.5); c.fillStyle='rgba(202,230,202,0.95)'; c.textAlign='center'; c.textBaseline='middle';
+      const lr=kR*1.92, La=(v,t)=>{ const a=ang(v); c.fillText(t,chx+Math.cos(a)*lr,chy+Math.sin(a)*lr); };
+      La(0,'FIX'); La(0.5,'OFF'); La(1,'MAN');
+      // ── JAZZ CHORUS-90 wordmark (no box) + power (right) ──
+      textSpaced(d,.795*W,cy-ph*.16,F.bebas,24,ink,'JAZZ CHORUS-90',0.03);
+      textSpaced(d,.795*W,cy+ph*.16,F.barlow,8.5,faint,'PERSONAL STEREO AMPLIFIER',0.06);
+      ledDot(d,.915*W,cy,true,224,52,46);
+      batToggle(d,.952*W,cy,10*s,true); textSpaced(d,.952*W,lblY,F.barlow,9.5,ink,'POWER',0.03);
+      // ── gold piping line under the panel ──
+      c.strokeStyle=gold; c.lineWidth=4*s; c.beginPath(); c.moveTo(px,py+ph+10*s); c.lineTo(px+pw,py+ph+10*s); c.stroke();
+      c.strokeStyle='rgba(120,98,52,0.7)'; c.lineWidth=1*s; c.beginPath(); c.moveTo(px,py+ph+13*s); c.lineTo(px+pw,py+ph+13*s); c.stroke();
+      // ── salt-and-pepper grille (lower) + Roland-style "Ronald" logo ──
+      const gy=py+ph+H*.035, gh=H*.94-gy, gx=W*.04, gw=W*.92;
+      rr(c,gx,gy,gw,gh,4*s); c.fillStyle=rgb(15,15,16); c.fill();
+      c.save(); rr(c,gx,gy,gw,gh,4*s); c.clip();
+      for(let yy=gy; yy<gy+gh; yy+=3*s){ for(let xx=gx; xx<gx+gw; xx+=3*s){
+        const n=((xx*13+yy*7)%17); if(n<3){ c.fillStyle='rgba(176,170,120,0.15)'; c.fillRect(xx,yy,1.5*s,1.5*s); } } }
+      c.restore();
+      rr(c,gx,gy,gw,gh,4*s); c.strokeStyle=rgb(70,72,76); c.lineWidth=1.4*s; c.stroke();
+      // "Ronald" white wordmark + parody square-R mark (lower-left, large)
+      const mr=gh*.20, lx=gx+gw*.06+mr, ly=gy+gh*.62;
+      c.save(); rr(c,lx-mr,ly-mr,2*mr,2*mr,6*s); c.fillStyle=rgb(244,245,248); c.fill();
+      c.strokeStyle=rgb(15,15,16); c.lineWidth=6*s; c.lineCap='round'; c.lineJoin='round';
+      c.beginPath(); c.moveTo(lx-mr*0.42,ly-mr*0.5); c.lineTo(lx-mr*0.42,ly+mr*0.5);
+      c.lineTo(lx+mr*0.45,ly+mr*0.5); c.lineTo(lx+mr*0.45,ly-mr*0.05); c.lineTo(lx-mr*0.42,ly-mr*0.05); c.stroke();
+      c.lineCap='butt'; c.lineJoin='miter'; c.restore();
+      c.textAlign='left'; c.textBaseline='middle'; setFont(d,F.anton,Math.round(mr*1.4)); c.fillStyle=rgb(244,245,248);
+      c.fillText('Ronald', lx+mr+14*s, ly); } };
 
   // ── BENDER BASSMAN (Fender Bassman 5F6-A tweed) — same family/look as the
   //    Bender Deluxe: golden lacquered tweed + brushed-aluminium panel, vintage
@@ -4343,7 +4444,7 @@
       const v = (values && values[k.id] != null) ? values[k.id] : 0.5;
       knob(d, k.cx * d.W, k.cy * d.H, k.r * d.W, v, k.style,
            (k.cap || [40, 40, 44])[0], (k.cap || [40, 40, 44])[1], (k.cap || [40, 40, 44])[2],
-           spec.tick, spec.ptr);
+           (k.tick !== undefined ? k.tick : spec.tick), spec.ptr);
     });
     (spec.switches || []).forEach(s => {
       const on = (values && values[s.id] != null) ? values[s.id] > 0.5 : false;
