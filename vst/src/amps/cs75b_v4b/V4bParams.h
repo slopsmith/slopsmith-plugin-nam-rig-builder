@@ -34,8 +34,9 @@ static const float kV4bDef[kParamCount] = {
     0.00f, 0.00f, 0.00f
 };
 
-// The 3 midrange-selector centre frequencies (Hz), in panel order
-// (V-4B mid switch: low / mid / high mid).
-static const float kV4bMidFreqs[3] = { 220.f, 800.f, 3000.f };
+// The 3 midrange-selector centre frequencies (Hz), in panel order. These are
+// the LC resonances of L101 with the SW3-switched caps (C114 .15µF -> low,
+// C113 .033µF -> mid, top tap/least-C -> high): ~300 / 900 / 2500 Hz.
+static const float kV4bMidFreqs[3] = { 300.f, 900.f, 2500.f };
 
 #endif // V4B_PARAMS_H

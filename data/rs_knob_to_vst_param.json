@@ -4264,26 +4264,23 @@
   "samplegv4b": {
    "Gain": {
     "param": "Gain",
-    "scale": 0.033,
-    "_hint": "RS Gain -> preamp Gain/drive 0..1 (12AX7 + 7027A grit)."
+    "scale": 0.01,
+    "_hint": "RS Gain 0-100 -> preamp Gain/drive 0..1 (linear taper, 12AX7 + 7027A grit)."
    },
    "Bass": {
     "param": "Bass",
-    "offset": 0.5,
-    "scale": 0.033333,
-    "_hint": "RS Bass +/-15 dB -> ~70 Hz low-shelf 0..1 (0.5 flat)."
+    "scale": 0.1,
+    "_hint": "RS Bass 0-10 (5=flat) -> ~70 Hz low-shelf 0..1 (0.5 flat)."
    },
    "Mid": {
     "param": "Midrange",
-    "offset": 0.5,
-    "scale": 0.033333,
-    "_hint": "RS Mid +/-15 dB -> Midrange peak 0..1 (0.5 flat) at the Frequency-selected centre (default 800 Hz)."
+    "scale": 0.1,
+    "_hint": "RS Mid 0-10 (5=flat) -> LC midrange resonance 0..1 (0.5 flat)."
    },
    "Treble": {
     "param": "Treble",
-    "offset": 0.5,
-    "scale": 0.033333,
-    "_hint": "RS Treble +/-15 dB -> ~5 kHz high-shelf 0..1 (0.5 flat)."
+    "scale": 0.1,
+    "_hint": "RS Treble 0-10 (5=flat) -> ~5 kHz high-shelf 0..1 (0.5 flat)."
    }
   }
  }

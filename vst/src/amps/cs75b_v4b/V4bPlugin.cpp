@@ -136,23 +136,23 @@ struct Mna {
         return true; } };
 
 // ── V1 — 12AX7 input/gain triode, true nodal (Koren + Newton/sample) ──────────
-// SVT-CL preamp first stage: common-cathode 12AX7 (V1B on 07S519-03). Plate
-// supply ~200V (the schematic's "200V" node), plate load Rp ≈ 100k (R7 100k
-// 1/2W), self-bias Rk ≈ 1.5k with a 22µF cathode bypass (C2) → ~1.5V cathode,
-// which the schematic confirms. The Koren plate-current law Ip(Vgk,Vpk) is
-// solved by Newton-Raphson each sample; the plate swing clips asymmetrically
-// (toward B+ / cutoff) — the even-harmonic SVT growl when Gain is pushed.
+// V-4B preamp first stage (V1A 12AX7): common-cathode 12AX7. The schematic
+// reads ~230 V at the plate node (vs the SVT-CL's ~200 V — the V-4B runs a
+// hotter front end), plate load ~100k, self-bias Rk ≈ 1.5k -> ~1.48 V cathode
+// (the schematic's "1.48V" label), coupling C4 .047µF. The Koren plate-current
+// law Ip(Vgk,Vpk) is solved by Newton-Raphson each sample; the plate swing
+// clips asymmetrically (toward B+ / cutoff) — the tube grit when Gain is pushed.
 struct Triode {
-    double vG=0, vP=200, vK=1.5, dcAvg=200.0, T=1.0/48000.0;
+    double vG=0, vP=230, vK=1.5, dcAvg=230.0, T=1.0/48000.0;
     void setT(float fs) { T = 1.0 / ((fs>0.f)?fs:48000.0); }
-    void reset() { vG=0; vP=200; vK=1.5; dcAvg=200.0; }
+    void reset() { vG=0; vP=230; vK=1.5; dcAvg=230.0; }
     static inline double Ip(double vgk, double vpk) {
         const double MU=100, EX=1.4, KG1=1060, KP=600, KVB=300;
         if (vpk < 0) vpk = 0;
         double e1 = (vpk/KP)*std::log(1.0 + std::exp(KP*(1.0/MU + vgk/std::sqrt(KVB + vpk*vpk))));
         if (e1 < 0) e1 = 0; return std::pow(e1, EX)/KG1*2.0; }
     inline double process(double vin) {        // vin = grid drive (V); returns AC plate swing
-        const double Bp=200, Rp=100000, Rk=1500, h=1e-4;
+        const double Bp=230, Rp=100000, Rk=1500, h=1e-4;
         double G=vG, P=vP, K=vK;
         for (int it=0; it<12; ++it) {
             Mna m; m.init(4, 2);                // 1 B+, 2 grid, 3 plate, 4 cathode
@@ -206,11 +206,11 @@ public:
                    bool pad, bool ultraLo, bool ultraHi) {
         // ── input / V1 grid drive. The −15 dB jack pad cuts ~5.6× ──
         const float padScale = pad ? 0.178f : 1.0f;            // −15 dB
-        // Gain pot: clean-ish at low settings, drives the 12AX7 (V1) into grid
-        // clipping near the top. The V-4B's extra preamp stage (V3 12DW7) gives
-        // it more front-end gain than the SVT, so it breaks up SOONER: a steeper
-        // drive curve (11.0 vs 8.5) and a touch more idle drive.
-        drive = (0.7f + gain * gain * 11.0f) * padScale;
+        // Volume/Gain pot is 1M LINEAR (VR101) — NOT the SVT's audio-taper pot —
+        // so drive rises ~linearly with the knob (a more even sweep, not "all at
+        // the top"). The V-4B's three preamp stages (V1 12AX7 + V2 12AX7 + V3
+        // 12DW7) give more front-end gain, so it grid-clips sooner than the SVT.
+        drive = (0.4f + gain * 9.0f) * padScale;
 
         // ── Ultra Lo (S2A): the SVT fixed "loudness" contour. The switched
         //    network (R19/R20/R21/R22 220k + C7 470p + C8 .0047µF) lifts the
@@ -228,11 +228,13 @@ public:
         // ── Passive tone stack (±15 dB, 0.5 = flat) ──────────────────────────
         //  Bass    : P3 1MA + C20 .001µF / C21 .01µF  → low shelf ~70 Hz.
         bqBass.setLowShelf(70.f, (bass - 0.5f) * 30.f, fs);
-        //  Midrange: 50k mid pot on the 64-60-077 tone board + a 3-position
-        //            FREQUENCY selector (low / mid / high mid = 220 / 800 /
-        //            3000 Hz). Mid pot sets the peak/notch depth; broad-ish Q.
+        //  Midrange: the V-4B mid is an INDUCTOR-based resonance — L101 + the
+        //  3-position SW3 cap selector (C114 .15µF / C113 .033µF / top tap) =
+        //  ~300 / 900 / 2500 Hz. An LC tank resonates with a HIGHER Q than the
+        //  SVT's broad RC mid, so the boost/cut is tighter/peakier (Q≈1.3). The
+        //  50k mid pot sets the depth.
         int sel = (int)(freq * 3.0f); if (sel > 2) sel = 2; if (sel < 0) sel = 0;
-        bqMid.setPeak(kV4bMidFreqs[sel], (midrange - 0.5f) * 28.f, 0.7f, fs);
+        bqMid.setPeak(kV4bMidFreqs[sel], (midrange - 0.5f) * 28.f, 1.3f, fs);
         //  Treble  : P5 1MA + C26 15pF / C27 100pF     → high shelf ~5 kHz.
         bqTreble.setHighShelf(5000.f, (treble - 0.5f) * 30.f, fs);
 
@@ -303,7 +305,7 @@ protected:
     void run(const float** in, float** out, uint32_t frames) override {
         const float* iL = in[0]; const float* iR = in[1];
         float* oL = out[0]; float* oR = out[1];
-        for (uint32_t i = 0; i < frames; ++i) { oL[i] = rbAmpLvl(0.278f * softClip(L.process(iL[i])) * 0.98f); oR[i] = rbAmpLvl(0.278f * softClip(R.process(iR[i])) * 0.98f); }  // kLvl -> -14 LUF (~0.19 RMS multitone) + ceiling; see AMP_LOUDNESS.md
+        for (uint32_t i = 0; i < frames; ++i) { oL[i] = rbAmpLvl(0.244f * softClip(L.process(iL[i])) * 0.98f); oR[i] = rbAmpLvl(0.244f * softClip(R.process(iR[i])) * 0.98f); }  // kLvl -> -14 LUF (~0.19 RMS multitone @ real CS75B settings) + ceiling; see AMP_LOUDNESS.md
     }
     DISTRHO_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(V4bPlugin)
 };
