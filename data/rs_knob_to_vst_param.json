@@ -4192,5 +4192,32 @@
     "_hint": "RS Treble +/-15 dB -> graphic-EQ 4 kHz band 0..1 (0.5 flat)."
    }
   }
+ },
+ "Bass_Amp_BT600B": {
+  "sharkehb5000": {
+   "Gain": {
+    "param": "Solid State",
+    "scale": 0.033,
+    "_hint": "RS Gain -> Solid State preamp level 0..1 (the HA5000's punchy SS path)."
+   },
+   "Bass": {
+    "param": "125 Hz",
+    "offset": 0.5,
+    "scale": 0.033333,
+    "_hint": "RS Bass +/-15 dB -> graphic-EQ 125 Hz band 0..1 (0.5 flat)."
+   },
+   "Mid": {
+    "param": "500 Hz",
+    "offset": 0.5,
+    "scale": 0.033333,
+    "_hint": "RS Mid +/-15 dB -> graphic-EQ 500 Hz band 0..1 (0.5 flat)."
+   },
+   "Treble": {
+    "param": "3 kHz",
+    "offset": 0.5,
+    "scale": 0.033333,
+    "_hint": "RS Treble +/-15 dB -> graphic-EQ 3 kHz band 0..1 (0.5 flat)."
+   }
+  }
  }
 }
