@@ -35,6 +35,7 @@ def test_manifest_keeps_audio_effects_jobs_and_privileged_surfaces():
 
     assert capabilities["audio-effects"]["roles"] == ["provider", "requester", "observer"]
     assert "select-chain" in capabilities["audio-effects"]["commands"]
+    assert "upsert-mapping" in capabilities["audio-effects"]["requests"]
     assert capabilities["audio-effects"]["operations"] == ["chain.resolve", "chain.inspect", "segment.activate", "stage.set-bypass", "stage.set-parameter", "fallback"]
     assert capabilities["jobs"]["roles"] == ["provider", "observer"]
     assert "job.enqueue" in capabilities["jobs"]["operations"]
@@ -48,6 +49,7 @@ def test_screen_registers_executable_audio_effects_provider():
     assert "RB_EFFECTS_PLAN_SCHEMA = 'slopsmith.audio_effects.chain_plan.v1'" in src
     assert "rbAudioEffectsApi" in src
     assert "registerProvider" in src
+    assert "requests: ['select-chain', 'bypass', 'restore', 'fallback', 'inspect-route', 'upsert-mapping']" in src
     assert "operationHandlers: rbAudioEffectsOperationHandlers()" in src
     assert "'chain.resolve'" in src
     assert "rbBuildAudioEffectsRequestFromPayload" in src
