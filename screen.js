@@ -295,7 +295,7 @@ function rbChainGainTargetFor(chainSpec) {
     const makeup = (typeof window.__rbChainMakeup === 'number') ? window.__rbChainMakeup : 4.0;
     let base = 1.0;
     if (Array.isArray(chainSpec)) {
-        let hasActiveAmp = false, hasRsCab = false, hasOtherCab = false, activeNamCount = 0;
+        let hasActiveAmp = false, hasActiveVstAmp = false, hasRsCab = false, hasOtherCab = false, activeNamCount = 0;
         let rsCabMakeup = 1.0;
         for (const stage of chainSpec) {
             if (!stage || stage.bypassed) continue;
@@ -303,6 +303,7 @@ function rbChainGainTargetFor(chainSpec) {
                 activeNamCount++;
                 if (stage.slot === 'amp') hasActiveAmp = true;
             }
+            if (stage.type === 0 && stage.slot === 'amp') hasActiveVstAmp = true;
             // type 2 = IR. A Rocksmith cab IR lives under nam_irs/rocksmith/ and
             // is RAW (quiet → needs +6 dB). A tone3000 IR is already normalized
             // (boosting it is what saturated non-RS-cab tones), so 0 dB.
@@ -321,8 +322,12 @@ function rbChainGainTargetFor(chainSpec) {
         }
         // Auto makeup (dB): +6 for a Rocksmith cab, 0 for a non-RS (tone3000)
         // cab, -6 if amp-only; +2 per extra NAM beyond the first; capped at +18.
-        // Only when an amp is active — otherwise leave at 1.
-        if (hasActiveAmp) {
+        // Applies to an active NAM amp OR a VST amp — the VST-amp case used to be
+        // skipped, so VST-amp cabs got no boost and played far quieter than the
+        // direct (cab-bypassed) signal. The cab IR convolution is heavily
+        // attenuated by the engine, so this +6 dB (× the per-cab RMS match) is
+        // what brings the cab back up to the DI level instead of being lost.
+        if (hasActiveAmp || hasActiveVstAmp) {
             const cabDb = hasRsCab ? 6 : (hasOtherCab ? 0 : -6);
             let dB = cabDb + 2 * Math.max(0, activeNamCount - 1);
             dB = Math.max(-12, Math.min(18, dB));
