@@ -3111,6 +3111,187 @@
   P.eq5     = eqSpec({ w: 440, h: 300, style: 1, db: 15, col: [30, 30, 33], label: '5-BAND GRAPHIC',
                        bands: ['63', '250', '750', '2200', '5700'] });
 
+  // ════════ Bass-amp VST faces (mirror vst/src/amps/*) ════════════════════════
+
+  // PeeBee T-Minus — Peavey T-Max two-channel bass system (parody). White panel,
+  // dual gain (Tube Pre/Post + SS Pre), shelving Low/High, 7-band graphic EQ,
+  // biamp Balance/X-Over, Master. ids 0..18 = the VST enum order.
+  P.peebeetminus = { w:1100, h:280,
+    knobs:[
+      {id:0,cx:.100,cy:.46,r:.019,style:'pointer',cap:[24,24,26]},
+      {id:1,cx:.165,cy:.46,r:.019,style:'pointer',cap:[24,24,26]},
+      {id:2,cx:.240,cy:.46,r:.019,style:'pointer',cap:[24,24,26]},
+      {id:4,cx:.335,cy:.31,r:.017,style:'pointer',cap:[24,24,26]},
+      {id:3,cx:.335,cy:.66,r:.017,style:'pointer',cap:[24,24,26]},
+      {id:5,cx:.745,cy:.46,r:.019,style:'pointer',cap:[24,24,26]},
+      {id:6,cx:.815,cy:.46,r:.019,style:'pointer',cap:[24,24,26]},
+      {id:7,cx:.885,cy:.46,r:.019,style:'pointer',cap:[24,24,26]}],
+    faders:[{id:8,cx:.435,y0:.24,y1:.60},{id:9,cx:.467,y0:.24,y1:.60},{id:10,cx:.499,y0:.24,y1:.60},
+      {id:11,cx:.531,y0:.24,y1:.60},{id:12,cx:.563,y0:.24,y1:.60},{id:13,cx:.595,y0:.24,y1:.60},{id:14,cx:.627,y0:.24,y1:.60}],
+    switches:[{id:15,cx:.038,cy:.66,hs:.011,dark:true},{id:16,cx:.300,cy:.30,hs:.011,dark:true},
+      {id:17,cx:.300,cy:.63,hs:.011,dark:true},{id:18,cx:.405,cy:.30,hs:.011,dark:true}],
+    names:['Tube Pre','Tube Post','Solid State','Shelving Low','Shelving High','Balance','X-Over','Master','40 Hz','100 Hz','250 Hz','625 Hz','1.6 kHz','4 kHz','10 kHz','Active','Channel Sel','Combine','Graphic In'],
+    tick:rgb(120,122,128), ptr:rgb(244,245,248),
+    draw(d,vals){ const {ctx:c,W,H}=d; const ink=rgb(30,32,38), dim=rgb(70,74,82);
+      box(d, 20,22,26, true);
+      const PL=.012*W,PT=.05*H,PW=.976*W,PH=.90*H;
+      const pg=c.createLinearGradient(0,PT,0,PT+PH); pg.addColorStop(0,rgb(236,239,243)); pg.addColorStop(1,rgb(206,212,220));
+      rr(c,PL,PT,PW,PH,6); c.fillStyle=pg; c.fill(); rr(c,PL,PT,PW,PH,6); c.strokeStyle=rgb(120,124,130); c.lineWidth=1.4; c.stroke();
+      const lab=(cx,y,sz,t,col)=>textC(d,cx*W,y*H,F.barlow,sz,col||ink,t);
+      textC(d,PL+14,PT+6,F.bebas,20,rgb(24,26,32),'T-MINUS','left');
+      lab(.075,.165,7.5,'TWO CHANNEL BASS SYSTEM',dim);
+      const jack=(x,y)=>{ c.beginPath();c.arc(x*W,y*H,8,0,7);c.fillStyle=rgb(16,16,18);c.fill();c.strokeStyle=rgb(90,92,98);c.lineWidth=1.4;c.stroke(); };
+      jack(.038,.45); lab(.038,.60,7,'INPUT');
+      ledDot(d,.135*W,.27*H,true,60,210,80); lab(.175,.27,7.5,'TUBE');
+      ledDot(d,.235*W,.27*H,true,220,200,40); lab(.275,.27,7.5,'SOLID STATE');
+      lab(.300,.46,8,'SHELVING',dim);
+      [[.100,'TUBE PRE'],[.165,'TUBE POST'],[.240,'SS PRE'],[.745,'BALANCE'],[.815,'X-OVER'],[.885,'MASTER']].forEach(k=>lab(k[0],.60,8,k[1]));
+      lab(.335,.20,7.5,'SH HIGH'); lab(.335,.80,7.5,'SH LOW');
+      [['40',.435],['100',.467],['250',.499],['625',.531],['1.6k',.563],['4k',.595],['10k',.627]].forEach(b=>lab(b[1],.66,6.5,b[0],dim));
+      lab(.531,.18,7,'GRAPHIC EQ  (±15 dB)',dim);
+      textC(d,(PL+PW)-14,(PT+PH)-8,F.crete,20,rgb(26,28,34),'PeeBee','right'); } };
+
+  // Bender Fumble 800 — Fender Rumble Bass all-tube head (parody). Black face,
+  // Gain/Bass/Middle/Treble/Master + Bright switch. ids 0..5.
+  P.benderfumble800 = { w:760, h:220,
+    knobs:[
+      {id:0,cx:.150,cy:.46,r:.032,style:'pointer',cap:[22,22,24]},
+      {id:1,cx:.300,cy:.46,r:.032,style:'pointer',cap:[22,22,24]},
+      {id:2,cx:.420,cy:.46,r:.032,style:'pointer',cap:[22,22,24]},
+      {id:3,cx:.540,cy:.46,r:.032,style:'pointer',cap:[22,22,24]},
+      {id:4,cx:.800,cy:.46,r:.032,style:'pointer',cap:[22,22,24]}],
+    switches:[{id:5,cx:.660,cy:.46,hs:.016,dark:true}],
+    names:['Gain','Bass','Middle','Treble','Master','Bright'],
+    tick:rgb(150,152,158), ptr:rgb(244,245,248),
+    draw(d,vals){ const {ctx:c,W,H}=d; const ink=rgb(214,216,220);
+      box(d, 28,29,32, true);
+      textC(d,.025*W,.10*H,F.bebas,14,rgb(206,208,214),'FUMBLE BASS','left');
+      const jack=(x,y)=>{ c.beginPath();c.arc(x*W,y*H,9,0,7);c.fillStyle=rgb(16,16,18);c.fill();c.strokeStyle=rgb(120,122,126);c.lineWidth=1.5;c.stroke(); };
+      jack(.055,.46); textC(d,.055*W,.62*H,F.barlow,8,ink,'INPUT');
+      [[.150,'GAIN'],[.300,'BASS'],[.420,'MIDDLE'],[.540,'TREBLE'],[.800,'MASTER']].forEach(k=>textC(d,k[0]*W,.64*H,F.barlow,9.5,ink,k[1]));
+      textC(d,.660*W,.66*H,F.barlow,9,ink,'BRIGHT');
+      textC(d,.965*W,.93*H,F.crete,22,rgb(232,234,238),'Bender','right'); } };
+
+  // Aiden GT-300/550/880 — Eden WT Valve-Tech hybrid preamp (parody). Gold/tan
+  // panel: Gain (blue) + Enhance (white) + Bass (red) + 3-band semi-parametric
+  // EQ (Freq row over Level row) + Treble (red) + Master (blue).
+  const EDEN_BLUE=[70,120,200], EDEN_WHITE=[232,232,228], EDEN_RED=[200,54,46], EDEN_GREY=[150,150,150];
+  function edenFace(d, vals, model, levLbl){ const {ctx:c,W,H}=d; const ink=rgb(40,30,18), dim=rgb(60,50,32);
+    box(d, 28,26,22, true);
+    const PL=.012*W,PT=.04*H,PW=.976*W,PH=.92*H;
+    const pg=c.createLinearGradient(0,PT,0,PT+PH); pg.addColorStop(0,rgb(206,176,96)); pg.addColorStop(1,rgb(176,146,72));
+    rr(c,PL,PT,PW,PH,6); c.fillStyle=pg; c.fill(); rr(c,PL,PT,PW,PH,6); c.strokeStyle=rgb(180,52,44); c.lineWidth=2; c.stroke();
+    const lab=(cx,y,sz,t,col)=>textC(d,cx*W,y*H,F.barlow,sz,col||ink,t);
+    textC(d,PL+60,PT+6,F.barlow,11,rgb(180,52,44),'Valve-Tech Series','left');
+    textC(d,PL+60,PT+22,F.barlow,9,ink,'Twin Triode Tube Pre Amplifier   '+model,'left');
+    textC(d,(PL+PW)-12,PT+6,F.crete,18,rgb(28,24,18),'Aiden','right');
+    const jack=(x,y)=>{ c.beginPath();c.arc(x*W,y*H,8,0,7);c.fillStyle=rgb(16,16,18);c.fill();c.strokeStyle=rgb(60,50,36);c.lineWidth=1.4;c.stroke(); };
+    jack(.035,.66); lab(.035,.78,7.5,'INPUT'); jack(.955,.66); lab(.955,.78,7,'PHONES');
+    lab(.560,.92,8.5,'Semi-Parametric Bass Equalizer');
+    [[.460,'FREQ'],[.560,'FREQ'],[.660,'FREQ']].forEach(k=>lab(k[0],.40,8,k[1]));
+    [[.085,'GAIN'],[.175,'ENHANCE'],[.300,'BASS'],[.460,levLbl[0]],[.560,levLbl[1]],[.660,levLbl[2]],[.790,'TREBLE'],[.875,'MASTER']].forEach(k=>lab(k[0],.78,8.5,k[1])); }
+  const EDEN_KNOBS=[
+    {id:3,cx:.460,cy:.30,r:.024,style:'pointer',cap:EDEN_RED},
+    {id:5,cx:.560,cy:.30,r:.024,style:'pointer',cap:EDEN_RED},
+    {id:7,cx:.660,cy:.30,r:.024,style:'pointer',cap:EDEN_RED},
+    {id:0,cx:.085,cy:.66,r:.026,style:'pointer',cap:EDEN_BLUE},
+    {id:1,cx:.175,cy:.66,r:.026,style:'pointer',cap:EDEN_WHITE},
+    {id:2,cx:.300,cy:.66,r:.024,style:'pointer',cap:EDEN_RED},
+    {id:4,cx:.460,cy:.66,r:.024,style:'pointer',cap:EDEN_RED},
+    {id:6,cx:.560,cy:.66,r:.024,style:'pointer',cap:EDEN_RED},
+    {id:8,cx:.660,cy:.66,r:.024,style:'pointer',cap:EDEN_RED},
+    {id:9,cx:.790,cy:.66,r:.024,style:'pointer',cap:EDEN_RED},
+    {id:10,cx:.875,cy:.66,r:.026,style:'pointer',cap:EDEN_BLUE}];
+  const EDEN_NAMES=['Gain','Enhance','Bass','EQ1 Freq','EQ1 Level','EQ2 Freq','EQ2 Level','EQ3 Freq','EQ3 Level','Treble','Master'];
+  P.aidengt300 = { w:1000, h:300, knobs:EDEN_KNOBS, names:EDEN_NAMES, tick:rgb(120,118,108), ptr:rgb(245,245,245),
+    draw(d,vals){ edenFace(d,vals,'GT-300',['LEVEL','LEVEL','LEVEL']); } };
+  P.aidengt550 = { w:1000, h:300, knobs:EDEN_KNOBS, names:EDEN_NAMES, tick:rgb(120,118,108), ptr:rgb(245,245,245),
+    draw(d,vals){ edenFace(d,vals,'GT-550',['LOW','MID','HIGH']); } };
+
+  // Aiden GT-880 — adds the bi-amp X-Over Freq + Balance + X-Over switch.
+  P.aidengt880 = { w:1100, h:300,
+    knobs:[
+      {id:3,cx:.420,cy:.30,r:.022,style:'pointer',cap:EDEN_RED},
+      {id:5,cx:.500,cy:.30,r:.022,style:'pointer',cap:EDEN_RED},
+      {id:7,cx:.580,cy:.30,r:.022,style:'pointer',cap:EDEN_RED},
+      {id:11,cx:.700,cy:.30,r:.022,style:'pointer',cap:EDEN_GREY},
+      {id:0,cx:.075,cy:.66,r:.024,style:'pointer',cap:EDEN_BLUE},
+      {id:1,cx:.150,cy:.66,r:.024,style:'pointer',cap:EDEN_WHITE},
+      {id:2,cx:.260,cy:.66,r:.022,style:'pointer',cap:EDEN_RED},
+      {id:4,cx:.420,cy:.66,r:.022,style:'pointer',cap:EDEN_RED},
+      {id:6,cx:.500,cy:.66,r:.022,style:'pointer',cap:EDEN_RED},
+      {id:8,cx:.580,cy:.66,r:.022,style:'pointer',cap:EDEN_RED},
+      {id:9,cx:.675,cy:.66,r:.022,style:'pointer',cap:EDEN_RED},
+      {id:10,cx:.775,cy:.66,r:.024,style:'pointer',cap:EDEN_BLUE},
+      {id:12,cx:.860,cy:.66,r:.022,style:'pointer',cap:EDEN_BLUE}],
+    switches:[{id:13,cx:.700,cy:.66,hs:.012,dark:true}],
+    names:['Gain','Enhance','Bass','Low Freq','Low Level','Mid Freq','Mid Level','High Freq','High Level','Treble','Master','X-Over Freq','Balance','X-Over'],
+    tick:rgb(120,118,108), ptr:rgb(245,245,245),
+    draw(d,vals){ const {ctx:c,W,H}=d; const ink=rgb(40,30,18), dim=rgb(60,50,32);
+      box(d, 30,28,22, true);
+      const PL=.012*W,PT=.04*H,PW=.976*W,PH=.92*H;
+      const pg=c.createLinearGradient(0,PT,0,PT+PH); pg.addColorStop(0,rgb(212,182,104)); pg.addColorStop(1,rgb(170,138,66));
+      rr(c,PL,PT,PW,PH,6); c.fillStyle=pg; c.fill(); rr(c,PL,PT,PW,PH,6); c.strokeStyle=rgb(150,120,52); c.lineWidth=2; c.stroke();
+      const lab=(cx,y,sz,t,col)=>textC(d,cx*W,y*H,F.barlow,sz,col||ink,t);
+      textC(d,PL+60,PT+6,F.barlow,9,ink,'Hybrid Bass Guitar Amplifier   Valve-Tech Series','left');
+      textC(d,(PL+PW)-12,PT+5,F.bebas,18,rgb(28,24,18),'WORLD TOUR','right');
+      textC(d,(PL+PW)-12,PT+24,F.barlow,11,rgb(170,40,34),'Aiden  GT-880','right');
+      const jack=(x,y)=>{ c.beginPath();c.arc(x*W,y*H,8,0,7);c.fillStyle=rgb(16,16,18);c.fill();c.strokeStyle=rgb(60,50,36);c.lineWidth=1.4;c.stroke(); };
+      jack(.033,.66); lab(.033,.78,7.5,'INPUT');
+      lab(.500,.93,8,'Semi-Parametric Bass Equalizer');
+      [[.420,'FREQ'],[.500,'FREQ'],[.580,'FREQ'],[.700,'X-OVER']].forEach(k=>lab(k[0],.40,7.5,k[1]));
+      [[.075,'GAIN'],[.150,'ENHANCE'],[.260,'BASS'],[.420,'LOW'],[.500,'MID'],[.580,'HIGH'],[.675,'TREBLE'],[.775,'MASTER'],[.860,'BALANCE']].forEach(k=>lab(k[0],.78,8,k[1]));
+      lab(.700,.80,7,'X-OVER'); } };
+
+  // Lovolt 100 — Custom Hiwatt 100 (DR103, parody). Black face, Normal/Bright
+  // vols + Bass/Treble/Middle + Presence + Master. ids 0..6.
+  P.lovolt100 = { w:900, h:230,
+    knobs:[
+      {id:0,cx:.180,cy:.52,r:.026,style:'pointer',cap:[22,22,24]},
+      {id:1,cx:.265,cy:.52,r:.026,style:'pointer',cap:[22,22,24]},
+      {id:2,cx:.380,cy:.52,r:.026,style:'pointer',cap:[22,22,24]},
+      {id:3,cx:.465,cy:.52,r:.026,style:'pointer',cap:[22,22,24]},
+      {id:4,cx:.550,cy:.52,r:.026,style:'pointer',cap:[22,22,24]},
+      {id:5,cx:.635,cy:.52,r:.026,style:'pointer',cap:[22,22,24]},
+      {id:6,cx:.720,cy:.52,r:.026,style:'pointer',cap:[22,22,24]}],
+    names:['Normal Vol','Bright Vol','Bass','Treble','Middle','Presence','Master Vol'],
+    tick:rgb(150,152,158), ptr:rgb(244,245,248),
+    draw(d,vals){ const {ctx:c,W,H}=d; const ink=rgb(214,216,220);
+      box(d, 26,26,28, true);
+      const lx=.020*W,ly=.10*H,lw=.135*W,lh=.24*H;
+      rr(c,lx,ly,lw,lh,3); c.strokeStyle=rgb(210,212,216); c.lineWidth=1.6; c.stroke();
+      textC(d,lx+lw*0.5,ly+lh*0.5,F.bebas,14,rgb(220,222,226),'LOVOLT');
+      textC(d,.45*W,.10*H,F.bebas,13,rgb(210,212,216),'CUSTOM LOVOLT 100');
+      [[.180,'NORMAL'],[.265,'BRIGHT'],[.380,'BASS'],[.465,'TREBLE'],[.550,'MIDDLE'],[.635,'PRESENCE'],[.720,'MASTER']].forEach(k=>textC(d,k[0]*W,.70*H,F.barlow,8.5,ink,k[1]));
+      ledDot(d,.80*W,.50*H,true,220,40,36); } };
+
+  // Silla Boogie 400 — Mesa/Boogie Bass 400+ (parody). Black face, Mesa 6-band
+  // graphic EQ (faders) + Middle/Bass/Treble/Master/Vol2/Vol1 + pull switches.
+  P.sillaboogie400 = { w:1000, h:300,
+    knobs:[
+      {id:2,cx:.300,cy:.74,r:.024,style:'pointer',cap:[20,20,22]},
+      {id:3,cx:.375,cy:.74,r:.024,style:'pointer',cap:[20,20,22]},
+      {id:4,cx:.450,cy:.74,r:.024,style:'pointer',cap:[20,20,22]},
+      {id:5,cx:.545,cy:.74,r:.024,style:'pointer',cap:[20,20,22]},
+      {id:1,cx:.650,cy:.74,r:.024,style:'pointer',cap:[20,20,22]},
+      {id:0,cx:.725,cy:.74,r:.024,style:'pointer',cap:[20,20,22]}],
+    faders:[{id:6,cx:.405,y0:.14,y1:.50},{id:7,cx:.442,y0:.14,y1:.50},{id:8,cx:.479,y0:.14,y1:.50},
+      {id:9,cx:.516,y0:.14,y1:.50},{id:10,cx:.553,y0:.14,y1:.50},{id:11,cx:.590,y0:.14,y1:.50}],
+    switches:[{id:12,cx:.660,cy:.30,hs:.011,dark:true},{id:15,cx:.375,cy:.92,hs:.010,dark:true},
+      {id:16,cx:.450,cy:.92,hs:.010,dark:true},{id:14,cx:.650,cy:.92,hs:.010,dark:true},{id:13,cx:.725,cy:.92,hs:.010,dark:true}],
+    names:['Volume 1','Volume 2','Middle','Bass','Treble','Master','40 Hz','100 Hz','250 Hz','625 Hz','1560 Hz','3900 Hz','EQ In','Bright 1','Bright 2','Bass Shift','Treble Shift'],
+    tick:rgb(150,152,156), ptr:rgb(244,245,248),
+    draw(d,vals){ const {ctx:c,W,H}=d; const ink=rgb(206,208,212), dim=rgb(150,140,90);
+      box(d, 24,24,26, true);
+      textC(d,.016*W,.10*H,F.bebas,18,rgb(220,222,226),'SILLA / BOOGIE','left');
+      textC(d,.016*W,.27*H,F.crete,15,rgb(200,180,120),'BASS 400+','left');
+      const lab=(cx,y,sz,t,col)=>textC(d,cx*W,y*H,F.barlow,sz,col||ink,t);
+      [[.300,'MIDDLE'],[.375,'BASS'],[.450,'TREBLE'],[.545,'MASTER'],[.650,'VOL 2'],[.725,'VOL 1']].forEach(k=>lab(k[0],.86,8,k[1]));
+      [['40',.405],['100',.442],['250',.479],['625',.516],['1560',.553],['3900',.590]].forEach(b=>lab(b[1],.55,6.5,b[0],dim));
+      lab(.660,.20,7,'EQ IN');
+      const jack=(x,y)=>{ c.beginPath();c.arc(x*W,y*H,7,0,7);c.fillStyle=rgb(16,16,18);c.fill();c.strokeStyle=rgb(120,122,126);c.lineWidth=1.3;c.stroke(); };
+      jack(.82,.66); jack(.82,.82); lab(.86,.66,7,'IN 1'); lab(.86,.82,7,'IN 2'); } };
+
   // ── generic fallback: any VST without a hand-built spec gets a clean knob
   //    grid built from its live parameter metadata (so nothing opens in a
   //    native window). params = [{id|paramId|index, name, value}, …]. ──────────
