@@ -3269,15 +3269,12 @@ def _ir_stage(ir_path, *, bypassed, gain=1.0,
     if di_cab and _is_bass_cab_ir(ir_path) and _di_cab_enabled():
         blended = _di_cab_blend_file(Path(ir_path))
         if blended is not None:
-            # The blend is DI*delta + CAB*(cab/‖cab‖) (DI=0.9, CAB=0.1). Setting
-            # the IR `gain` = 1/DI makes the dry/DI component play at UNITY — i.e.
-            # the bass sits at the amp's direct level, exactly like running no cab
-            # (so enabling the cab no longer drops the volume), with the small cab
-            # share adding colour. The engine applies this `gain` unconditionally,
-            # so it works for VST-amp chains too (where the chain-gain cab makeup
-            # is gated off). This replaces the old per-cab "preserve the cab's own
-            # loudness" makeup, which kept the bass at the cab's quiet level.
-            gain = 1.0 / _DI_CAB_DI
+            # Keep the cab's own IR gain (_RS_IR_MAKEUP for RS cabs) — the raw cab
+            # played at a fine level with it, and the blend is DI-dominant (0.9),
+            # so at the same gain it sits at least as loud as the raw cab did.
+            # (An earlier 1/DI override dropped it ~4×, which is what made the bass
+            # play very quiet vs running no cab.) The engine applies this `gain`
+            # unconditionally, so VST-amp chains get it too.
             ir_path = str(blended)
             di_cab_blend = True
     stage = {"type": 2, "name": Path(ir_path).stem, "path": str(ir_path),
