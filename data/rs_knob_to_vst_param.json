@@ -4512,7 +4512,7 @@
   }
  },
  "Bass_Amp_HT400B": {
-  "sillaboogie400": {
+  "sillaboogiebass400": {
    "Gain": {
     "param": "Volume 1",
     "scale": 0.01,

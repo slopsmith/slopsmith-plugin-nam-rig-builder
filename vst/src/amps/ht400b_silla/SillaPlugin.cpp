@@ -237,7 +237,7 @@ public:
         L.setSampleRate(sr); R.setSampleRate(sr); L.reset(); R.reset(); recalc();
     }
 protected:
-    const char* getLabel()       const override { return "SillaBoogie400"; }
+    const char* getLabel()       const override { return "SillaBoogieBass400"; }
     const char* getDescription() const override { return "Mesa Boogie Bass 400+ all-tube head — component-level model"; }
     const char* getMaker()       const override { return "RigBuilder"; }
     const char* getLicense()     const override { return "ISC"; }

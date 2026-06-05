@@ -6,9 +6,9 @@
 // Mesa 6-band graphic EQ + 12x 6L6 push-pull, modeled from the Bass 400+ panel
 // and documented circuit.
 #define DISTRHO_PLUGIN_BRAND   "RigBuilder"
-#define DISTRHO_PLUGIN_NAME    "SillaBoogie400"
-#define DISTRHO_PLUGIN_URI     "urn:rigbuilder:sillaboogie400"
-#define DISTRHO_PLUGIN_CLAP_ID "rigbuilder.sillaboogie400"
+#define DISTRHO_PLUGIN_NAME    "SillaBoogieBass400"
+#define DISTRHO_PLUGIN_URI     "urn:rigbuilder:sillaboogiebass400"
+#define DISTRHO_PLUGIN_CLAP_ID "rigbuilder.sillaboogiebass400"
 
 #define DISTRHO_PLUGIN_BRAND_ID  Rgbd
 #define DISTRHO_PLUGIN_UNIQUE_ID Sb40

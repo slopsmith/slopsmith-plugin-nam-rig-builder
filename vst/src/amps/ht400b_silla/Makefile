@@ -1,7 +1,7 @@
 #!/usr/bin/make -f
 # Silla Boogie 400 — Mesa/Boogie Bass 400+ all-tube head model (DPF plugin)
 
-NAME = SillaBoogie400
+NAME = SillaBoogieBass400
 
 FILES_DSP = \
 	SillaPlugin.cpp

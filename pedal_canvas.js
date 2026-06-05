@@ -3118,18 +3118,18 @@
   // biamp Balance/X-Over, Master. ids 0..18 = the VST enum order.
   P.peebeetminus = { w:1100, h:280,
     knobs:[
-      {id:0,cx:.085,cy:.50,r:.028,style:'pointer',cap:[24,24,26]},
-      {id:1,cx:.160,cy:.50,r:.028,style:'pointer',cap:[24,24,26]},
-      {id:2,cx:.250,cy:.50,r:.028,style:'pointer',cap:[24,24,26]},
-      {id:4,cx:.350,cy:.37,r:.023,style:'pointer',cap:[24,24,26]},
-      {id:3,cx:.350,cy:.64,r:.023,style:'pointer',cap:[24,24,26]},
-      {id:5,cx:.745,cy:.50,r:.028,style:'pointer',cap:[24,24,26]},
-      {id:6,cx:.825,cy:.50,r:.028,style:'pointer',cap:[24,24,26]},
-      {id:7,cx:.910,cy:.50,r:.031,style:'pointer',cap:[24,24,26]}],
-    faders:[{id:8,cx:.450,y0:.30,y1:.68},{id:9,cx:.485,y0:.30,y1:.68},{id:10,cx:.520,y0:.30,y1:.68},
-      {id:11,cx:.555,y0:.30,y1:.68},{id:12,cx:.590,y0:.30,y1:.68},{id:13,cx:.625,y0:.30,y1:.68},{id:14,cx:.660,y0:.30,y1:.68}],
-    switches:[{id:15,cx:.045,cy:.74,hs:.014,dark:true},{id:16,cx:.300,cy:.37,hs:.014,dark:true},
-      {id:17,cx:.300,cy:.64,hs:.014,dark:true},{id:18,cx:.700,cy:.43,hs:.014,dark:true}],
+      {id:0,cx:.115,cy:.50,r:.028,style:'pointer',cap:[24,24,26]},
+      {id:1,cx:.185,cy:.50,r:.028,style:'pointer',cap:[24,24,26]},
+      {id:2,cx:.270,cy:.50,r:.028,style:'pointer',cap:[24,24,26]},
+      {id:4,cx:.395,cy:.40,r:.023,style:'pointer',cap:[24,24,26]},
+      {id:3,cx:.395,cy:.62,r:.023,style:'pointer',cap:[24,24,26]},
+      {id:5,cx:.785,cy:.50,r:.028,style:'pointer',cap:[24,24,26]},
+      {id:6,cx:.865,cy:.50,r:.028,style:'pointer',cap:[24,24,26]},
+      {id:7,cx:.945,cy:.50,r:.031,style:'pointer',cap:[24,24,26]}],
+    faders:[{id:8,cx:.455,y0:.30,y1:.68},{id:9,cx:.490,y0:.30,y1:.68},{id:10,cx:.525,y0:.30,y1:.68},
+      {id:11,cx:.560,y0:.30,y1:.68},{id:12,cx:.595,y0:.30,y1:.68},{id:13,cx:.630,y0:.30,y1:.68},{id:14,cx:.665,y0:.30,y1:.68}],
+    switches:[{id:15,cx:.045,cy:.74,hs:.014,dark:true},{id:16,cx:.340,cy:.37,hs:.014,dark:true},
+      {id:17,cx:.340,cy:.64,hs:.014,dark:true},{id:18,cx:.710,cy:.43,hs:.014,dark:true}],
     names:['Tube Pre','Tube Post','Solid State','Shelving Low','Shelving High','Balance','X-Over','Master','40 Hz','100 Hz','250 Hz','625 Hz','1.6 kHz','4 kHz','10 kHz','Active','Channel Sel','Combine','Graphic In'],
     tick:rgb(120,122,128), ptr:rgb(244,245,248),
     draw(d,vals){ const {ctx:c,W,H}=d; const ink=rgb(28,30,36), dim=rgb(86,90,98);
@@ -3138,29 +3138,29 @@
       const pg=c.createLinearGradient(0,PT,0,PT+PH); pg.addColorStop(0,rgb(238,241,245)); pg.addColorStop(1,rgb(204,210,218));
       rr(c,PL,PT,PW,PH,7); c.fillStyle=pg; c.fill(); rr(c,PL,PT,PW,PH,7); c.strokeStyle=rgb(118,122,128); c.lineWidth=1.5; c.stroke();
       const lab=(cx,y,sz,t,col)=>textC(d,cx*W,y*H,F.barlow,sz,col||ink,t);
-      // header: brand + title + subtitle
-      textC(d,.030*W,.155*H,F.crete,24,rgb(26,28,34),'PeeBee','left');
-      textC(d,.200*W,.150*H,F.bebas,26,rgb(24,26,32),'T-MINUS','left');
-      textC(d,.030*W,.300*H,F.barlow,9.5,dim,'TWO CHANNEL BASS SYSTEM','left');
+      // header: brand + title + subtitle (stacked top-left)
+      textC(d,.030*W,.135*H,F.crete,24,rgb(26,28,34),'PeeBee','left');
+      textC(d,.200*W,.130*H,F.bebas,26,rgb(24,26,32),'T-MINUS','left');
+      textC(d,.030*W,.255*H,F.barlow,9.5,dim,'TWO CHANNEL BASS SYSTEM','left');
       // input + Active
       c.beginPath();c.arc(.045*W,.50*H,11,0,7);c.fillStyle=rgb(16,16,18);c.fill();c.strokeStyle=rgb(90,92,98);c.lineWidth=1.6;c.stroke();
       lab(.045,.355,9.5,'INPUT'); lab(.045,.86,8.5,'ACTIVE');
-      // TUBE + SOLID STATE groups
-      ledDot(d,.052*W,.40*H,true,60,210,80); lab(.120,.40,10,'TUBE');
-      lab(.085,.70,9,'PRE'); lab(.160,.70,9,'POST');
-      ledDot(d,.200*W,.40*H,true,220,200,40); lab(.255,.40,10,'SOLID STATE');
-      lab(.250,.70,9,'PRE');
-      // channel switches
-      lab(.300,.285,8.5,'TUBE/SS'); lab(.300,.75,8.5,'COMBINE');
-      // shelving (stacked)
-      lab(.350,.205,9.5,'SHELVING',dim); lab(.420,.37,8.5,'HI'); lab(.420,.64,8.5,'LO');
+      // TUBE + SOLID STATE group headers (raised above the knobs)
+      ledDot(d,.082*W,.305*H,true,60,210,80); lab(.150,.305,10,'TUBE');
+      lab(.115,.70,9,'PRE'); lab(.185,.70,9,'POST');
+      ledDot(d,.212*W,.305*H,true,220,200,40); lab(.268,.305,10,'SOLID STATE');
+      lab(.270,.70,9,'PRE');
+      // channel switches (spaced between SS Pre and Shelving)
+      lab(.340,.275,8.5,'TUBE/SS'); lab(.340,.77,8.5,'COMBINE');
+      // shelving (stacked pair)
+      lab(.395,.205,9.5,'SHELVING',dim); lab(.437,.40,8.5,'HI'); lab(.437,.62,8.5,'LO');
       // graphic EQ
-      lab(.555,.205,9.5,'GRAPHIC EQ   (±15 dB)',dim); lab(.700,.31,8.5,'GRAPHIC');
-      [['40',.450],['100',.485],['250',.520],['625',.555],['1.6k',.590],['4k',.625],['10k',.660]].forEach(b=>lab(b[1],.745,7.5,b[0],dim));
+      lab(.560,.205,9.5,'GRAPHIC EQ   (±15 dB)',dim); lab(.710,.31,8.5,'GRAPHIC');
+      [['40',.455],['100',.490],['250',.525],['625',.560],['1.6k',.595],['4k',.630],['10k',.665]].forEach(b=>lab(b[1],.745,7.5,b[0],dim));
       // right cluster labels
-      [[.745,'BALANCE'],[.825,'X-OVER'],[.910,'MASTER']].forEach(k=>lab(k[0],.70,9,k[1]));
+      [[.785,'BALANCE'],[.865,'X-OVER'],[.945,'MASTER']].forEach(k=>lab(k[0],.70,9,k[1]));
       // power LED
-      c.beginPath();c.arc(.965*W,.155*H,5,0,7);c.fillStyle=rgb(220,40,30);c.fill(); } };
+      c.beginPath();c.arc(.965*W,.135*H,5,0,7);c.fillStyle=rgb(220,40,30);c.fill(); } };
 
   // Bender Fumble 800 — Fender Rumble 800 modern Class-D head (parody). Black
   // face, cream knobs: Gain, Bright/Contour/Vintage buttons, Overdrive Drive+
@@ -3290,7 +3290,7 @@
 
   // Silla Boogie 400 — Mesa/Boogie Bass 400+ (parody). Black face, Mesa 6-band
   // graphic EQ (faders) + Middle/Bass/Treble/Master/Vol2/Vol1 + pull switches.
-  P.sillaboogie400 = { w:1000, h:300,
+  P.sillaboogiebass400 = { w:1000, h:300,
     knobs:[
       {id:2,cx:.300,cy:.74,r:.024,style:'pointer',cap:[20,20,22]},
       {id:3,cx:.375,cy:.74,r:.024,style:'pointer',cap:[20,20,22]},
