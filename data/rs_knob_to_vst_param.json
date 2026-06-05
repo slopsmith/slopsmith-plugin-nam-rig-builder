@@ -4562,6 +4562,30 @@
    }
   }
  },
+ "Bass_Amp_CS240B": {
+  "tracerv8": {
+   "Gain": {
+    "param": "Gain I",
+    "scale": 0.01,
+    "_hint": "RS Gain 0-100 -> Gain I (first ECC83 stage) 0..1."
+   },
+   "Bass": {
+    "param": "Bass",
+    "scale": 0.1,
+    "_hint": "RS Bass 0-10 (5=flat) -> Trace tone-stack Bass 0..1 (0.5 flat)."
+   },
+   "Mid": {
+    "param": "Middle",
+    "scale": 0.1,
+    "_hint": "RS Mid 0-10 (5=flat) -> Trace tone-stack Middle 0..1 (0.5 flat)."
+   },
+   "Treble": {
+    "param": "Treble",
+    "scale": 0.1,
+    "_hint": "RS Treble 0-10 (5=flat) -> Trace tone-stack Treble 0..1 (0.5 flat)."
+   }
+  }
+ },
  "Bass_Amp_CS75B": {
   "samplegv4b": {
    "Gain": {

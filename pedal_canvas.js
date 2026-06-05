@@ -3363,6 +3363,41 @@
       lab(.885,.59,7,'PASSIVE',act?rgb(150,150,154):rgb(236,200,120));
       lab(.885,.83,7,'ACTIVE',act?rgb(236,200,120):rgb(150,150,154)); } };
 
+  // Tracer V8 — Trace Elliot V-Type V8 (parody). Black head, green V8 badge +
+  // V-Type logo; PREAMP (Gain I+Bright, Gain II+Pull, Level), TONE (Bass+Deep,
+  // Middle+Shift, Treble), COMPRESSOR (On/Off + Level), Master. ids 0..13.
+  P.tracerv8 = { w:960, h:280,
+    knobs:[
+      {id:0,cx:.150,cy:.55,r:.026,style:'pointer',cap:[22,22,24]},
+      {id:1,cx:.225,cy:.55,r:.026,style:'pointer',cap:[22,22,24]},
+      {id:2,cx:.300,cy:.55,r:.026,style:'pointer',cap:[22,22,24]},
+      {id:3,cx:.405,cy:.55,r:.026,style:'pointer',cap:[22,22,24]},
+      {id:4,cx:.480,cy:.55,r:.026,style:'pointer',cap:[22,22,24]},
+      {id:5,cx:.555,cy:.55,r:.026,style:'pointer',cap:[22,22,24]},
+      {id:6,cx:.685,cy:.55,r:.026,style:'pointer',cap:[22,22,24]},
+      {id:7,cx:.775,cy:.55,r:.029,style:'pointer',cap:[22,22,24]}],
+    switches:[{id:8,cx:.055,cy:.55,hs:.011,dark:true},{id:9,cx:.150,cy:.82,hs:.010,dark:true},
+      {id:10,cx:.225,cy:.82,hs:.010,dark:true},{id:11,cx:.405,cy:.82,hs:.010,dark:true},
+      {id:12,cx:.480,cy:.82,hs:.010,dark:true},{id:13,cx:.615,cy:.55,hs:.011,dark:true}],
+    names:['Gain I','Gain II','Level','Bass','Middle','Treble','Comp Level','Master','Active','Bright','Gain II Pull','Deep','Mid Shift','Compressor'],
+    tick:rgb(150,152,156), ptr:rgb(244,245,248),
+    draw(d,vals){ const {ctx:c,W,H}=d; const grn=rgb(120,200,60), dim=rgb(150,152,156), ink=rgb(206,208,212);
+      box(d, 22,22,24, false);
+      const lab=(cx,y,sz,t,col)=>textC(d,cx*W,y*H,F.barlow,sz,col||ink,t);
+      // section headers + brackets
+      lab(.055,.20,8.5,'INPUTS',dim); lab(.225,.20,8.5,'PREAMP',dim); lab(.480,.20,8.5,'TONE CONTROL',dim); lab(.650,.20,8.5,'COMPRESSOR',dim);
+      c.strokeStyle=rgb(80,82,86); c.lineWidth=1.2;
+      c.beginPath(); c.moveTo(.135*W,.27*H); c.lineTo(.330*W,.27*H); c.stroke();
+      c.beginPath(); c.moveTo(.390*W,.27*H); c.lineTo(.580*W,.27*H); c.stroke();
+      [[.150,'GAIN I'],[.225,'GAIN II'],[.300,'LEVEL'],[.405,'BASS'],[.480,'MIDDLE'],[.555,'TREBLE'],[.685,'LEVEL'],[.775,'MASTER']].forEach(k=>lab(k[0],.69,8,k[1]));
+      // V8 badge + V-Type logo (green)
+      const vx=.870*W, vy=.42*H;
+      rr(c,vx-22,vy-16,44,32,3); c.fillStyle=rgb(20,20,22); c.fill();
+      rr(c,vx-22,vy-16,44,32,3); c.strokeStyle=grn; c.lineWidth=1.8; c.stroke();
+      textC(d,vx,vy,F.anton,24,grn,'V8');
+      textC(d,.835*W,.78*H,F.crete,22,grn,'V-Type','left');
+      lab(.835,.90,7,'400W ALL VALVE',dim); } };
+
   // ── generic fallback: any VST without a hand-built spec gets a clean knob
   //    grid built from its live parameter metadata (so nothing opens in a
   //    native window). params = [{id|paramId|index, name, value}, …]. ──────────

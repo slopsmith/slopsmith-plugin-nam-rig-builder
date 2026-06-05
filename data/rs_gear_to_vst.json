@@ -2208,6 +2208,17 @@
    "notes": "Bundled Orange AD200B (MK3) style all-tube bass head (Rocksmith 'OrangeAD200B'): component-level model from the AD200B panel + manual (tone-stack character cross-checked vs the BAJA AD200B emulator). 12AX7 input (Gain), Orange PASSIVE SUBTRACTIVE tone stack (Bass/Middle/Treble flat at full up, cut below), 4x KT88 push-pull (~200 W, big clean headroom). RS Gain->Gain; RS Bass/Mid/Treble->tone stack (offset so RS-flat=flat, lower cuts)."
   }
  ],
+ "Bass_Amp_CS240B": [
+  {
+   "name": "TracerV8",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/amps/TracerV8.vst3",
+   "notes": "Bundled Trace Elliot V-Type V8 style 400 W all-valve bass head (Rocksmith 'CS240B'): component-level model from the V-Type V8 schematic (cd0119/cd0120). All-ECC83 preamp (Gain I+Bright, Gain II+Pull, Level), Trace tone stack (Bass+Deep, Middle+Shift, Treble), opto compressor, 8x KT88 push-pull (~400 W). RS Gain->Gain I; RS Bass/Mid/Treble->tone stack."
+  }
+ ],
  "Bass_Amp_CS75B": [
   {
    "name": "SamplegV4B",
