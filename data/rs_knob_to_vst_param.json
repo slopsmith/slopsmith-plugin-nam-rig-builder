@@ -4610,6 +4610,30 @@
    }
   }
  },
+ "Bass_Amp_LT25B": {
+  "dustupcdn": {
+   "Gain": {
+    "param": "Input",
+    "scale": 0.01,
+    "_hint": "RS Gain 0-100 -> Input gain / ECC83 drive 0..1."
+   },
+   "Bass": {
+    "param": "Bass",
+    "scale": 0.1,
+    "_hint": "RS Bass 0-10 (5=flat) -> ~60 Hz low shelf 0..1 (0.5 flat)."
+   },
+   "Mid": {
+    "param": "Middle",
+    "scale": 0.1,
+    "_hint": "RS Mid 0-10 (5=flat) -> ~660 Hz mid 0..1 (0.5 flat)."
+   },
+   "Treble": {
+    "param": "Treble",
+    "scale": 0.1,
+    "_hint": "RS Treble 0-10 (5=flat) -> ~5 kHz high shelf 0..1 (0.5 flat)."
+   }
+  }
+ },
  "Bass_Amp_CS75B": {
   "samplegv4b": {
    "Gain": {

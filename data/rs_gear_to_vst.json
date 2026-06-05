@@ -2230,6 +2230,17 @@
    "notes": "Bundled SWR Super Redhead style hybrid bass head (Rocksmith 'HT300B'): component-level model from the SWR Red Head preamp schematic. 12AX7 preamp (Gain+Turbo), SWR Aural Enhancer contour, Bass shelf, semi-parametric Mid (Level+Freq), Treble shelf (+Transparency), 350 W solid-state power (clean hi-fi). RS Gain->Gain; RS Bass/Mid/Treble->Bass/Mid Level/Treble."
   }
  ],
+ "Bass_Amp_LT25B": [
+  {
+   "name": "DustupCDN",
+   "manufacturer": "RigBuilder",
+   "format": "VST3",
+   "url": "",
+   "free": true,
+   "bundled": "vst/amps/DustupCDN.vst3",
+   "notes": "Bundled Ashdown ABM EVO (Bass Magnifier) style head (Rocksmith 'LT25B'): component-level model from the Ashdown ABM500 EVO preamp schematic. ECC83 Valve Drive, Bass/Middle/Treble, 6-band graphic EQ (100/180/340/1.3k/3.6k/5k), Sub-octave generator, opto Comp, Shape, Output. RS Gain->Input; RS Bass/Mid/Treble->Bass/Middle/Treble."
+  }
+ ],
  "Bass_Amp_CS75B": [
   {
    "name": "SamplegV4B",
