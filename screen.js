@@ -334,6 +334,9 @@ function rbChainGainTargetFor(chainSpec) {
             base *= rbPostAmpMakeupForChain(chainSpec);
         }
     }
+    // Per-tone loudness auto-level trim (evens VST tones to the average; no-op
+    // until ≥2 tones in the song have been measured). See rbLoudness.
+    base *= rbToneLoudnessTrim(chainSpec);
     window.__rbChainBaseTarget = base;   // remember (pre-trim) for live makeup changes
     return base * makeup;
 }
@@ -349,11 +352,89 @@ async function rbApplyChainOutputGain(opts) {
     if (!chain) return;
     const audio = window.slopsmithDesktop && window.slopsmithDesktop.audio;
     if (!audio || typeof audio.setGain !== 'function') return;
+    rbLoudness._activeChain = chain;          // for the live auto-level poll
+    rbLoudnessEnsurePoll();
     const target = rbClampChainGainTarget(rbChainGainTargetFor(chain));
     window.__rbPendingChainGainTarget = target;
     return audio.setGain('chain', target).catch((e) => {
         console.warn('[rig_builder] setGain(chain,', target, ') failed:', e);
     });
+}
+
+// ── Per-tone loudness auto-leveling (the "hybrid") ───────────────────────────
+// VST chains have no loudness normalization (only NAM stages do), so different
+// tones in a song play at different volumes. We measure each tone's output/input
+// loudness RATIO live from getLevels() — that ratio is the chain's effective
+// gain and is INDEPENDENT of how hard you play (both scale with input), so it's
+// a stable per-tone signature. We then trim every tone's chain gain so all tones
+// land at the AVERAGE ratio (self-calibrating: preserves overall loudness, just
+// evens the spread). getLevels is RMS, and distortion reads ~+1.5 LU louder than
+// its RMS, so distorted/fuzz tones carry a fixed perceptual factor before
+// averaging — otherwise (as the user noted) RMS-matching would leave them
+// sounding loud. Trims persist per tone_key in localStorage.
+const rbLoudness = {
+    KEY: 'rb_tone_loudness_v1',
+    DIST_PERC_DB: 1.5,            // distortion perceived louder than RMS by ~this
+    NEED: 35,                     // strong-input samples before a tone is measured
+    _activeChain: null,
+    _poll: null,
+    _accum: {},                  // tone_key -> [ratios] (transient, this session)
+    _ratios: null,               // tone_key -> perceptual ratio (persisted)
+};
+function rbLoudnessLoad() {
+    if (rbLoudness._ratios) return rbLoudness._ratios;
+    try { rbLoudness._ratios = JSON.parse(localStorage.getItem(rbLoudness.KEY) || '{}'); }
+    catch (_) { rbLoudness._ratios = {}; }
+    return rbLoudness._ratios;
+}
+function rbLoudnessSave() { try { localStorage.setItem(rbLoudness.KEY, JSON.stringify(rbLoudness._ratios || {})); } catch (_) {} }
+function rbToneKeyOf(chainSpec) {
+    if (!Array.isArray(chainSpec)) return null;
+    for (const s of chainSpec) if (s && s.tone_key) return s.tone_key;
+    return null;
+}
+function rbChainHasDistortion(chainSpec) {
+    if (!Array.isArray(chainSpec)) return false;
+    return chainSpec.some(s => s && !s.bypassed &&
+        /dist|fuzz|overdrive|metal|muff|buzz|drive/i.test(String(s.rs_gear || '') + ' ' + String(s.name || '')));
+}
+// Trim multiplier for a tone: brings its perceptual ratio to the average of all
+// measured tones. 1.0 (no-op) until at least 2 tones are measured.
+function rbToneLoudnessTrim(chainSpec) {
+    const key = rbToneKeyOf(chainSpec);
+    const R = rbLoudnessLoad();
+    const mine = key && R[key];
+    const vals = Object.values(R).filter(v => typeof v === 'number' && v > 0);
+    if (!mine || vals.length < 2) return 1.0;
+    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+    return Math.max(0.25, Math.min(4.0, avg / mine));
+}
+function rbLoudnessEnsurePoll() {
+    if (rbLoudness._poll) return;
+    const api = window.slopsmithDesktop && window.slopsmithDesktop.audio;
+    if (!api || typeof api.getLevels !== 'function') return;
+    rbLoudness._poll = setInterval(async () => {
+        try {
+            const chain = rbLoudness._activeChain;
+            const key = rbToneKeyOf(chain);
+            if (!key) return;
+            const lv = await api.getLevels();
+            const inL = lv && lv.inputLevel, outL = lv && lv.outputLevel;
+            if (!(inL > 0.02 && outL > 1e-4)) return;     // need real input energy
+            (rbLoudness._accum[key] = rbLoudness._accum[key] || []).push(outL / inL);
+            const arr = rbLoudness._accum[key];
+            if (arr.length >= rbLoudness.NEED) {
+                arr.sort((a, b) => a - b);
+                const med = arr[Math.floor(arr.length / 2)];
+                const perc = rbChainHasDistortion(chain) ? Math.pow(10, rbLoudness.DIST_PERC_DB / 20) : 1.0;
+                const R = rbLoudnessLoad();
+                R[key] = med * perc;                       // perceptual ratio
+                rbLoudnessSave();
+                rbLoudness._accum[key] = [];               // reset for re-measure
+                rbApplyChainOutputGain({ chain }).catch(() => {});   // apply the new trim live
+            }
+        } catch (_) { /* best-effort */ }
+    }, 120);
 }
 
 // User cab/chain volume trim. Persists to /settings and applies LIVE via
