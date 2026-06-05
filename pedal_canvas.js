@@ -3318,8 +3318,8 @@
       // ── bottom control strip ──
       rr(c,.025*W,.58*H,.950*W,.39*H,6); c.strokeStyle=rgb(96,94,88); c.lineWidth=1.4; c.stroke();
       [[.300,'MIDDLE'],[.390,'BASS'],[.480,'TREBLE'],[.580,'MASTER'],[.680,'VOLUME 2'],[.770,'VOLUME 1']].forEach(k=>lab(k[0],.65,8.5,k[1]));
-      lab(.390,.925,6,'PULL SHIFT',dim); lab(.480,.925,6,'PULL SHIFT',dim);
-      lab(.680,.925,6,'PULL BRIGHT',dim); lab(.770,.925,6,'PULL BRIGHT',dim);
+      lab(.390,.945,6,'PULL SHIFT',dim); lab(.480,.945,6,'PULL SHIFT',dim);
+      lab(.680,.945,6,'PULL BRIGHT',dim); lab(.770,.945,6,'PULL BRIGHT',dim);
       // ── power section + jacks (left to right) ──
       ledDot(d,.050*W,.76*H,true,60,130,230); lab(.050,.89,6,'SLO-BLO');
       const rocker=(x)=>{ const y=.76*H; rr(c,x*W-8,y-12,16,24,2); c.fillStyle=rgb(40,40,44); c.fill(); rr(c,x*W-8,y-12,16,24,2); c.strokeStyle=rgb(92,94,98); c.lineWidth=1; c.stroke(); };
