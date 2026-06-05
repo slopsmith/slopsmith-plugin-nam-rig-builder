@@ -3157,8 +3157,8 @@
   P.benderfumble800 = { w:920, h:200,
     knobs:[
       {id:0,cx:.115,cy:.48,r:.038,style:'cream'},
-      {id:1,cx:.305,cy:.48,r:.038,style:'cream'},
-      {id:2,cx:.380,cy:.48,r:.038,style:'cream'},
+      {id:1,cx:.300,cy:.48,r:.038,style:'cream'},
+      {id:2,cx:.390,cy:.48,r:.038,style:'cream'},
       {id:3,cx:.475,cy:.48,r:.038,style:'cream'},
       {id:4,cx:.560,cy:.48,r:.038,style:'cream'},
       {id:5,cx:.645,cy:.48,r:.038,style:'cream'},
@@ -3174,16 +3174,16 @@
       c.beginPath();c.arc(.045*W,.48*H,9,0,7);c.fillStyle=rgb(40,40,44);c.fill();c.strokeStyle=rgb(150,152,156);c.lineWidth=1.5;c.stroke();
       c.beginPath();c.arc(.045*W,.48*H,3.5,0,7);c.fillStyle=rgb(16,16,18);c.fill();
       lab(.045,.30,9,'INPUT');
-      [[.115,'GAIN'],[.305,'DRIVE'],[.380,'LEVEL'],[.475,'BASS'],[.560,'LOW MID'],[.645,'HIGH MID'],[.730,'TREBLE'],[.845,'MASTER']].forEach(k=>lab(k[0],.20,9,k[1]));
-      [[.28,'BRIGHT'],[.50,'CONTOUR'],[.72,'VINTAGE']].forEach(b=>lab(.235,b[0],8.5,b[1],ink,'left'));
-      c.beginPath();c.arc(.3425*W,.255*H,4,0,7);c.fillStyle=rgb(80,28,26);c.fill();
+      [[.115,'GAIN'],[.300,'DRIVE'],[.390,'LEVEL'],[.475,'BASS'],[.560,'LOW MID'],[.645,'HIGH MID'],[.730,'TREBLE'],[.845,'MASTER']].forEach(k=>lab(k[0],.20,9,k[1]));
+      [[.28,'BRIGHT'],[.50,'CONTOUR'],[.72,'VINTAGE']].forEach(b=>lab(.208,b[0],8.5,b[1],ink,'left'));
+      c.beginPath();c.arc(.345*W,.255*H,4,0,7);c.fillStyle=rgb(80,28,26);c.fill();
       c.strokeStyle=dim; c.lineWidth=1.2;
-      c.beginPath(); c.moveTo(.275*W,.74*H); c.lineTo(.275*W,.78*H); c.lineTo(.410*W,.78*H); c.lineTo(.410*W,.74*H); c.stroke();
-      lab(.3425,.84,8.5,'OVERDRIVE',rgb(210,212,216));
+      c.beginPath(); c.moveTo(.268*W,.74*H); c.lineTo(.268*W,.78*H); c.lineTo(.422*W,.78*H); c.lineTo(.422*W,.74*H); c.stroke();
+      lab(.345,.84,8.5,'OVERDRIVE',rgb(210,212,216));
       c.beginPath(); c.moveTo(.445*W,.74*H); c.lineTo(.445*W,.78*H); c.lineTo(.760*W,.78*H); c.lineTo(.760*W,.74*H); c.stroke();
       lab(.6025,.84,8.5,'EQUALIZATION',rgb(210,212,216));
       c.beginPath();c.arc(.945*W,.30*H,5,0,7);c.fillStyle=rgb(230,40,30);c.fill();
-      textC(d,(W-16),(H-10),F.crete,19,rgb(236,237,240),'Fumble 800','right'); } };
+      textC(d,(W-16),(H-18),F.crete,19,rgb(236,237,240),'Fumble 800','right'); } };
 
   // Aiden GT-300/550/880 — Eden WT Valve-Tech hybrid preamp (parody). Gold/tan
   // panel: Gain (blue) + Enhance (white) + Bass (red) + 3-band semi-parametric
