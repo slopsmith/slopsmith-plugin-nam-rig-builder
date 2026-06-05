@@ -4487,6 +4487,30 @@
    }
   }
  },
+ "Bass_Amp_HT100B": {
+  "lovolt100": {
+   "Gain": {
+    "param": "Normal Vol",
+    "scale": 0.01,
+    "_hint": "RS Gain 0-100 -> Normal channel volume / 12AX7 drive 0..1."
+   },
+   "Bass": {
+    "param": "Bass",
+    "scale": 0.1,
+    "_hint": "RS Bass 0-10 (5=flat) -> British tone-stack ~80 Hz low shelf 0..1 (0.5 flat)."
+   },
+   "Mid": {
+    "param": "Middle",
+    "scale": 0.1,
+    "_hint": "RS Mid 0-10 (5=flat) -> British tone-stack ~500 Hz mid 0..1 (0.5 flat)."
+   },
+   "Treble": {
+    "param": "Treble",
+    "scale": 0.1,
+    "_hint": "RS Treble 0-10 (5=flat) -> British tone-stack ~3 kHz high shelf 0..1 (0.5 flat)."
+   }
+  }
+ },
  "Bass_Amp_CS75B": {
   "samplegv4b": {
    "Gain": {
