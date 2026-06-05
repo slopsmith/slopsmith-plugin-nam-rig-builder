@@ -119,13 +119,8 @@ protected:
     void run(const float** in, float** out, uint32_t frames) override {
         const float* iL = in[0]; const float* iR = in[1];
         float* oL = out[0]; float* oR = out[1];
-        // Auto makeup-gain matches output loudness to the dry input. But the Big
-        // Muff-style fuzz is mid-heavy/thin, so through a bass cab (which favours
-        // lows) it reads quieter than other bass tones — lift the output +4 dB so
-        // it sits with the rest. (Tunable: kRbOutBoost. Drives the amp a touch
-        // harder too, which fattens it.)
-        static constexpr float kRbOutBoost = 1.585f;   // +4 dB
-        for (uint32_t i = 0; i < frames; ++i) { oL[i] = kRbOutBoost * makeupL.process(iL[i], L.process(iL[i])); oR[i] = kRbOutBoost * makeupR.process(iR[i], R.process(iR[i])); }
+        // Auto makeup-gain matches output loudness to the dry input (clip not level).
+        for (uint32_t i = 0; i < frames; ++i) { oL[i] = makeupL.process(iL[i], L.process(iL[i])); oR[i] = makeupR.process(iR[i], R.process(iR[i])); }
     }
     DISTRHO_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(BassFuzzPlugin)
 };
