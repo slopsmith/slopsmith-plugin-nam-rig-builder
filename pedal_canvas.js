@@ -3345,10 +3345,10 @@
       c.fillStyle=rgb(236,118,24); c.fillRect(0,0,W,H);                 // orange tolex
       rr(c,.035*W,.07*H,.930*W,.86*H,6); c.fillStyle=rgb(238,234,222); c.fill();   // cream panel
       rr(c,.035*W,.07*H,.930*W,.86*H,6); c.strokeStyle=rgb(150,146,134); c.lineWidth=1.4; c.stroke();
-      textC(d,.070*W,.265*H,F.graffiti,64,rgb(24,22,20),'Citrus','left');
-      textC(d,.620*W,.250*H,F.barlow,13,rgb(58,54,48),'AD200','left');
-      textC(d,.620*W,.315*H,F.barlow,13,rgb(58,54,48),'BASS','left');
-      textC(d,.620*W,.380*H,F.barlow,13,rgb(58,54,48),'MK II','left');
+      textC(d,.075*W,.270*H,F.graffiti,98,rgb(24,22,20),'Citrus','left');
+      textC(d,.620*W,.210*H,F.barlow,22,rgb(58,54,48),'AD200','left');
+      textC(d,.620*W,.315*H,F.barlow,22,rgb(58,54,48),'BASS','left');
+      textC(d,.620*W,.420*H,F.barlow,22,rgb(58,54,48),'MK II','left');
       const lab=(cx,y,sz,t,col)=>textC(d,cx*W,y*H,F.barlow,sz,col||rgb(232,233,236),t);
       rr(c,.05*W,.46*H,.90*W,.46*H,5); c.fillStyle=rgb(18,18,20); c.fill();            // black strip
       rr(c,.350*W,.50*H,.255*W,.39*H,4); c.fillStyle=rgb(232,112,22); c.fill();        // orange tone section
