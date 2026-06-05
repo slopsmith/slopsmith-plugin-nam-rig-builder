@@ -196,7 +196,7 @@ public:
 // kMakeup boosts the clean preamp into the shared output stage; kLvl matches the
 // amp to the common multitone loudness (~-15 dBFS @ noon).
 static constexpr float kLovoltMakeup = 5.80f;   // tuned offline
-static constexpr float kLovoltLvl    = 0.249f;
+static constexpr float kLovoltLvl    = 0.3106f;
 
 class LovoltPlugin : public Plugin {
     LovoltChannel L, R;

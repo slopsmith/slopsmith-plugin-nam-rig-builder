@@ -138,7 +138,7 @@ public:
 // kMakeup lifts the preamp into the shared output stage; kLvl matches the amp to
 // the common multitone loudness (~-15 dBFS @ noon).
 static constexpr float kRumbleMakeup = 8.60f;   // tuned offline
-static constexpr float kRumbleLvl    = 0.249f;
+static constexpr float kRumbleLvl    = 0.3113f;
 
 class RumblePlugin : public Plugin {
     RumbleChannel L, R;

@@ -219,7 +219,7 @@ public:
 };
 
 static constexpr float kEdenMakeup = 6.50f;   // tuned offline (~-15 dBFS @ noon)
-static constexpr float kEdenLvl    = 0.249f;
+static constexpr float kEdenLvl    = 0.3106f;
 
 class EdenPlugin : public Plugin {
     EdenChannel L, R;

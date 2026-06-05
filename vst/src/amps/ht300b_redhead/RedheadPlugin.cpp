@@ -179,7 +179,7 @@ public:
 };
 
 static constexpr float kRedheadMakeup = 5.20f;   // tuned offline (~-15 dBFS @ noon)
-static constexpr float kRedheadLvl    = 0.249f;
+static constexpr float kRedheadLvl    = 0.2718f;
 
 class RedheadPlugin : public Plugin {
     RedheadChannel L, R;

@@ -297,7 +297,7 @@ protected:
 
     void run(const float** in, float** out, uint32_t frames) override {
         const float* iL=in[0]; const float* iR=in[1]; float* oL=out[0]; float* oR=out[1];
-        for (uint32_t i=0;i<frames;++i){ oL[i]=rbAmpLvl(0.249f*softClip(kTMaxMakeup*L.process(iL[i]))*0.98f); oR[i]=rbAmpLvl(0.249f*softClip(kTMaxMakeup*R.process(iR[i]))*0.98f); }
+        for (uint32_t i=0;i<frames;++i){ oL[i]=rbAmpLvl(0.3007f*softClip(kTMaxMakeup*L.process(iL[i]))*0.98f); oR[i]=rbAmpLvl(0.3007f*softClip(kTMaxMakeup*R.process(iR[i]))*0.98f); }
     }
     DISTRHO_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TMaxPlugin)
 };

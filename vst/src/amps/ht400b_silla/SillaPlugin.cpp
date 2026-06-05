@@ -224,7 +224,7 @@ public:
 };
 
 static constexpr float kSillaMakeup = 6.50f;   // tuned offline (~-15 dBFS @ noon)
-static constexpr float kSillaLvl    = 0.249f;
+static constexpr float kSillaLvl    = 0.2973f;
 
 class SillaPlugin : public Plugin {
     SillaChannel L, R;

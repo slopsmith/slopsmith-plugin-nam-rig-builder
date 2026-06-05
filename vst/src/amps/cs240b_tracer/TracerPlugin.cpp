@@ -208,7 +208,7 @@ public:
 };
 
 static constexpr float kTracerMakeup = 1.45f;   // tuned offline (~-15 dBFS @ noon)
-static constexpr float kTracerLvl    = 0.249f;
+static constexpr float kTracerLvl    = 0.2775f;
 
 class TracerPlugin : public Plugin {
     TracerChannel L, R;

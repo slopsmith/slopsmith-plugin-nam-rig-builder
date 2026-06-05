@@ -181,7 +181,7 @@ public:
 };
 
 static constexpr float kCitrusMakeup = 3.50f;   // tuned offline (~-15 dBFS @ noon)
-static constexpr float kCitrusLvl    = 0.249f;
+static constexpr float kCitrusLvl    = 0.2705f;
 
 class CitrusPlugin : public Plugin {
     CitrusChannel L, R;

@@ -314,7 +314,7 @@ protected:
     void run(const float** in, float** out, uint32_t frames) override {
         const float* iL = in[0]; const float* iR = in[1];
         float* oL = out[0]; float* oR = out[1];
-        for (uint32_t i = 0; i < frames; ++i) { oL[i] = rbAmpLvl(0.244f * softClip(L.process(iL[i])) * 0.98f); oR[i] = rbAmpLvl(0.244f * softClip(R.process(iR[i])) * 0.98f); }  // kLvl -> -14 LUF (~0.19 RMS multitone @ real CS75B settings) + ceiling; see AMP_LOUDNESS.md
+        for (uint32_t i = 0; i < frames; ++i) { oL[i] = rbAmpLvl(0.2529f * softClip(L.process(iL[i])) * 0.98f); oR[i] = rbAmpLvl(0.2529f * softClip(R.process(iR[i])) * 0.98f); }  // kLvl -> -14 LUF (~0.19 RMS multitone @ real CS75B settings) + ceiling; see AMP_LOUDNESS.md
     }
     DISTRHO_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(V4bPlugin)
 };

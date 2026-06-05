@@ -208,7 +208,7 @@ public:
 // kMakeup boosts the clean preamp into the shared output stage; kLvl matches the
 // amp to the common multitone loudness (~-15 dBFS @ noon).
 static constexpr float kEdenMakeup = 6.50f;   // tuned offline
-static constexpr float kEdenLvl    = 0.249f;
+static constexpr float kEdenLvl    = 0.3106f;
 
 class EdenPlugin : public Plugin {
     EdenChannel L, R;

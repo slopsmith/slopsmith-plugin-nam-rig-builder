@@ -302,7 +302,7 @@ protected:
     void run(const float** in, float** out, uint32_t frames) override {
         const float* iL = in[0]; const float* iR = in[1];
         float* oL = out[0]; float* oR = out[1];
-        for (uint32_t i = 0; i < frames; ++i) { oL[i] = rbAmpLvl(0.365f * softClip(L.process(iL[i])) * 0.98f); oR[i] = rbAmpLvl(0.365f * softClip(R.process(iR[i])) * 0.98f); }  // loudness std (~0.40 RMS multitone) + ceiling
+        for (uint32_t i = 0; i < frames; ++i) { oL[i] = rbAmpLvl(0.3583f * softClip(L.process(iL[i])) * 0.98f); oR[i] = rbAmpLvl(0.3583f * softClip(R.process(iR[i])) * 0.98f); }  // loudness std (~0.40 RMS multitone) + ceiling
     }
     DISTRHO_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SvtPlugin)
 };

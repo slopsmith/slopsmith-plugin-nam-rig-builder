@@ -250,7 +250,7 @@ public:
 };
 
 static constexpr float kDustupMakeup = 4.45f;   // tuned offline (~-14 dBFS @ noon)
-static constexpr float kDustupLvl    = 0.249f;
+static constexpr float kDustupLvl    = 0.2563f;
 
 class DustupPlugin : public Plugin {
     DustupChannel L, R;
