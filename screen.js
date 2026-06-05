@@ -334,6 +334,9 @@ function rbChainGainTargetFor(chainSpec) {
             base *= rbPostAmpMakeupForChain(chainSpec);
         }
     }
+    // Per-tone loudness auto-level trim — evens VST tones/songs to a common
+    // perceived loudness (no-op until ≥2 tones measured). See rbLoudness.
+    base *= rbToneLoudnessTrim(chainSpec);
     window.__rbChainBaseTarget = base;   // remember (pre-trim) for live makeup changes
     return base * makeup;
 }
@@ -349,11 +352,102 @@ async function rbApplyChainOutputGain(opts) {
     if (!chain) return;
     const audio = window.slopsmithDesktop && window.slopsmithDesktop.audio;
     if (!audio || typeof audio.setGain !== 'function') return;
+    rbLoudness._activeChain = chain;          // for the live auto-level poll
+    rbLoudnessEnsurePoll();
     const target = rbClampChainGainTarget(rbChainGainTargetFor(chain));
     window.__rbPendingChainGainTarget = target;
     return audio.setGain('chain', target).catch((e) => {
         console.warn('[rig_builder] setGain(chain,', target, ') failed:', e);
     });
+}
+
+// ── Per-tone loudness auto-leveling ──────────────────────────────────────────
+// VST chains have no loudness normalization (only NAM stages carry loudness), so
+// tones within a song AND across songs play at different volumes. We measure each
+// tone's INTRINSIC output/input loudness ratio live from getLevels() — that ratio
+// is the chain's effective gain and is independent of how hard you play, so it's
+// a stable per-tone signature. We then trim each tone's chain gain so all tones
+// land at the AVERAGE intrinsic ratio (self-calibrating: preserves overall
+// loudness, only evens the spread). Two things that bit the first cut and are
+// fixed here:
+//   • Active tone: in the mega-chain preloader the chain holds EVERY tone's
+//     stages, only the active tone's are un-bypassed — so we key off the first
+//     NON-bypassed stage's tone_key (correct in mega + single-preset modes).
+//   • Feedback: getLevels reads the output AFTER the trim, so we divide the
+//     measured ratio by the trim currently applied → the stored value is
+//     trim-independent and the loop can't chase its own tail.
+// getLevels is RMS; distortion reads ~+1.5 LU louder than its RMS, so distorted/
+// fuzz tones carry a perceptual factor before averaging (else, as the user noted,
+// RMS-matching leaves them sounding loud). Persisted per tone_key in localStorage.
+const rbLoudness = {
+    KEY: 'rb_tone_loudness_v2',
+    DIST_PERC_DB: 1.5,
+    NEED: 35,                     // strong-input samples before a tone is (re)measured
+    _activeChain: null,
+    _poll: null,
+    _accum: {},                  // tone_key -> [intrinsic ratios] (transient)
+    _data: null,                 // tone_key -> intrinsic perceptual ratio (persisted)
+};
+function rbLoudnessLoad() {
+    if (!rbLoudness._data) {
+        try { rbLoudness._data = JSON.parse(localStorage.getItem(rbLoudness.KEY) || '{}'); }
+        catch (_) { rbLoudness._data = {}; }
+    }
+    return rbLoudness._data;
+}
+function rbLoudnessSave() { try { localStorage.setItem(rbLoudness.KEY, JSON.stringify(rbLoudness._data || {})); } catch (_) {} }
+// The ACTIVE tone's key: the first non-bypassed stage that carries a tone_key
+// (master stages have none). Works for mega-chain AND single-preset chains.
+function rbActiveToneKey(chainSpec) {
+    if (!Array.isArray(chainSpec)) return null;
+    for (const s of chainSpec) if (s && !s.bypassed && s.tone_key) return s.tone_key;
+    for (const s of chainSpec) if (s && s.tone_key) return s.tone_key;
+    return null;
+}
+function rbChainHasDistortion(chainSpec) {
+    if (!Array.isArray(chainSpec)) return false;
+    return chainSpec.some(s => s && !s.bypassed &&
+        /dist|fuzz|overdrive|metal|muff|bigbuzz|big buzz/i.test(String(s.rs_gear || '') + ' ' + String(s.name || '')));
+}
+// Trim multiplier for the active tone: brings its intrinsic ratio to the average
+// of all measured tones. 1.0 (no-op) until ≥2 tones have been measured.
+function rbToneLoudnessTrim(chainSpec) {
+    const key = rbActiveToneKey(chainSpec);
+    const D = rbLoudnessLoad();
+    const mine = key && D[key];
+    const vals = Object.values(D).filter(v => typeof v === 'number' && v > 0);
+    if (!mine || vals.length < 2) return 1.0;
+    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+    return Math.max(0.25, Math.min(4.0, avg / mine));
+}
+function rbLoudnessEnsurePoll() {
+    if (rbLoudness._poll) return;
+    const api = window.slopsmithDesktop && window.slopsmithDesktop.audio;
+    if (!api || typeof api.getLevels !== 'function') return;
+    rbLoudness._poll = setInterval(async () => {
+        try {
+            const chain = rbLoudness._activeChain;
+            const key = rbActiveToneKey(chain);
+            if (!key) return;
+            const lv = await api.getLevels();
+            const inL = lv && lv.inputLevel, outL = lv && lv.outputLevel;
+            if (!(inL > 0.02 && outL > 1e-4)) return;          // need real input energy
+            const applied = rbToneLoudnessTrim(chain) || 1.0;   // trim now baked into the gain
+            const intrinsic = (outL / inL) / applied;           // divide it out → no feedback
+            (rbLoudness._accum[key] = rbLoudness._accum[key] || []).push(intrinsic);
+            const arr = rbLoudness._accum[key];
+            if (arr.length >= rbLoudness.NEED) {
+                arr.sort((a, b) => a - b);
+                const med = arr[Math.floor(arr.length / 2)];
+                const perc = rbChainHasDistortion(chain) ? Math.pow(10, rbLoudness.DIST_PERC_DB / 20) : 1.0;
+                const D = rbLoudnessLoad();
+                D[key] = med * perc;                            // intrinsic perceptual ratio
+                rbLoudnessSave();
+                rbLoudness._accum[key] = [];                    // reset for re-measure
+                rbApplyChainOutputGain({ chain }).catch(() => {});   // apply the refreshed trim live
+            }
+        } catch (_) { /* best-effort */ }
+    }, 120);
 }
 
 // User cab/chain volume trim. Persists to /settings and applies LIVE via
