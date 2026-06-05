@@ -3292,41 +3292,41 @@
   // graphic EQ (faders) + Middle/Bass/Treble/Master/Vol2/Vol1 + pull switches.
   P.sillaboogiebass400 = { w:1000, h:300,
     knobs:[
-      {id:2,cx:.300,cy:.80,r:.025,style:'pointer',cap:[20,20,22]},
-      {id:3,cx:.390,cy:.80,r:.025,style:'pointer',cap:[20,20,22]},
-      {id:4,cx:.480,cy:.80,r:.025,style:'pointer',cap:[20,20,22]},
-      {id:5,cx:.580,cy:.80,r:.025,style:'pointer',cap:[20,20,22]},
-      {id:1,cx:.680,cy:.80,r:.025,style:'pointer',cap:[20,20,22]},
-      {id:0,cx:.770,cy:.80,r:.025,style:'pointer',cap:[20,20,22]}],
-    faders:[{id:6,cx:.530,y0:.34,y1:.56},{id:7,cx:.570,y0:.34,y1:.56},{id:8,cx:.610,y0:.34,y1:.56},
-      {id:9,cx:.650,y0:.34,y1:.56},{id:10,cx:.690,y0:.34,y1:.56},{id:11,cx:.730,y0:.34,y1:.56}],
-    switches:[{id:12,cx:.812,cy:.42,hs:.012,dark:true},{id:15,cx:.390,cy:.93,hs:.010,dark:true},
-      {id:16,cx:.480,cy:.93,hs:.010,dark:true},{id:14,cx:.680,cy:.93,hs:.010,dark:true},{id:13,cx:.770,cy:.93,hs:.010,dark:true}],
+      {id:2,cx:.300,cy:.76,r:.025,style:'pointer',cap:[20,20,22]},
+      {id:3,cx:.390,cy:.76,r:.025,style:'pointer',cap:[20,20,22]},
+      {id:4,cx:.480,cy:.76,r:.025,style:'pointer',cap:[20,20,22]},
+      {id:5,cx:.580,cy:.76,r:.025,style:'pointer',cap:[20,20,22]},
+      {id:1,cx:.680,cy:.76,r:.025,style:'pointer',cap:[20,20,22]},
+      {id:0,cx:.770,cy:.76,r:.025,style:'pointer',cap:[20,20,22]}],
+    faders:[{id:6,cx:.530,y0:.28,y1:.47},{id:7,cx:.570,y0:.28,y1:.47},{id:8,cx:.610,y0:.28,y1:.47},
+      {id:9,cx:.650,y0:.28,y1:.47},{id:10,cx:.690,y0:.28,y1:.47},{id:11,cx:.730,y0:.28,y1:.47}],
+    switches:[{id:12,cx:.812,cy:.37,hs:.012,dark:true},{id:15,cx:.390,cy:.89,hs:.010,dark:true},
+      {id:16,cx:.480,cy:.89,hs:.010,dark:true},{id:14,cx:.680,cy:.89,hs:.010,dark:true},{id:13,cx:.770,cy:.89,hs:.010,dark:true}],
     names:['Volume 1','Volume 2','Middle','Bass','Treble','Master','40 Hz','100 Hz','250 Hz','625 Hz','1560 Hz','3900 Hz','EQ In','Bright 1','Bright 2','Bass Shift','Treble Shift'],
     tick:rgb(150,152,156), ptr:rgb(244,245,248),
     draw(d,vals){ const {ctx:c,W,H}=d; const ink=rgb(210,212,216), dim=rgb(150,140,90), white=rgb(234,235,238);
-      box(d, 24,24,26, true);
+      box(d, 24,24,26, false);
       const lab=(cx,y,sz,t,col)=>textC(d,cx*W,y*H,F.barlow,sz,col||ink,t);
       // ── big logo across the top (name above the EQ) ──
       textC(d,.055*W,.135*H,F.anton,32,white,'SILLA/BOOGIE','left');
       textC(d,.510*W,.135*H,F.crete,30,white,'BASS 400+','left');
       // ── graphic-EQ recessed box (upper right) ──
-      rr(c,.500*W,.30*H,.282*W,.31*H,5); c.fillStyle=rgb(14,14,16); c.fill();
-      rr(c,.500*W,.30*H,.282*W,.31*H,5); c.strokeStyle=dim; c.lineWidth=1.6; c.stroke();
-      [['40',.530],['100',.570],['250',.610],['625',.650],['1560',.690],['3900',.730]].forEach(b=>lab(b[1],.645,7,b[0],rgb(202,204,208)));
-      lab(.835,.345,7.5,'EQ IN'); lab(.835,.50,7.5,'OUT');
+      rr(c,.500*W,.24*H,.282*W,.26*H,5); c.fillStyle=rgb(14,14,16); c.fill();
+      rr(c,.500*W,.24*H,.282*W,.26*H,5); c.strokeStyle=dim; c.lineWidth=1.6; c.stroke();
+      [['40',.530],['100',.570],['250',.610],['625',.650],['1560',.690],['3900',.730]].forEach(b=>lab(b[1],.545,7,b[0],rgb(202,204,208)));
+      lab(.835,.30,7.5,'EQ IN'); lab(.835,.44,7.5,'OUT');
       // ── bottom control strip ──
-      rr(c,.025*W,.655*H,.950*W,.315*H,6); c.strokeStyle=rgb(96,94,88); c.lineWidth=1.4; c.stroke();
-      [[.300,'MIDDLE'],[.390,'BASS'],[.480,'TREBLE'],[.580,'MASTER'],[.680,'VOLUME 2'],[.770,'VOLUME 1']].forEach(k=>lab(k[0],.69,8.5,k[1]));
-      lab(.390,.955,6,'PULL SHIFT',dim); lab(.480,.955,6,'PULL SHIFT',dim);
-      lab(.680,.955,6,'PULL BRIGHT',dim); lab(.770,.955,6,'PULL BRIGHT',dim);
+      rr(c,.025*W,.58*H,.950*W,.39*H,6); c.strokeStyle=rgb(96,94,88); c.lineWidth=1.4; c.stroke();
+      [[.300,'MIDDLE'],[.390,'BASS'],[.480,'TREBLE'],[.580,'MASTER'],[.680,'VOLUME 2'],[.770,'VOLUME 1']].forEach(k=>lab(k[0],.65,8.5,k[1]));
+      lab(.390,.925,6,'PULL SHIFT',dim); lab(.480,.925,6,'PULL SHIFT',dim);
+      lab(.680,.925,6,'PULL BRIGHT',dim); lab(.770,.925,6,'PULL BRIGHT',dim);
       // ── power section + jacks (left to right) ──
-      ledDot(d,.050*W,.80*H,true,60,130,230); lab(.050,.93,6,'SLO-BLO');
-      const rocker=(x)=>{ rr(c,x*W-8,.80*H-12,16,24,2); c.fillStyle=rgb(40,40,44); c.fill(); rr(c,x*W-8,.80*H-12,16,24,2); c.strokeStyle=rgb(92,94,98); c.lineWidth=1; c.stroke(); };
-      rocker(.092); rocker(.142); lab(.092,.93,6.5,'POWER'); lab(.142,.93,6.5,'STANDBY');
+      ledDot(d,.050*W,.76*H,true,60,130,230); lab(.050,.89,6,'SLO-BLO');
+      const rocker=(x)=>{ const y=.76*H; rr(c,x*W-8,y-12,16,24,2); c.fillStyle=rgb(40,40,44); c.fill(); rr(c,x*W-8,y-12,16,24,2); c.strokeStyle=rgb(92,94,98); c.lineWidth=1; c.stroke(); };
+      rocker(.092); rocker(.142); lab(.092,.89,6.5,'POWER'); lab(.142,.89,6.5,'STANDBY');
       const jack=(x,y)=>{ c.beginPath();c.arc(x*W,y*H,7,0,7);c.fillStyle=rgb(16,16,18);c.fill();c.strokeStyle=rgb(120,122,126);c.lineWidth=1.3;c.stroke(); };
-      jack(.205,.76); jack(.205,.88); lab(.205,.68,6,'SEND'); lab(.205,.965,6,'RETURN');
-      jack(.885,.76); jack(.885,.88); lab(.930,.76,6.5,'IN 1'); lab(.930,.88,6.5,'IN 2'); } };
+      jack(.205,.72); jack(.205,.84); lab(.205,.645,6,'SEND'); lab(.205,.915,6,'RETURN');
+      jack(.885,.72); jack(.885,.84); lab(.930,.72,6.5,'IN 1'); lab(.930,.84,6.5,'IN 2'); } };
 
   // ── generic fallback: any VST without a hand-built spec gets a clean knob
   //    grid built from its live parameter metadata (so nothing opens in a
