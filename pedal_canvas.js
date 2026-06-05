@@ -3507,7 +3507,7 @@
       for(let i=0;i<2;++i){ const jx=W*(0.045+i*0.035); c.beginPath(); c.arc(jx,H*0.50,7,0,7); c.fillStyle=rgb(16,16,18); c.fill(); c.strokeStyle=rgb(80,90,100); c.lineWidth=1.4; c.stroke(); }
       lab(.045,.30,6.5,'PASSIVE'); lab(.080,.30,6.5,'ACTIVE');
       lab(.205,.78,7.5,'PREAMP',rgb(150,200,210)); lab(.327,.78,7.5,'NOTCH',rgb(150,200,210)); lab(.570,.78,7.5,'EQUALIZER',rgb(150,200,210));
-      [[.175,'GAIN'],[.235,'VOLUME'],[.305,'FREQ'],[.420,'40'],[.480,'120'],[.540,'350'],[.600,'800'],[.660,'2K'],[.720,'5K']].forEach(k=>lab(k[0],.30,8,k[1]));
+      [[.175,'GAIN'],[.235,'VOLUME'],[.305,'FREQ'],[.420,'40'],[.480,'120'],[.540,'350'],[.600,'800'],[.660,'2K'],[.720,'5K']].forEach(k=>lab(k[0],.24,8,k[1]));
       textC(d,PL+16,(PT+PH)-4,F.barlow,18,rgb(228,230,234),'electric','left');
       textC(d,(PL+PW)-60,H*0.5,F.barlow,20,rgb(228,230,234),'B600F','right');
       c.beginPath(); c.arc(.945*W,H*0.5,4.5,0,7); c.fillStyle=rgb(40,90,220); c.fill(); } };
