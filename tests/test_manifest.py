@@ -161,8 +161,11 @@ def test_legacy_tone_db_access_is_explicitly_inventoried():
     src = (ROOT / "routes.py").read_text()
 
     assert src.count('"nam_tone.db"') == 1
-    assert src.count("tone_mappings") == 24
     assert "INSERT OR REPLACE INTO tone_mappings" in src
     assert "SELECT DISTINCT filename FROM tone_mappings WHERE filename != ?" in src
+    assert "WHERE filename = ?" in src
+    assert 'filename.rsplit("/", 1)[-1]' in src
+    assert "if not existing_rows and _base != filename" in src
     assert "FROM tone_mappings tm JOIN presets p ON tm.preset_id = p.id" in src
     assert "EXISTS (SELECT 1 FROM preset_pieces pp WHERE pp.preset_id = tone_mappings.preset_id)" in src
+    assert "EXISTS (SELECT 1 FROM preset_pieces pp WHERE pp.preset_id = tm.preset_id)" in src

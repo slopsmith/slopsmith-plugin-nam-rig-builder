@@ -161,6 +161,12 @@
       "safeReason": "tone3000 search/download flows remain implemented by plugin routes and are now attributed in privileged diagnostics."
     },
     {
+      "surface": "external-service",
+      "bridgeId": "privileged.legacy-external-service-request",
+      "operationClass": "service.request",
+      "safeReason": "tone3000 search flows remain implemented by plugin routes and are now attributed in privileged diagnostics."
+    },
+    {
       "surface": "media-import-export",
       "bridgeId": "privileged.legacy-media-import-export",
       "operationClass": "media.import",

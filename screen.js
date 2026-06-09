@@ -1272,7 +1272,7 @@ function rbRegisterCapabilities() {
                 'audio-effects': { roles: ['provider', 'requester', 'observer'], commands: ['select-chain', 'bypass', 'restore', 'fallback', 'inspect-route'], requests: ['select-chain', 'bypass', 'restore', 'fallback', 'inspect-route', 'upsert-mapping'], operations: ['chain.resolve', 'chain.inspect', 'segment.activate', 'stage.set-bypass', 'stage.set-parameter', 'fallback'], safety: 'sensitive', compatibility: 'shim-allowed', ownership: 'multi-provider', version: 1, runtime: true },
                 playback: { roles: ['observer'], kind: 'lifecycle', observes: ['ready', 'stopped', 'ended'], safety: 'safe', compatibility: 'shim-allowed', ownership: 'observer-only', version: 1, runtime: true },
                 jobs: { roles: ['provider', 'observer'], operations: ['job.enqueue', 'job.status', 'job.cancel'], safety: 'privileged', compatibility: 'shim-allowed', ownership: 'multi-provider', version: 1, runtime: true },
-                'privileged-capabilities': { roles: ['provider', 'requester', 'observer'], requests: ['inspect', 'record-outcome', 'record-bridge-hit', 'link-job'], safety: 'privileged', compatibility: 'shim-allowed', ownership: 'privileged', version: 1, runtime: true },
+                'privileged-capabilities': { roles: ['provider', 'requester', 'observer'], requests: ['inspect', 'check-approval-boundary', 'record-outcome', 'record-bridge-hit', 'link-job'], safety: 'privileged', compatibility: 'shim-allowed', ownership: 'privileged', version: 1, runtime: true },
             });
         }
         rbRegisterUiCapabilities();
