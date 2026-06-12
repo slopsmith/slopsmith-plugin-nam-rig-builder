@@ -1010,6 +1010,9 @@ async function rbActivateSegmentWithHost(segmentId, toneKey) {
 }
 
 async function rbLoadNativePresetPayload(api, payload, options) {
+    const ready = await rbEnsureNativeAudioReady(api, options);
+    if (!ready.ok) throw new Error(ready.reason || 'Native audio input is not ready');
+
     let audioEffectsError = null;
     try {
         const result = await rbLoadChainPlanWithHost(payload, options);
@@ -4357,7 +4360,7 @@ async function rbToneEditVst(toneIdx, pIdx) {
             // edit so the editor still works. This DOES own + clear the chain.
             try { if (api.clearChain) await api.clearChain(); } catch (_) {}
             await api.startAudio().catch(() => {});
-            slotId = await api.loadVST(vstPath);
+            slotId = await rbLoadVSTWhenReady(api, vstPath);
             if (slotId == null || slotId < 0) {
                 editor.innerHTML = `<div class="text-xs text-red-400">${rbEsc(rbVstRefusedMsg())}</div>`;
                 return;
@@ -5173,7 +5176,7 @@ async function rbMasterEditVst(role, idx) {
         // before loading — closing its native window first avoids the crash.
         await rbTeardownVstEditor(api);
         await api.startAudio().catch(() => {});
-        const slotId = await api.loadVST(vstPath);
+        const slotId = await rbLoadVSTWhenReady(api, vstPath);
         if (slotId == null || slotId < 0) {
             editor.innerHTML = `<div class="text-xs text-red-400">${rbEsc(rbVstRefusedMsg())}</div>`;
             return;
@@ -6775,7 +6778,7 @@ async function rbLoadAndEditVst(toneIdx, pIdx) {
         // Clear any previous experimental load so the editor doesn't accumulate.
         await rbTeardownVstEditor(api);
         await api.startAudio().catch(() => {});
-        const slotId = await api.loadVST(path);
+        const slotId = await rbLoadVSTWhenReady(api, path);
         if (slotId == null || slotId < 0) throw new Error(rbVstRefusedMsg());
         rbState._vstEditorSlot = slotId;
         // Render the inline params editor (HTML sliders driving setParameter
@@ -7271,6 +7274,46 @@ async function rbSaveTonePreset(toneIdx, filename) {
 function rbNativeAudio() {
     const a = window.slopsmithDesktop && window.slopsmithDesktop.audio;
     return (a && typeof a.loadPreset === 'function' && typeof a.startAudio === 'function') ? a : null;
+}
+
+function rbNativeAudioDeviceReason(device) {
+    if (!device || typeof device !== 'object') return 'Native audio device state is unavailable';
+    const sampleRate = Number(device.sampleRate);
+    const blockSize = Number(device.blockSize || device.inputBlockSize || 0);
+    if (!Number.isFinite(sampleRate) || sampleRate <= 0) return 'Native audio input is not ready: sample rate is unavailable';
+    if (!Number.isFinite(blockSize) || blockSize <= 0) return 'Native audio input is not ready: block size is unavailable';
+    return '';
+}
+
+async function rbEnsureNativeAudioReady(api, options) {
+    if (!api) return { ok: false, reason: 'Native audio engine is not available' };
+
+    const opts = options || {};
+    const mayStart = opts.startAudio !== false && typeof api.startAudio === 'function';
+    let wasRunning = true;
+    if (typeof api.isAudioRunning === 'function') {
+        try { wasRunning = await api.isAudioRunning(); }
+        catch (_) { wasRunning = true; }
+    }
+    if (!wasRunning && mayStart) {
+        try { await api.startAudio(); }
+        catch (e) {
+            return { ok: false, reason: e && e.message ? e.message : 'Native audio input could not be started' };
+        }
+    }
+
+    if (typeof api.getCurrentDevice !== 'function') return { ok: true };
+    let device = null;
+    try { device = await api.getCurrentDevice(); }
+    catch (_) { return { ok: true }; }
+    const reason = rbNativeAudioDeviceReason(device);
+    return reason ? { ok: false, reason } : { ok: true };
+}
+
+async function rbLoadVSTWhenReady(api, vstPath) {
+    const ready = await rbEnsureNativeAudioReady(api);
+    if (!ready.ok) throw new Error(ready.reason || 'Native audio input is not ready');
+    return api.loadVST(vstPath);
 }
 
 // Stop whatever preview is active (native full-chain or nam_tone fallback).
@@ -8839,7 +8882,7 @@ async function rbCatalogLoadAndEdit(panelId) {
     try {
         await rbTeardownVstEditor(api);
         await api.startAudio().catch(() => {});
-        const slotId = await api.loadVST(path);
+        const slotId = await rbLoadVSTWhenReady(api, path);
         if (slotId == null || slotId < 0) throw new Error(rbVstRefusedMsg());
         rbState._vstEditorSlot = slotId;
         if (api.openPluginEditor) {
@@ -9006,7 +9049,7 @@ async function rbCatalogEditInline(safeId, vstPath, vstFormat, rsGear, stem) {
         if (rbState.listeningTone !== null || rbState._auditionId) await rbStopPreview().catch(() => {});
         if (api.clearChain) await api.clearChain().catch(() => {});
         await api.startAudio().catch(() => {});
-        const slotId = await api.loadVST(vstPath);
+        const slotId = await rbLoadVSTWhenReady(api, vstPath);
         if (slotId == null || slotId < 0) throw new Error(rbVstRefusedMsg());
         rbState._vstEditorSlot = slotId;
         // Apply the (gear, vst) `_static` defaults (subtype pins) if any.
@@ -9067,7 +9110,7 @@ async function rbCatalogEditVst(vstPath, vstFormat, rsGear) {
         if (api.clearChain) await api.clearChain().catch(() => {});
         const wasRunning = api.isAudioRunning ? await api.isAudioRunning().catch(() => true) : true;
         if (!wasRunning) await api.startAudio().catch(() => {});
-        const slotId = await api.loadVST(vstPath);
+        const slotId = await rbLoadVSTWhenReady(api, vstPath);
         if (slotId == null || slotId < 0) {
             alert(`Engine refused to load this plugin:\n${vstPath}`);
             return;
@@ -9136,7 +9179,7 @@ async function rbAuditionVst(vstPath, vstFormat, btnId) {
         if (typeof api.loadVST !== 'function') {
             throw new Error('engine has no loadVST API (WASM-only build?)');
         }
-        const slotId = await api.loadVST(vstPath);
+        const slotId = await rbLoadVSTWhenReady(api, vstPath);
         if (slotId == null || slotId < 0) throw new Error('engine refused this plugin');
         if (api.setMonitorMute) await api.setMonitorMute(false).catch(() => {});
         const wasRunning = api.isAudioRunning ? await api.isAudioRunning().catch(() => true) : true;

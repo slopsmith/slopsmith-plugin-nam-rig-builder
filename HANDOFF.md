@@ -1,5 +1,16 @@
 # Rig Builder — handoff doc
 
+> **Native audio readiness guard (2026-06-12).** `screen.js` now checks the
+> desktop audio device state before asking the host to load full-chain presets
+> or one-shot VST stages. `rbEnsureNativeAudioReady` starts audio when needed,
+> then requires `getCurrentDevice().sampleRate` and `blockSize/inputBlockSize`
+> to be positive before `loadPlan`, legacy `loadPreset`, or direct `loadVST`.
+> This prevents the plugin from repeatedly instantiating NAM/VST/IR stages when
+> the native input device is not actually ready (the failure signature was VST
+> sandbox loads receiving `sampleRate=0` during playback with default/no-input
+> macOS audio settings). Desktop still has its own native fallback to 48 kHz;
+> this plugin guard is the early, user-facing fast-fail.
+
 > **In-chain VST editing (2026-06-02, `feat/pedals-vst`).** Pressing **Edit** on
 > a pedal in a song tone's chain now edits it **inside the live full-chain
 > preview** instead of loading an isolated single copy. `rbToneEditVst`
